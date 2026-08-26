@@ -11,6 +11,24 @@ B_0=0.99*params.eta*f_c;
 gamma_0=1;
 x0=[log10(B_0),gamma_0];
 
+%Precompute quantities that do not depend on the optimization variable x
+%=(log10 B, gamma): they only depend on M/f_c/params, which are all fixed
+%for the duration of this call. e_bit_fct_QAM_v2.m used to recompute all
+%of these from scratch on every one of the (numtriesPerOpt x up to
+%maxiters) objective evaluations fminsearch performs for this single
+%(R,M,f_c) point - same result every time, just wasted work. Stashed into
+%params.inv_* (read back out in e_bit_fct_QAM_v2.m) rather than changed
+%as function arguments, so every existing call site keeps working as-is.
+lambda=params.c/f_c;
+L=( params.D_r*params.D_t*(lambda/(4*pi*params.distance))^params.beta )^(-1); %To match definition in paper
+PAPR_QAM_Linear=3*(sqrt(M)-1)/(sqrt(M)+1);
+params.inv_b=log2(sqrt(M));
+params.inv_pow2_b=2^params.inv_b;
+params.inv_sqrt_fc=sqrt(f_c);
+params.inv_L_dB=10*log10(L);
+params.inv_PAPR=10^((10*log10(PAPR_QAM_Linear)+3+3.17)/10);
+params.inv_B_max=params.eta*f_c;
+
 fun = @(x)e_bit_fct_QAM_v2(x,params,M,R,f_c,"minimization");
 [optimal_parameters, E_per_bit] = run_multistart_fminsearch(fun, x0, params);
 

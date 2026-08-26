@@ -4,41 +4,34 @@ function out = e_bit_fct_Pulse(x,params,modulation,R,flag)
 
 %"unpack" params (too lazy to rewrite all equations)
 % Parameters
-eta=params.eta; %max bandwidth relative to carrier
 epsilon_trans=params.epsilon_trans;
 epsilon_rec=params.epsilon_rec;
-alpha=params.alpha;
 
-distance=params.distance; %comm. systems in m
-beta=params.beta; %pathloss component
-
-c=params.c; %speed of light
 c_PA=params.c_PA; %PA constant
 c_ADC=params.c_ADC; %ADC constant
 f_b=params.f_b; %bend frequency of ADC envelope
-NoiseFigure=params.NoiseFigure; %Receiver Noise figure
 Maximum_P_T=params.Maximum_P_T; %Max power in Watt
-D_r=params.D_r;  %Antenna gain receiver
-D_t=params.D_t;  %Antenna gain transmitter
 %bw_factor=params.bw_factor;   %get 95% containment BW NOT required for
 %Impulse
 %PAPR_RRC=params.PAPR_RRC;
 N_0=params.N_0;
 P_Mix=params.P_Mix;
-f_c=params.f_c;
+
+%Loop-invariant quantities (depend only on modulation.type/f_c/params,
+%fixed for the whole optimization run, never on x) are precomputed once
+%by get_min_E_bit_Pulse.m instead of being recomputed on every one of the
+%many objective evaluations fminsearch performs. See that file for
+%derivations. P_ADC/P_DAC below still depend on B (part of x), so they
+%stay evaluated here on every call.
+B_max=params.inv_B_max;
+b=params.inv_b;
+pow2_b=params.inv_pow2_b;
 
 B=10^x(1);
 gamma=x(2);
-B_max=eta*f_c;
 %gamma=1;
 %alpha=x(3);
 %b=sqrt(M)/2;    %per I/Q dimension
-
-if modulation.type=="Energy"
-    b=1;
-elseif modulation.type=="Arbitrary"
-    b=1.59;
-end
 
 
 
@@ -56,16 +49,13 @@ end
 
 
 %now calculate energy per bit
-lambda=c/f_c;
-L=( D_r*D_t*(lambda/(4*pi*distance))^beta  )^(-1); %To match definition in paper
-
 S=R/(gamma*B);
 
 %get required snr
 SNR_rec=SNR_value_Pulse(S,params);
 
 %this snr gets degraded by path loss and noise figure
-SNR_transmitter=SNR_rec+10*log10(L);
+SNR_transmitter=SNR_rec+params.inv_L_dB;
 
 
 
@@ -79,18 +69,14 @@ if (P_t>Maximum_P_T)
     return
 end
 
-%PAPR_QAM_Linear=3*(sqrt(M)-1)/(sqrt(M)+1);
-
-%PAPR=10^((10*log10(PAPR_QAM_Linear)+3+3.17)/10);
-
 %hardware power
-P_PA=c_PA*P_t*sqrt(f_c)*10^(params.PulsePAPR/10);
-P_ADC=2*c_ADC*2^(b)*B*sqrt(1+(B/f_b)^2);
+P_PA=c_PA*P_t*params.inv_sqrt_fc*params.inv_PAPR;
+P_ADC=2*c_ADC*pow2_b*B*sqrt(1+(B/f_b)^2);
 %Mezghani LNA model
 FoM_LNA=10^(-7);
 P_LNA=32*B*N_0/((3-1)*FoM_LNA);
 
-P_DAC=2*(1/2*params.DAC_VDD*params.DAC_I0*(2^b-1)+params.DAC_Cp*params.DAC_VDD^2*b*B);
+P_DAC=2*(1/2*params.DAC_VDD*params.DAC_I0*(pow2_b-1)+params.DAC_Cp*params.DAC_VDD^2*b*B);
 
 %Calculate P_LO
 
@@ -127,4 +113,3 @@ else
     return ;
 end
 end
-
