@@ -1,6 +1,16 @@
 function [params,Power] = get_params(R,f_c, Modulation_type,M, B, gamma, sigma_j,distance)
 %GET_PARAMS Summary of this function goes here
 %   Detailed explanation goes here%
+%
+%   *** UNUSED / LEGACY - no other file in this project calls get_params
+%   (verified via grep). It also hardcodes params.f_c=28e9 below,
+%   overriding its own f_c input argument, then still uses the original
+%   f_c argument (not params.f_c) further down - the two are only
+%   consistent if the caller happened to pass 28 GHz. Superseded by
+%   Sim_Init.m (per-f_c parameters) + get_min_E_bit_QAM/NA_QAM/ZXM/Pulse.m
+%   (optimization). Left in place rather than deleted since this project
+%   has no prior git history to recover it from if still needed for
+%   reference; safe to delete once confirmed unneeded. ***
 
 %init
 Power.ADC=NaN;

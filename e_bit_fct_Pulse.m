@@ -86,12 +86,8 @@ end
 %hardware power
 P_PA=c_PA*P_t*sqrt(f_c)*10^(params.PulsePAPR/10);
 P_ADC=2*c_ADC*2^(b)*B*sqrt(1+(B/f_b)^2);
-P_LNA=9.9848*10^(-5)*f_c^(0.2)*10^(-1);
 %Mezghani LNA model
 FoM_LNA=10^(-7);
-P_LNA=32*B*N_0/((3-1)*FoM_LNA);
-
-
 P_LNA=32*B*N_0/((3-1)*FoM_LNA);
 
 P_DAC=2*(1/2*params.DAC_VDD*params.DAC_I0*(2^b-1)+params.DAC_Cp*params.DAC_VDD^2*b*B);

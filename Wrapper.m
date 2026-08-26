@@ -141,7 +141,7 @@ for f_=1:length(f_c_vec)
         modulation.order=1; %=M_tx
         fprintf(strcat(Pulse_list(m), " IR\n"))
         %PAPR raussuchen
-        filename='SE_data/dkEnergyRx_ArbSign_SE99';
+        filename='SE_data/dkEnergyRX_ArbSign_SE99'; %case must match SE_data/dkEnergyRX_ArbSign_SE99.mat exactly on case-sensitive filesystems (e.g. the HPCServer cluster used above)
         load(filename);
         T_PAPR=struct2table(groupVal);
         if Pulse_list(m)=="Energy"
@@ -432,6 +432,17 @@ modulation.order=M_QAM;
 
 fprintf(strcat(num2str(M_QAM), "QAM\n"))
 
+%Preallocate every entry with NaN fields up front. Previously, Power(r)
+%was only ever assigned inside the if-branch below; any r whose point was
+%infeasible (E_per_bit==NaN) left Power(r) unassigned, and MATLAB backfills
+%such gaps in a struct array with EMPTY ([]) fields rather than NaN. Since
+%[Power.DAC] etc. concatenate via a comma-separated list, an empty field
+%contributes nothing to the result instead of a placeholder - so any
+%infeasible point silently shifted every later entry out of alignment
+%with R_vec instead of producing a NaN at its own position.
+Power = repmat(struct('PA',NaN,'DAC',NaN,'LO_Tx',NaN,'Mix_Tx',NaN, ...
+    'LNA',NaN,'LO_Rx',NaN,'Mix_Rx',NaN,'ADC',NaN), 1, length(R_vec));
+
 for r=1:length(R_vec)
     R=R_vec(r);
     precision=5;
@@ -442,10 +453,10 @@ for r=1:length(R_vec)
 
     loaded_Data=load(filename);
     if( ~isnan(loaded_Data.OptimalParameters.E_per_bit))
-        Power(r)=loaded_Data.PowerBudget; 
-    else
-        %ja, was dann?
+        Power(r)=loaded_Data.PowerBudget;
     end
+    %else: leave the NaN-filled placeholder from the preallocation above,
+    %so Power(r) still lines up with R_vec(r).
 end
 
 Power_Tx=[Power.DAC]+[Power.PA]+[Power.LO_Tx]+[Power.Mix_Tx];

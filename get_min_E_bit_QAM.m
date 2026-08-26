@@ -1,66 +1,32 @@
 function [OptimalParameters,PowerBudget] = get_min_E_bit_QAM(R, M, params)
-%GET_MIN_E_BIT Summary of this function goes here
-%   Detailed explanation goes here
+%GET_MIN_E_BIT_QAM Multistart optimization of (log10 B, gamma) minimizing
+%energy per bit for adaptive-bandwidth QAM.
+%   See run_multistart_fminsearch.m for the shared restart logic (also
+%   used by NA-QAM/ZXM/Pulse), including a fix for a bug that used to
+%   cause valid optima to be discarded as NaN.
 
 f_c=params.f_c;
 
-
-num_bands=length(f_c);
-
-Optimal_B=NaN;
-Optimal_gamma=NaN;
-Optimal_sigma=NaN;
-E_per_bit=NaN;
-Optimal_PilotSpacing=NaN;
-
-
 B_0=0.99*params.eta*f_c;
 gamma_0=1;
-numtries=params.numtriesPerOpt;
-vals=NaN(numtries,1);
-for i=1:numtries
-        x_0=[log10(B_0),gamma_0];
-        if i>1
-            x_0=x_0./(1+rand(1,2).*0.1);
-        end
+x0=[log10(B_0),gamma_0];
 
-   
-    fun = @(x)e_bit_fct_QAM_v2(x,params,M,R,f_c,"minimization");
-    options=optimset('TolX',params.tolerance,'TolFun',params.tolerance,'MaxIter',params.maxiters, ...
-        'MaxFunEvals',params.maxiters, 'Display', 'off');
-    [optimal_parameters,value,exitflag,output] = fminsearch(fun,x_0,options);
+fun = @(x)e_bit_fct_QAM_v2(x,params,M,R,f_c,"minimization");
+[optimal_parameters, E_per_bit] = run_multistart_fminsearch(fun, x0, params);
 
-    optimal_parameters_vec(i,:)=optimal_parameters;
-    vals(i)=value;
-
-end
-%find best
-index=find(vals==min(vals),1);
-optimal_parameters=optimal_parameters_vec(index,:);
-
-
-
-%save Parameters
-%E_per_bit=value;
-if(~isinf(value))
-    index=find(vals==min(vals),1,'first');
-    optimal_parameters=optimal_parameters_vec(index,:);
-
+if ~isinf(E_per_bit)
     PowerBudget=e_bit_fct_QAM_v2(optimal_parameters,params,M,R,f_c,"budget");
-
-    E_per_bit=vals(index);
     Optimal_B=10^optimal_parameters(1);
     Optimal_gamma=optimal_parameters(2);
-    
-
 else
     PowerBudget=NaN;
+    Optimal_B=NaN;
+    Optimal_gamma=NaN;
+    E_per_bit=NaN;
 end
 
 OptimalParameters.E_per_bit=E_per_bit;
 OptimalParameters.Optimal_B=Optimal_B;
 OptimalParameters.Optimal_gamma=Optimal_gamma;
 
-
 end
-

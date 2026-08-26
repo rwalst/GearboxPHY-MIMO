@@ -83,7 +83,6 @@ PAPR=10^((10*log10(PAPR_QAM_Linear)+3+3.17)/10);
 %hardware power
 P_PA=c_PA*P_t*sqrt(f_c)*PAPR;
 P_ADC=2*c_ADC*2^(b)*B*sqrt(1+(B/f_b)^2);
-P_LNA=9.9848*10^(-5)*f_c^(0.2)*10^(-1);
 %Mezghani LNA model
 FoM_LNA=10^(-7);
 P_LNA=32*B*N_0/((3-1)*FoM_LNA);
