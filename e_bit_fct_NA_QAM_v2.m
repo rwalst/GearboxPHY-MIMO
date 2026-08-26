@@ -21,7 +21,9 @@ Maximum_P_T=params.Maximum_P_T; %Max power in Watt
 D_r=params.D_r;  %Antenna gain receiver
 D_t=params.D_t;  %Antenna gain transmitter
 %bw_factor=params.bw_factor;   %get 95% containment BW
-PAPR_RRC=params.PAPR_RRC;
+%params.PAPR_RRC is no longer set upstream (Sim_Init.m) - it was dead:
+%unpacked here but never referenced below, since PAPR is instead computed
+%from M directly a few lines down.
 N_0=params.N_0;
 P_Mix=params.P_Mix;
 

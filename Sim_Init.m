@@ -71,18 +71,20 @@ if modulation.family=="QAM"
     str_f_c = strrep(num2str(params.f_c/10^9),'.','_');
     filename=strcat(params.savefolder,'/','QAM_M=',num2str(M),'_fc=',str_f_c,'_log(R)=',str_rate, '_','d=',num2str(params.distance),'m_');
 
-    if ~exist(strcat(filename,".mat"))
+    if ~exist(strcat(filename,".mat"),'file')
 
         %read SE vector
         filename_SE=strcat('SE_data/','SE_',num2str(M),'_QAM','.mat');
-        load(filename_SE);
-        
+        SE_data=load_mat_cached(filename_SE);
 
         params.bw_factor=get_p_containment_bw(params.alpha,99);   %get 99% containment BW
-        params.PAPR_RRC=get_QAM_PAPR(M,params.alpha);
-        
-        params.SNR_vec=SNR_vec;
-        params.mui_vec=SE_vec./params.bw_factor;
+        %NOTE: params.PAPR_RRC used to be set here via get_QAM_PAPR, but
+        %its value is never read anywhere downstream (e_bit_fct_QAM_v2.m
+        %unpacks it into a local variable it never uses, computing its
+        %own simpler PAPR from M directly instead) - removed as dead work.
+
+        params.SNR_vec=SE_data.SNR_vec;
+        params.mui_vec=SE_data.SE_vec./params.bw_factor;
 
         [OptimalParameters,PowerBudget]=get_min_E_bit_QAM(R, M, params);
 
@@ -96,19 +98,19 @@ elseif modulation.family=="NA-QAM"
     str_rate = strrep(str_rate,'.','_');
     str_f_c = strrep(num2str(params.f_c/10^9),'.','_');
     filename=strcat(params.savefolder,'/','NA_QAM_M=',num2str(M),'_fc=',str_f_c,'_log(R)=',str_rate, '_','d=',num2str(params.distance),'m_');
-    if ~exist(strcat(filename,".mat"))
+    if ~exist(strcat(filename,".mat"),'file')
         %read SE vector
         filename_SE=strcat('SE_data/','SE_',num2str(M),'_QAM','.mat');
-        load(filename_SE);
-
-        
-
+        SE_data=load_mat_cached(filename_SE);
 
         params.bw_factor=get_p_containment_bw(params.alpha,99);   %get 99% containment BW
-        params.PAPR_RRC=get_QAM_PAPR(M,params.alpha);
+        %NOTE: params.PAPR_RRC used to be set here via get_QAM_PAPR, but
+        %its value is never read anywhere downstream (e_bit_fct_NA_QAM_v2.m
+        %unpacks it into a local variable it never uses, computing its
+        %own simpler PAPR from M directly instead) - removed as dead work.
 
-        params.SNR_vec=SNR_vec;
-        params.mui_vec=SE_vec./params.bw_factor;
+        params.SNR_vec=SE_data.SNR_vec;
+        params.mui_vec=SE_data.SE_vec./params.bw_factor;
 
         [OptimalParameters,PowerBudget]=get_min_E_bit_NA_QAM(R, M, params);
 
@@ -122,18 +124,17 @@ elseif modulation.family=="ZXM"
     str_rate = strrep(str_rate,'.','_');
     str_f_c = strrep(num2str(params.f_c/10^9),'.','_');
     filename=strcat(params.savefolder,'/','ZXM_Mtx=',num2str(M_tx),'_fc=',str_f_c,'_log(R)=',str_rate,'_','d=',num2str(params.distance),'m_');
-    if ~exist(strcat(filename,".mat"))
+    if ~exist(strcat(filename,".mat"),'file')
        %read SE vector
         %filename_SE=strcat('SE_data/','SE_MTX_',num2str(M_tx),'_ZXM','.mat');
         filename_SE=strcat('SE_data/','MUI_ZXM_MTX=',num2str(M_tx),'_sigmaPN=-5','.mat');
-        load(filename_SE);
-    
+        SE_data=load_mat_cached(filename_SE);
+
         params.bw_factorZXM=get_p_containment_bw_ZXM(params.alpha,99,M_tx);
 
-        params.SNR_vec=SNR_dB_vec;
-        params.SE_vec=I_vec./params.bw_factorZXM;
-    
-        
+        params.SNR_vec=SE_data.SNR_dB_vec;
+        params.SE_vec=SE_data.I_vec./params.bw_factorZXM;
+
         %das brauchen wir hier nicht
         [OptimalParameters,PowerBudget]=get_min_E_bit_ZXM(R,M_tx , params);
 
@@ -149,7 +150,7 @@ elseif modulation.family=="Pulse"
     str_rate = strrep(str_rate,'.','_');
     str_f_c = strrep(num2str(params. f_c/10^9),'.','_');
     filename=strcat(params.savefolder,'/','Pulse_',modulation.type,'d=',num2str(modulation.order),'_fc=',str_f_c,'_log(R)=',str_rate,'d=',num2str(params.distance),'m_');
-    if ~exist(strcat(filename,".mat"))
+    if ~exist(strcat(filename,".mat"),'file')
         %read in SE vectors
         available_sigma_j=[0.00853 0.0127 0.0189 0.0281  0.0418 0.0621 0.0924 0.137 0.204 0.304 0.452 0.672 1];
         if strcmp(modulation.type,"Energy")
@@ -157,21 +158,19 @@ elseif modulation.family=="Pulse"
 
             %read SE vector
             filename_SE=strcat('SE_data/','SE_Unipolar_IR','.mat');
-            load(filename_SE);
+            SE_data=load_mat_cached(filename_SE);
 
-            params.SNR_vec=SNR;
-            params.SE_vec=SE;%das ist hier wirklich die SE (die Kurven hatte Floria
+            params.SNR_vec=SE_data.SNR;
+            params.SE_vec=SE_data.SE;%das ist hier wirklich die SE (die Kurven hatte Floria
 
         elseif strcmp(modulation.type,"Arbitrary")
 
-
-
-                       %read SE vector
+            %read SE vector
             filename_SE=strcat('SE_data/','SE_Arbitrary_IR','.mat');
-            load(filename_SE);
+            SE_data=load_mat_cached(filename_SE);
 
-            params.SNR_vec=SNR;
-            params.SE_vec=SE;%das ist hier wirklich die SE (die Kurven hatte Floria
+            params.SNR_vec=SE_data.SNR;
+            params.SE_vec=SE_data.SE;%das ist hier wirklich die SE (die Kurven hatte Floria
 
         end
 
