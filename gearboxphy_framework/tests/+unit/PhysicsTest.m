@@ -5,8 +5,9 @@ classdef PhysicsTest < matlab.unittest.TestCase
 
     methods (TestClassSetup)
         function addPaths(testCase)
-            addpath("/workspace/gearboxphy_framework");
-            testCase.addTeardown(@() rmpath("/workspace/gearboxphy_framework"));
+            root = frameworkRoot();
+            addpath(root);
+            testCase.addTeardown(@() rmpath(root));
         end
     end
 
@@ -80,4 +81,15 @@ classdef PhysicsTest < matlab.unittest.TestCase
                 'gearboxphy:unsupportedBand');
         end
     end
+end
+
+function p = frameworkRoot()
+%FRAMEWORKROOT  Der Ordner gearboxphy_framework/, abgeleitet aus dem Ort
+%   DIESER Datei. Vorher standen hier feste "/workspace/gearboxphy_framework"-
+%   Pfade; die zeigten nach dem Umbenennen des Repos ins Leere, und der
+%   Testlauf brach schon beim Einsammeln der Suite ab.
+%
+%   Lokale Funktionen in einer classdef-Datei sind auch aus den Methoden
+%   der Klasse aufrufbar -- deshalb genuegt diese eine Stelle fuer beides.
+p = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 end

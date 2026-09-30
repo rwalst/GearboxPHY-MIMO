@@ -6,10 +6,12 @@ classdef GearsTest < matlab.unittest.TestCase
 
     methods (TestClassSetup)
         function addPaths(testCase)
-            addpath("/workspace/gearboxphy_framework");
-            addpath("/workspace/gearboxphy_framework/tests/+goldenmaster/shim"); % obw() stub
-            testCase.addTeardown(@() rmpath("/workspace/gearboxphy_framework"));
-            testCase.addTeardown(@() rmpath("/workspace/gearboxphy_framework/tests/+goldenmaster/shim"));
+            root = frameworkRoot();
+            shim = fullfile(root, 'tests', '+goldenmaster', 'shim');   % obw()-Ersatz
+            addpath(root);
+            addpath(shim);
+            testCase.addTeardown(@() rmpath(root));
+            testCase.addTeardown(@() rmpath(shim));
         end
     end
 
@@ -92,20 +94,28 @@ classdef GearsTest < matlab.unittest.TestCase
         end
 
         function qamAntennaConfigsSkipsMissingMimoCurveWithWarning(testCase)
-            % QAM order=4 has no SE_4_QAM_2x2.mat file - a globally
-            % configured 2x2 candidate should be dropped for THIS order
-            % (with a warning), while SISO always remains, and order=16
-            % (which DOES have a matching curve, generated for testing)
-            % keeps both candidates.
+            % Ein global konfigurierter 2x2-Kandidat muss fuer eine
+            % Ordnung OHNE passende MIMO-Kurve wegfallen (mit Warnung),
+            % waehrend SISO immer bleibt; eine Ordnung MIT Kurve behaelt
+            % beide.
+            %
+            % Der Test stand urspruenglich auf order=4 als dem Fall ohne
+            % Kurve. Inzwischen liegt SE_4_QAM_2x2.mat vor -- die
+            % MIMO-Kurven wurden fuer M in {4,16,64} x {2x2,4x4,8x8}
+            % gemeinsam erzeugt -- und die Annahme stimmte nicht mehr.
+            % Aufgefallen ist das erst, als die festen /workspace-Pfade
+            % repariert waren und die Suite ueberhaupt wieder lief;
+            % mimo_smoke_test.m hatte dieselbe veraltete Annahme.
+            % order=256 ist jetzt der echte Fall ohne MIMO-Kurve.
             cs = testScenario(28e9);
             cs.qamMimoConfigs = {struct('N_t',1,'N_r',1), struct('N_t',2,'N_r',2)};
             gear = gearboxphy.gears.qamGear();
 
             testCase.verifyWarning(@() gearboxphy.data.filterAvailableAntennaConfigs( ...
-                "QAM", 4, cs.qamMimoConfigs, cs.dataDir), 'gearboxphy:mimoCurveMissing');
-            configs4 = gear.antennaConfigs(4, cs);
-            testCase.verifyEqual(numel(configs4), 1);
-            testCase.verifyEqual(configs4{1}.N_t, 1);
+                "QAM", 256, cs.qamMimoConfigs, cs.dataDir), 'gearboxphy:mimoCurveMissing');
+            configsNoMimo = gear.antennaConfigs(256, cs);
+            testCase.verifyEqual(numel(configsNoMimo), 1);
+            testCase.verifyEqual(configsNoMimo{1}.N_t, 1);
 
             if isfile(fullfile(cs.dataDir, "SE_16_QAM_2x2.mat"))
                 configs16 = gear.antennaConfigs(16, cs);
@@ -119,7 +129,7 @@ classdef GearsTest < matlab.unittest.TestCase
             % "constant" can never be silently undermined by a leftover
             % P_0 (PA_POWER_MODEL_DECISION.md Model A).
             base = gearboxphy.sweep.makeScenarioConfig( ...
-                'dataDir', "/workspace/gearboxphy_framework/SE_data", ...
+                'dataDir', string(fullfile(frameworkRoot(), 'SE_data')), ...
                 'paPowerModel', "constant", 'P_0', 5);   % P_0 set but should be ignored
             cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);
             gear = gearboxphy.gears.qamGear();
@@ -129,7 +139,7 @@ classdef GearsTest < matlab.unittest.TestCase
 
         function qamAffineModelWithoutP0Errors(testCase)
             base = gearboxphy.sweep.makeScenarioConfig( ...
-                'dataDir', "/workspace/gearboxphy_framework/SE_data", ...
+                'dataDir', string(fullfile(frameworkRoot(), 'SE_data')), ...
                 'paPowerModel', "affine");   % P_0 left at its NaN default
             cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);
             gear = gearboxphy.gears.qamGear();
@@ -143,7 +153,7 @@ classdef GearsTest < matlab.unittest.TestCase
             % curve - which would also change the required SNR/P_t and
             % confound the comparison.
             base = gearboxphy.sweep.makeScenarioConfig( ...
-                'dataDir', "/workspace/gearboxphy_framework/SE_data", ...
+                'dataDir', string(fullfile(frameworkRoot(), 'SE_data')), ...
                 'paPowerModel', "affine", 'P_0', 1e-3);
             cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);
             gear = gearboxphy.gears.qamGear();
@@ -175,10 +185,21 @@ end
 
 function cs = testScenario(f_c)
 base = gearboxphy.sweep.makeScenarioConfig( ...
-    'dataDir', "/workspace/gearboxphy_framework/SE_data");
+    'dataDir', string(fullfile(frameworkRoot(), 'SE_data')));
 cs = gearboxphy.sweep.resolveScenarioForCarrier(base, f_c);
 end
 
 function ac = siso()
 ac = struct('N_t', 1, 'N_r', 1);
+end
+
+function p = frameworkRoot()
+%FRAMEWORKROOT  Der Ordner gearboxphy_framework/, abgeleitet aus dem Ort
+%   DIESER Datei. Vorher standen hier feste "/workspace/gearboxphy_framework"-
+%   Pfade; die zeigten nach dem Umbenennen des Repos ins Leere, und der
+%   Testlauf brach schon beim Einsammeln der Suite ab.
+%
+%   Lokale Funktionen in einer classdef-Datei sind auch aus den Methoden
+%   der Klasse aufrufbar -- deshalb genuegt diese eine Stelle fuer beides.
+p = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 end

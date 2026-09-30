@@ -11,7 +11,8 @@ classdef GoldenMasterTest < matlab.unittest.TestCase
     %   use plain functions/structs instead of classdef (see
     %   ARCHITECTURE_PLAN.md section 4.1).
     %
-    %   Requires: the original codebase at /workspace on the path, this
+    %   Requires: the original scripts in tests/+goldenmaster/reference/ on
+%   the path (added by addPaths below), this
     %   framework's root on the path, and the test-only obw() shim (see
     %   shim/obw.m) since this sandbox has no Signal Processing Toolbox.
     %
@@ -23,12 +24,18 @@ classdef GoldenMasterTest < matlab.unittest.TestCase
 
     methods (TestClassSetup)
         function addPaths(testCase)
-            addpath("/workspace");
-            addpath("/workspace/gearboxphy_framework");
-            addpath("/workspace/gearboxphy_framework/tests/+goldenmaster/shim");
-            testCase.addTeardown(@() rmpath("/workspace"));
-            testCase.addTeardown(@() rmpath("/workspace/gearboxphy_framework"));
-            testCase.addTeardown(@() rmpath("/workspace/gearboxphy_framework/tests/+goldenmaster/shim"));
+            root = frameworkRoot();
+            % reference/ haelt Gasts Originalskripte, gegen die dieser Test
+            % vergleicht. Sie lagen bis zum Aufraeumen im Wurzelverzeichnis
+            % des Repos; seitdem gehoeren sie zum Test, der sie braucht.
+            ref  = fullfile(root, 'tests', '+goldenmaster', 'reference');
+            shim = fullfile(root, 'tests', '+goldenmaster', 'shim');
+            addpath(root);
+            addpath(ref);
+            addpath(shim);
+            testCase.addTeardown(@() rmpath(root));
+            testCase.addTeardown(@() rmpath(ref));
+            testCase.addTeardown(@() rmpath(shim));
         end
     end
 
@@ -141,7 +148,7 @@ end
 
 function [E, B, G] = runOldQAM(R, M, f_c)
 cs = baseParams(f_c);
-SE_data = load(sprintf('/workspace/SE_data/SE_%d_QAM.mat', M));
+SE_data = load(fullfile(frameworkRoot(), 'SE_data', sprintf('SE_%d_QAM.mat', M)));
 cs.bw_factor = get_p_containment_bw(cs.alpha, 99);
 cs.SNR_vec = SE_data.SNR_vec;
 cs.mui_vec = SE_data.SE_vec ./ cs.bw_factor;
@@ -151,7 +158,7 @@ end
 
 function [E, B, G] = runOldNAQAM(R, M, f_c)
 cs = baseParams(f_c);
-SE_data = load(sprintf('/workspace/SE_data/SE_%d_QAM.mat', M));
+SE_data = load(fullfile(frameworkRoot(), 'SE_data', sprintf('SE_%d_QAM.mat', M)));
 cs.bw_factor = get_p_containment_bw(cs.alpha, 99);
 cs.SNR_vec = SE_data.SNR_vec;
 cs.mui_vec = SE_data.SE_vec ./ cs.bw_factor;
@@ -161,7 +168,7 @@ end
 
 function [E, B, G] = runOldZXM(R, M_tx, f_c)
 cs = baseParams(f_c);
-SE_data = load(sprintf('/workspace/SE_data/MUI_ZXM_Mtx=%d_sigmaPN=-5.mat', M_tx));
+SE_data = load(fullfile(frameworkRoot(), 'SE_data', sprintf('MUI_ZXM_Mtx=%d_sigmaPN=-5.mat', M_tx)));
 cs.bw_factorZXM = get_p_containment_bw_ZXM(cs.alpha, 99, M_tx);
 cs.SNR_vec = SE_data.SNR_dB_vec;
 cs.SE_vec = SE_data.I_vec ./ cs.bw_factorZXM;
@@ -171,10 +178,10 @@ end
 
 function [E, B, G] = runOldPulse(R, f_c, pulseType)
 cs = baseParams(f_c);
-SE_data = load('/workspace/SE_data/SE_Unipolar_IR.mat');
+SE_data = load(fullfile(frameworkRoot(), 'SE_data', 'SE_Unipolar_IR.mat'));
 cs.SNR_vec = SE_data.SNR;
 cs.SE_vec = SE_data.SE;
-raw = load('/workspace/SE_data/dkEnergyRX_ArbSign_SE99.mat');
+raw = load(fullfile(frameworkRoot(), 'SE_data', 'dkEnergyRX_ArbSign_SE99.mat'));
 T_PAPR = struct2table(raw.groupVal);
 logicmap = (T_PAPR.hTxName=="rc") & (T_PAPR.modultn=="dkEnergyRX") & (T_PAPR.Mtx==1);
 cs.PulsePAPR = T_PAPR.PAPR_dB(logicmap);
@@ -188,7 +195,7 @@ function [E, B, G] = runNewGear(gearName, order, R, f_c)
 baseScenario = gearboxphy.sweep.makeScenarioConfig( ...
     'maxiters', 1000, 'tolerance', 1e-8, 'numtriesPerOpt', 4, ...
     'distance', 50, ...
-    'dataDir', "/workspace/gearboxphy_framework/SE_data");
+    'dataDir', string(fullfile(frameworkRoot(), 'SE_data')));
 cs = gearboxphy.sweep.resolveScenarioForCarrier(baseScenario, f_c);
 
 gears = gearboxphy.gears.gearRegistry();
@@ -207,4 +214,15 @@ optParams = struct('tolerance', cs.tolerance, 'maxiters', cs.maxiters, ...
     'numtriesPerOpt', cs.numtriesPerOpt);
 
 [E, B, G, ~] = gearboxphy.sweep.optimizeOnePoint(gear, ctx, R, x0, bounds, optParams);
+end
+
+function p = frameworkRoot()
+%FRAMEWORKROOT  Der Ordner gearboxphy_framework/, abgeleitet aus dem Ort
+%   DIESER Datei. Vorher standen hier feste "/workspace/gearboxphy_framework"-
+%   Pfade; die zeigten nach dem Umbenennen des Repos ins Leere, und der
+%   Testlauf brach schon beim Einsammeln der Suite ab.
+%
+%   Lokale Funktionen in einer classdef-Datei sind auch aus den Methoden
+%   der Klasse aufrufbar -- deshalb genuegt diese eine Stelle fuer beides.
+p = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 end
