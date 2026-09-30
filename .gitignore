@@ -1,0 +1,33 @@
+# Checkpoints sind Zwischenartefakte eines laufenden Sweeps: sie entstehen
+# bei jedem Lauf neu und dienen nur dazu, einen abgebrochenen Lauf
+# fortzusetzen. Ein Checkpoint-Ordner ist an JEDER Stelle transient.
+**/checkpoints/
+**/.checkpoints/
+
+# Abbildungen sind aus den Ergebnissen in Sekunden neu erzeugt (die
+# plot_*.m und +report/*.m im Framework). Sie machen rund ein Drittel des
+# Datenvolumens aus und aendern sich bei jeder Layout-Korrektur, ohne dass
+# sich an den Daten etwas aendert.
+**/figures/
+*.png
+*.pdf
+
+# MATLAB-Autosicherungen und Editor-Reste
+*.asv
+*.m~
+*.slxc
+
+# ERGEBNISSE BLEIBEN VERSIONIERT -- bewusst, wie im Schwesterrepo
+# QuantizedMimoMI. Begruendung: die Sweeps laufen Stunden auf dem Cluster,
+# und der Optimierer arbeitet mit zufaelligen Mehrfachstarts, ist also
+# NICHT bitgenau reproduzierbar (gemessene Abweichung bei Wiederholung
+# ~5e-11). Ein Ergebnis laesst sich damit nachrechnen, aber nicht exakt
+# wiederherstellen -- und genau deshalb gehoert es ins Repo.
+#
+# Zum Umschalten, falls das Volumen stoert (aktuell rund 18 MB, mit der
+# BF/MUX-Vergleichsstudie werden es etwa 40 MB): die folgenden Zeilen
+# einkommentieren. Die Eingangsdaten in SE_data/ duerfen NIEMALS ignoriert
+# werden -- sie enthalten Gasts Originalkurven, die hier nicht
+# reproduzierbar sind.
+# gearboxphy_framework/results*/
+# gearboxphy_framework/*.mat
