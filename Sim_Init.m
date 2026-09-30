@@ -127,7 +127,7 @@ elseif modulation.family=="ZXM"
     if ~exist(strcat(filename,".mat"),'file')
        %read SE vector
         %filename_SE=strcat('SE_data/','SE_MTX_',num2str(M_tx),'_ZXM','.mat');
-        filename_SE=strcat('SE_data/','MUI_ZXM_MTX=',num2str(M_tx),'_sigmaPN=-5','.mat');
+        filename_SE=strcat('SE_data/','MUI_ZXM_Mtx=',num2str(M_tx),'_sigmaPN=-5','.mat'); %case must match SE_data/MUI_ZXM_Mtx=...mat exactly on case-sensitive filesystems (e.g. the HPCServer cluster targeted by Wrapper.m)
         SE_data=load_mat_cached(filename_SE);
 
         params.bw_factorZXM=get_p_containment_bw_ZXM(params.alpha,99,M_tx);
