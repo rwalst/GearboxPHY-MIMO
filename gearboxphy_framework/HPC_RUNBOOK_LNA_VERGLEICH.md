@@ -53,7 +53,7 @@ This gives 6 SISO and 12 beamforming cases. Each case covers all gears ×
 ### Step 0: validation (minutes, no pool)
 
 ```matlab
-cd /workspace/Gearbox-PHY-SpatialMultiplexing/gearboxphy_framework
+cd /workspace/GearboxPHY-MIMO/gearboxphy_framework
 validate_lna_comparison
 ```
 

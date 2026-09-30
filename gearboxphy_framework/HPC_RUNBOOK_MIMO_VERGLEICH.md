@@ -47,7 +47,7 @@ Der DAC bleibt in beiden Varianten bei `½·log₂M`.
 cd /workspace/QuantizedMimoMI/qam/validate
 validateBfRayleigh                 % MI-Seite, T1–T8
 
-cd /workspace/Gearbox-PHY-SpatialMultiplexing/gearboxphy_framework
+cd /workspace/GearboxPHY-MIMO/gearboxphy_framework
 validate_mimo_comparison           % Gearbox-Seite, G1–G4
 ```
 
@@ -98,7 +98,7 @@ Blockgröße und das Abschalten der schweren oberen Schranken selbst aus
 ### Schritt 2 — Export in die Gearbox-Datenordner (Minuten)
 
 ```matlab
-cd /workspace/Gearbox-PHY-SpatialMultiplexing/gearboxphy_framework
+cd /workspace/GearboxPHY-MIMO/gearboxphy_framework
 export_mimo_comparison_curves
 ```
 
@@ -183,7 +183,7 @@ mit `SE_data` bricht jetzt absichtlich ab, und `mimo_smoke_test.m` läuft auf
 | `qam/sweep/exportToGearboxSEData.m` | SNR-Umrechnung, Varianten, Basisordner, 1×1 als SISO |
 | `qam/validate/validateBfRayleigh.m` | neu — Schritt 0, MI-Seite |
 
-`Gearbox-PHY-SpatialMultiplexing/gearboxphy_framework/`
+`GearboxPHY-MIMO/gearboxphy_framework/`
 
 | Datei | |
 |---|---|
