@@ -271,6 +271,40 @@ alle anderen Änderungen liegen in Dateien, die der Job nicht aufruft.
 
 ## Grenzen, die in die Auswertung gehören
 
+- **Das Kanalmodell entscheidet das Ergebnis mit — und begünstigt MUX.**
+  Der Vergleich MUX↔BF ist methodisch sauber: beide laufen im
+  i.i.d.-Rayleigh-Kanal, auf **denselben Realisierungen** (gleicher
+  Threefry-Strom, also gepaart), mit demselben Hardwaremodell und derselben
+  ADC-Regel. Digitales Eigen-Beamforming braucht **kein** LOS; es nutzt den
+  stärksten Eigenmodus der jeweiligen Realisierung, der Gewinn ist
+  E[λ_max].
+
+  Aber i.i.d. Rayleigh ist der **günstigste Fall für Multiplexing**: der
+  Kanal ist mit Wahrscheinlichkeit 1 vollrangig, alle N Eigenmodi tragen.
+  MUX' gesamter Vorsprung bei hohen Raten ist ein *Raten*vorteil aus N
+  parallelen Strömen. Bei Rang 1 verschwindet er vollständig — dann gibt
+  es nur einen nutzbaren Eigenmodus, und MUX fällt auf BF zurück.
+  Umgekehrt zahlt BF bei Rayleigh drauf: E[λ_max] bleibt 2,2 dB (4×4)
+  bzw. 6,8 dB (16×16) hinter N_t·N_r zurück.
+
+  **Bei 28 GHz ist das die schwächste Annahme der Studie.** mmWave-Kanäle
+  sind dünn besetzt, oft von wenigen Pfaden oder einer Sichtverbindung
+  dominiert, mit entsprechend begrenztem Rang. Jede Aussage der Form
+  „MUX gewinnt bei hohen Raten" gilt derzeit für genau den Kanal, der bei
+  dieser Trägerfrequenz am seltensten vorliegt. Aufzulösen durch den
+  Rice-Sweep, siehe `RICE_EXTENSION_PLAN.md`.
+- **Ideales BF idealisiert den KANAL, nicht die Wandler.** Der Abstand
+  rot↔gelb ist ein reiner Kanaleffekt (Rang-1 statt Rayleigh). Die
+  frühere Lesart „Kombination vor dem ADC sei ein Vorteil" ist falsch:
+  nachgerechnet über einen Rang-1-LOS-Kanal bei gleicher Bitzahl ist
+  digitales Quantisieren je Antenne mit anschließendem Kombinieren
+  **besser** als ein Wandler auf dem kombinierten Signal (+0,09 bit bei
+  M=16, B=4, N_r=3; +0,018 bei B=5; bei N_r=1 identisch). Grund: die
+  Aussteuerung je Antenne hängt am kleinen Elementsignal, und die N_r
+  unabhängigen Quantisierungsfehler mitteln sich beim kohärenten
+  Kombinieren heraus. Die ideale Kurve ist dadurch leicht **pessimistisch**
+  — konservativ, also unschädlich. `N_r` volle Ketten im Budget sind für
+  eine digitale Umsetzung korrekt.
 - **ADC-Leistungsmodell bei hohen Bitzahlen.** `P_ADC ∝ 2^b` (Walden) gilt
   bis etwa 10 effektive Bit; darüber ist ein Faktor 4 je Bit üblich. V1 geht
   bis 11 Bit — das Modell ist dort optimistisch.

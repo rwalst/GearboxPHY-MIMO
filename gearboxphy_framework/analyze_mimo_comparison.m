@@ -26,10 +26,29 @@ function out = analyze_mimo_comparison(opts)
 %   fuer alle Antennenzahlen. Die uebrigen Gaenge liegen mit AWGN-Kurven
 %   in den Ergebnisordnern und werden hier bewusst ignoriert.
 %
-%   BF IDEAL (gelb) ist die Obergrenze fuer Beamforming: AWGN statt
-%   Rayleigh, voller Gewinn N_t*N_r statt E[lambda_max], Kombination vor
-%   dem ADC. Die Luecke zwischen gelb und rot ist das, was Fading und
-%   Quantisierung pro Antenne kosten. Die SISO-Linie (schwarz) ist die
+%   KANAL: MUX und BF (blau/rot) laufen beide im i.i.d.-Rayleigh-Kanal,
+%   auf DENSELBEN Realisierungen (gleicher Threefry-Strom, also gepaart).
+%   Digitales Eigen-Beamforming braucht kein LOS -- es nutzt den staerksten
+%   Eigenmodus der jeweiligen Realisierung. Der Vergleich ist damit sauber,
+%   sein ERGEBNIS aber an diesen Kanal gebunden: i.i.d. Rayleigh ist der
+%   guenstigste Fall fuer Multiplexing (vollrangig, alle N Eigenmodi
+%   tragen). MUX' Vorsprung bei hohen Raten ist ein RATENvorteil aus N
+%   Stroemen und verschwindet bei Rang 1 vollstaendig. Siehe Runbook,
+%   "Grenzen", und RICE_EXTENSION_PLAN.md.
+%
+%   BF IDEAL (gelb) ist die Obergrenze fuer Beamforming, und idealisiert
+%   wird der KANAL, nicht die Hardware: Rang 1 (AWGN, voller Gewinn
+%   N_t*N_r) statt Rayleigh (E[lambda_max]). Die Luecke gelb<->rot ist
+%   damit ein reiner Kanaleffekt.
+%
+%   NICHT der Quantisierungsort. Die ideale Kurve rechnet mit EINEM
+%   Wandler auf dem kombinierten Signal, aber das ist kein Vorteil:
+%   nachgerechnet ueber einen Rang-1-LOS-Kanal bei gleicher Bitzahl ist
+%   digitales Quantisieren je Antenne mit anschliessendem Kombinieren
+%   BESSER (+0.09 bit bei M=16, B=4, N_r=3), weil die Aussteuerung je
+%   Antenne am kleinen Elementsignal haengt und die N_r unabhaengigen
+%   Quantisierungsfehler sich beim kohaerenten Kombinieren herausmitteln.
+%   Die gelbe Kurve ist dadurch leicht pessimistisch -- konservativ. Die SISO-Linie (schwarz) ist die
 %   Rayleigh-1x1-Kurve; die 1x1-Kurve des idealen BF liegt als N = 1 in
 %   dessen "bestes"-Kurve und ist AWGN -- dort also NICHT mit schwarz
 %   vergleichen.
@@ -131,8 +150,9 @@ for di = 1:nD
     end
 end
 xlabel(tl, 'R_{eff} [bit/s]', 'FontSize', 12, 'Color', INK2);
-title(tl, sprintf(['Beamforming vs. Multiplexing, f_c = %g GHz, best over M <= 256 and N ' ...
-    '(V0 solid, V1 dashed)'], opts.fcGHz), 'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
+title(tl, sprintf(['Beamforming vs. Multiplexing, f_c = %g GHz, i.i.d. Rayleigh, ' ...
+    'best over M <= 256 and N (V0 solid, V1 dashed)'], opts.fcGHz), ...
+    'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 exportgraphics(fig, fullfile(figDir, 'cmp_ebit.png'), 'Resolution', 200);
 
 %% ---- Abb. 2: optimale Antennenzahl ------------------------------------
@@ -155,7 +175,7 @@ for di = 1:nD
     end
 end
 xlabel(tl, 'R_{eff} [bit/s]', 'FontSize', 12, 'Color', INK2);
-title(tl, 'Energy-optimal array size', 'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
+title(tl, 'Energy-optimal array size (i.i.d. Rayleigh)', 'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 exportgraphics(fig, fullfile(figDir, 'cmp_nopt.png'), 'Resolution', 200);
 
 %% ---- Abb. 3: ADC-Anteil im Optimum ------------------------------------
@@ -343,7 +363,7 @@ for ri = 1:nR
         legend(ax1, h, 'Location', 'northwest', 'Box', 'off', 'FontSize', 10, 'TextColor', INK2);
     end
 end
-title(tl, 'Distance sweep at fixed rates, best over M <= 256 and N', ...
+title(tl, 'Distance sweep at fixed rates, i.i.d. Rayleigh, best over M <= 256 and N', ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 exportgraphics(fig, fullfile(S.figDir, 'cmp_distance.png'), 'Resolution', 200);
 end
