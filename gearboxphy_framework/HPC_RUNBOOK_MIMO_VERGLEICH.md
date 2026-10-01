@@ -170,6 +170,17 @@ Schreibt nach `results_cmp_figures/`:
 Dazu eine Tabelle in der Konsole. Der „beste Modus" dort wird nur unter
 den Rayleigh-Modellen bestimmt; BF ideal steht als Obergrenze daneben.
 
+**Schritt 4 läuft auch ohne 3a.** Fehlen die `results_cmp_*_d<d>/`-Ordner,
+entsteht nur `cmp_distance.png` — mit einer Warnung, nicht mit einem
+Abbruch. Das ist der Normalfall am Arbeitsplatz: 3b ist dort in rund
+10 Minuten seriell fertig, 3a braucht den Cluster. Umgekehrt ist 3b
+schon immer optional.
+
+Die Antennenachse von `cmp_distance.png` kommt aus `CFG.Ns` **der
+Ergebnisdatei**, nicht aus `opts.Ns`. Solange 3b auf `[1 2 4]`
+beschränkt ist, zeigt die Abbildung also genau das — ohne dass man
+`opts.Ns` mitpflegen muss.
+
 ## Was sich am Code geändert hat
 
 ### Zwei Korrekturen am Energiemodell (betreffen alle MUX-Ergebnisse)
@@ -190,6 +201,35 @@ die MUX-Zahlen der Folien 36–38 vom Gruppentreffen) sind mit beiden Fehlern
 gerechnet und zu optimistisch für MUX. `run_sweep.m` im Multiplexing-Modus
 mit `SE_data` bricht jetzt absichtlich ab, und `mimo_smoke_test.m` läuft auf
 `SE_data_mux_V0`.
+
+### Dritte Korrektur: `trimCurve` liefert jetzt streng monotone Kurven
+
+`snrLookup` interpoliert **invers** — `interp1(SE_vec, SNR_vec, SE)` —, die
+SE-Werte sind also die Stützstellen, und `interp1` lehnt sie ab, sobald ein
+Wert doppelt vorkommt („Sample points must be unique"). `trimCurve` schnitt
+bisher nur beim ersten Maximum ab. Das genügt nicht:
+
+- **Exakt gerechnete Kurven** (`miSisoAwgnQuant`, ideales BF) erreichen ihr
+  Plateau in doppelter Genauigkeit *vor* dem Maximum: mehrere Werte sind
+  bitgleich, ein späterer ist um ~1e-15 größer. Das Maximum liegt hinter
+  dem Plateau, das Plateau überlebt den Schnitt — `interp1` stürzt ab.
+  Genau daran scheiterte Schritt 3b bei `bfideal_V0`.
+- **MC-Kurven** haben keine exakten Plateaus, aber **Dellen**. Ein Filter
+  gegen den unmittelbaren Vorgänger (`diff > 0`) reicht dafür nicht: in der
+  Folge 5, 4, 5 fällt die 4 weg, die zweite 5 gilt gegenüber der 4 als
+  Anstieg und landet neben der ersten 5 — wieder ein Duplikat.
+
+`trimCurve` vergleicht jetzt gegen das **Laufmaximum der bereits behaltenen**
+Punkte. Das Ergebnis ist per Konstruktion streng monoton, für jede Eingabe;
+Plateau und Delle fallen in einem Durchgang weg. Von einem Plateau bleibt
+der *erste* Punkt, also die niedrigste SNR, bei der die SE erreicht wird.
+
+Geprüft über alle 160 vorhandenen Kurven: 0 nicht monoton. An Gasts
+QAM-Referenzkurven ändert sich **nichts** (bitgleich). Die einzige
+betroffene Referenzkurve ist `SE_MTX_1_ZXM.mat`: sie hat bei 14 dB eine
+Delle von −6.4e-5, deren Punkt nun wegfällt (39 → 38 Punkte). Die alte
+Fassung stürzte daran nicht ab, weil alle Werte eindeutig waren;
+`snrLookup` weicht dadurch um **unter 5e-5 dB** ab.
 
 ### Neue und geänderte Dateien (zum Übertragen aufs HPC)
 
@@ -220,7 +260,8 @@ mit `SE_data` bricht jetzt absichtlich ab, und `mimo_smoke_test.m` läuft auf
 | `export_mimo_comparison_curves.m` | neu — Schritt 2 |
 | `run_mimo_comparison_sweep.m` | neu — Schritt 3a |
 | `run_mimo_comparison_distance.m` | neu — Schritt 3b |
-| `analyze_mimo_comparison.m` | neu — Schritt 4 |
+| `analyze_mimo_comparison.m` | neu — Schritt 4, läuft auch ohne 3a |
+| `+gearboxphy/+optimize/trimCurve.m` | streng monoton per Laufmaximum |
 | `mimo_smoke_test.m` | läuft auf `SE_data_mux_V0`, Physik-Assertion entschärft |
 
 Der laufende V0-Job ist von keiner dieser Änderungen betroffen, auch nicht,

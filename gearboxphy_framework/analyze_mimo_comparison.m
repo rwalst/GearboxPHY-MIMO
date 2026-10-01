@@ -71,8 +71,40 @@ for k = 1:nV
         data{k, di} = localLoad(rd, opts);
     end
 end
-assert(any(~cellfun(@isempty, data(:))), 'analyze:noData', ...
-    'Keine results_cmp_* gefunden - erst run_mimo_comparison_sweep ausfuehren.');
+%% ---- Schritt 3b laden ------------------------------------------------
+% VOR den 3a-Abbildungen, weil die beiden Schritte an verschiedenen Orten
+% laufen: 3b (Distanzschnitt) ist am Arbeitsplatz in Minuten fertig, 3a
+% (Sweep ueber R_eff) braucht den Cluster. Wer nur 3b hat, soll dessen
+% Abbildung bekommen und nicht an einem assert scheitern.
+dist = cell(1, nV);
+for k = 1:nV
+    f = fullfile(here, sprintf('results_cmp_distance_%s.mat', VARIANTS(k)));
+    if isfile(f), dist{k} = load(f); end
+end
+has3a = any(~cellfun(@isempty, data(:)));
+has3b = any(~cellfun(@isempty, dist));
+assert(has3a || has3b, 'analyze:noData', ...
+    ['Weder results_cmp_*_d* (Schritt 3a) noch results_cmp_distance_* ' ...
+     '(Schritt 3b) gefunden - erst run_mimo_comparison_sweep bzw. ' ...
+     '-_distance ausfuehren.']);
+
+STYLE = struct('nV', nV, 'REALISTIC', REALISTIC, 'STY', STY, 'COL', COL, ...
+               'LABEL', LABEL, 'INK', INK, 'INK2', INK2, 'figDir', figDir);
+
+if ~has3a
+    % Nur 3b: Distanzabbildung erzeugen und hier aufhoeren. Die drei
+    % Abbildungen und die Tabelle unten brauchen alle das Ratenraster
+    % aus 3a.
+    warning('analyze:only3b', ['Keine results_cmp_*_d* (Schritt 3a) - es ' ...
+        'entsteht nur cmp_distance.png, ohne cmp_ebit/cmp_nopt/' ...
+        'cmp_adc_share und ohne Tabelle.']);
+    localDistanceFigure(dist, STYLE);
+    out = struct('variants', VARIANTS, 'distances', opts.distances, ...
+                 'data', {data}, 'distance', {dist}, 'opts', opts);
+    save(fullfile(figDir, 'summary.mat'), 'out');
+    fprintf('\ncmp_distance.png und summary.mat in %s\n', figDir);
+    return
+end
 
 %% ---- Abb. 1: E_bit ---------------------------------------------------
 fig = figure('Position', [100 100 360*nD+120 420], 'Color', 'w');
@@ -151,43 +183,8 @@ title(tl, 'What the ADC costs at the optimum (V1: +1 bit per doubling)', ...
 exportgraphics(fig, fullfile(figDir, 'cmp_adc_share.png'), 'Resolution', 200);
 
 %% ---- Abb. 4: Distanzschnitt (optional) --------------------------------
-dist = cell(1, nV);
-for k = 1:nV
-    f = fullfile(here, sprintf('results_cmp_distance_%s.mat', VARIANTS(k)));
-    if isfile(f), dist{k} = load(f); end
-end
-if any(~cellfun(@isempty, dist))
-    iRef = REALISTIC(find(~cellfun(@isempty, dist(REALISTIC)), 1));
-    if isempty(iRef), iRef = find(~cellfun(@isempty, dist), 1); end
-    ref = dist{iRef};
-    rates = ref.CFG.rates; d = ref.CFG.distances(:); nR = numel(rates);
-    fig = figure('Position', [100 100 420*nR+120 640], 'Color', 'w');
-    tl = tiledlayout(fig, 2, nR, 'TileSpacing', 'compact', 'Padding', 'compact');
-    for ri = 1:nR
-        ax1 = nexttile(tl, ri); localStyle(ax1, INK2); set(ax1, 'YScale', 'log');
-        ax2 = nexttile(tl, nR + ri); localStyle(ax2, INK2);
-        set(ax2, 'YScale', 'log', 'YTick', ref.CFG.Ns, 'YLim', [0.8 max(ref.CFG.Ns)*1.25]);
-        h = gobjects(0);
-        eS = min(squeeze(ref.E(:, ri, :, ref.CFG.Ns == 1)), [], 2);   % SISO, bestes M
-        h(end+1) = plot(ax1, d, eS, '-', 'Color', INK, 'LineWidth', 2.4, 'DisplayName', 'SISO (1x1)'); %#ok<AGROW>
-        for k = 1:nV
-            if isempty(dist{k}), continue; end
-            [eB, nB] = localBestDist(dist{k}, ri);
-            h(end+1) = plot(ax1, d, eB, char(STY(k)), 'Color', COL(k,:), 'LineWidth', 2, ...
-                'DisplayName', LABEL(k)); %#ok<AGROW>
-            stairs(ax2, d, nB, char(STY(k)), 'Color', COL(k,:), 'LineWidth', 2);
-        end
-        title(ax1, sprintf('R_{eff} = %g bit/s', rates(ri)), 'FontSize', 12.5, 'Color', INK);
-        xlabel(ax2, 'distance d [m]', 'FontSize', 12, 'Color', INK2);
-        if ri == 1
-            ylabel(ax1, 'E_{bit} [J/bit]', 'FontSize', 12, 'Color', INK2);
-            ylabel(ax2, 'energy-optimal N', 'FontSize', 12, 'Color', INK2);
-            legend(ax1, h, 'Location', 'northwest', 'Box', 'off', 'FontSize', 10, 'TextColor', INK2);
-        end
-    end
-    title(tl, 'Distance sweep at fixed rates, best over M <= 256 and N', ...
-        'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
-    exportgraphics(fig, fullfile(figDir, 'cmp_distance.png'), 'Resolution', 200);
+if has3b
+    localDistanceFigure(dist, STYLE);
 end
 
 %% ---- Tabelle -----------------------------------------------------------
@@ -293,4 +290,48 @@ end
 function localStyle(ax, INK2)
 hold(ax, 'on'); grid(ax, 'on'); box(ax, 'off');
 set(ax, 'XScale', 'log', 'FontSize', 11, 'XColor', INK2, 'YColor', INK2, 'GridAlpha', 0.12);
+end
+
+% =======================================================================
+function localDistanceFigure(dist, S)
+%LOCALDISTANCEFIGURE  Abbildung cmp_distance.png aus den Ergebnissen von
+%   Schritt 3b. Eigene Funktion, damit sie auch auf dem Weg "nur 3b
+%   vorhanden" erzeugt werden kann, ohne den Code zu verdoppeln.
+%
+%   Antennenzahlen kommen aus ref.CFG.Ns in der Ergebnisdatei, NICHT aus
+%   opts.Ns: 3b lief ggf. mit einer kleineren Menge (derzeit [1 2 4]), und
+%   die Achse muss zeigen, was gerechnet wurde.
+nV = S.nV; REALISTIC = S.REALISTIC; STY = S.STY; COL = S.COL;
+LABEL = S.LABEL; INK = S.INK; INK2 = S.INK2;
+iRef = REALISTIC(find(~cellfun(@isempty, dist(REALISTIC)), 1));
+if isempty(iRef), iRef = find(~cellfun(@isempty, dist), 1); end
+ref = dist{iRef};
+rates = ref.CFG.rates; d = ref.CFG.distances(:); nR = numel(rates);
+fig = figure('Position', [100 100 420*nR+120 640], 'Color', 'w');
+tl = tiledlayout(fig, 2, nR, 'TileSpacing', 'compact', 'Padding', 'compact');
+for ri = 1:nR
+    ax1 = nexttile(tl, ri); localStyle(ax1, INK2); set(ax1, 'YScale', 'log');
+    ax2 = nexttile(tl, nR + ri); localStyle(ax2, INK2);
+    set(ax2, 'YScale', 'log', 'YTick', ref.CFG.Ns, 'YLim', [0.8 max(ref.CFG.Ns)*1.25]);
+    h = gobjects(0);
+    eS = min(squeeze(ref.E(:, ri, :, ref.CFG.Ns == 1)), [], 2);   % SISO, bestes M
+    h(end+1) = plot(ax1, d, eS, '-', 'Color', INK, 'LineWidth', 2.4, 'DisplayName', 'SISO (1x1)'); %#ok<AGROW>
+    for k = 1:nV
+        if isempty(dist{k}), continue; end
+        [eB, nB] = localBestDist(dist{k}, ri);
+        h(end+1) = plot(ax1, d, eB, char(STY(k)), 'Color', COL(k,:), 'LineWidth', 2, ...
+            'DisplayName', LABEL(k)); %#ok<AGROW>
+        stairs(ax2, d, nB, char(STY(k)), 'Color', COL(k,:), 'LineWidth', 2);
+    end
+    title(ax1, sprintf('R_{eff} = %g bit/s', rates(ri)), 'FontSize', 12.5, 'Color', INK);
+    xlabel(ax2, 'distance d [m]', 'FontSize', 12, 'Color', INK2);
+    if ri == 1
+        ylabel(ax1, 'E_{bit} [J/bit]', 'FontSize', 12, 'Color', INK2);
+        ylabel(ax2, 'energy-optimal N', 'FontSize', 12, 'Color', INK2);
+        legend(ax1, h, 'Location', 'northwest', 'Box', 'off', 'FontSize', 10, 'TextColor', INK2);
+    end
+end
+title(tl, 'Distance sweep at fixed rates, best over M <= 256 and N', ...
+    'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
+exportgraphics(fig, fullfile(S.figDir, 'cmp_distance.png'), 'Resolution', 200);
 end

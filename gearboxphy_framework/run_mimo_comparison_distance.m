@@ -52,7 +52,10 @@ CFG.Ms        = [4 16 64 256];
 % Beamforming bei 16x16 noch gewinnt und ob die Regel Multiplexing dort
 % kippt, bleibt offen.
 CFG.Ns        = [1 2 4];
-USE_PARALLEL  = true;
+% Automatisch: auf dem Cluster parallel, ohne Parallel Computing Toolbox
+% (z.B. am Arbeitsplatz) seriell. Fest auf true wuerde hier schon an
+% gcp()/parpool scheitern, bevor irgendetwas gerechnet ist.
+USE_PARALLEL  = ~isempty(ver('parallel'));
 %% ===================================================================
 
 here = fileparts(mfilename('fullpath'));
@@ -65,6 +68,7 @@ for v = VARIANTS
 end
 
 if USE_PARALLEL
+    fprintf('Parallel Computing Toolbox vorhanden -- Pool mit %d Workern.\n', numel(CFG.distances));
     if isempty(gcp('nocreate'))
         parpool("HPCServer", numel(CFG.distances));
     end
@@ -72,7 +76,8 @@ if USE_PARALLEL
     wait(parfevalOnAll(@addpath, 0, here));
     nWorkers = numel(CFG.distances);
 else
-    nWorkers = 0;                        % parfor laeuft dann seriell
+    fprintf('Keine Parallel Computing Toolbox -- parfor laeuft seriell.\n');
+    nWorkers = 0;
 end
 
 nD = numel(CFG.distances); nR = numel(CFG.rates);
@@ -85,11 +90,14 @@ for v = VARIANTS
     dists = CFG.distances;
     parfor (di = 1:nD, nWorkers)
         [e, etx, erx, epa, eadc] = localOneDistance(dists(di), CFG, dataDir, TXF, RXF);
-        E(di,:,:,:)    = reshape(e,    [1 nR nM nN]);
-        Etx(di,:,:,:)  = reshape(etx,  [1 nR nM nN]);
-        Erx(di,:,:,:)  = reshape(erx,  [1 nR nM nN]);
-        Epa(di,:,:,:)  = reshape(epa,  [1 nR nM nN]);
-        Eadc(di,:,:,:) = reshape(eadc, [1 nR nM nN]);
+        % PFOUS: checkcode sieht die Verwendung nicht, weil sie unten im
+        % save() ueber den Variablennamen als STRING laeuft. Die Arrays
+        % sind das Ergebnis der Schleife.
+        E(di,:,:,:)    = reshape(e,    [1 nR nM nN]);   %#ok<PFOUS>
+        Etx(di,:,:,:)  = reshape(etx,  [1 nR nM nN]);   %#ok<PFOUS>
+        Erx(di,:,:,:)  = reshape(erx,  [1 nR nM nN]);   %#ok<PFOUS>
+        Epa(di,:,:,:)  = reshape(epa,  [1 nR nM nN]);   %#ok<PFOUS>
+        Eadc(di,:,:,:) = reshape(eadc, [1 nR nM nN]);   %#ok<PFOUS>
     end
     variant = v;
     outFile = fullfile(here, sprintf('results_cmp_distance_%s.mat', v));
