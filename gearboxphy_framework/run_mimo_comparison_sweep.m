@@ -30,7 +30,26 @@ VARIANTS     = ["mux_V0" "mux_V1" "bf_V0" "bf_V1" "bfideal_V0" "bfideal_V1"];
 distanceVec  = [50 500 5000];
 fcVec        = 28e9;
 RVec         = logspace(3, 11, 100);
-N_LIST       = [1 2 4 8 16];
+% ACHTUNG, VORLAEUFIG: N_LIST ist auf [1 2 4] beschraenkt, weil erst dort
+% ALLE SECHS Varianten vollstaendig vorliegen. Von den 20 (N,M)-Kombinationen
+% fehlen noch sechs, alle in den teuersten Ecken der beiden
+% Multiplexing-Laeufe:
+%     MUX V0: 16x16 bei M=4,16,64,256 und 8x8 bei M=64,256
+%     MUX V1: 8x8 und 16x16 bei M=256
+%
+% ALLE Varianten MUESSEN auf dieselbe Menge beschraenkt bleiben. Ideales
+% Beamforming ist bereits vollstaendig (20/20); liefe es mit N bis 16,
+% waehrend MUX V0 bei 4 endet, gewaenne es allein durch die groessere
+% Auswahl -- genau die einseitige Asymmetrie, gegen die der ganze
+% Vergleich aufgebaut ist.
+%
+% Zurueckschalten, sobald die acht fehlenden Kurven da sind:
+%     N_LIST = [1 2 4 8 16];
+% Was die Beschraenkung NICHT zeigt: bei N <= 4 betraegt der Arraygewinn
+% hoechstens 12 dB und die ADC-Regel kostet hoechstens 2 Bit. Ob
+% Beamforming bei 16x16 noch gewinnt und ob die Regel Multiplexing dort
+% kippt, bleibt offen.
+N_LIST       = [1 2 4];
 USE_PARALLEL = true;
 %% ===================================================================
 

@@ -113,6 +113,32 @@ Zwei Ausgaben prüfen:
    nMC, SNR-Raster). Dass sich die 1×1-Kurven *zwischen* Rayleigh und AWGN
    unterscheiden, ist gewollt.
 
+### Vorablauf mit `N ≤ 4` (optional, aber empfohlen)
+
+Schritt 2 bis 4 sind geschrieben, aber **noch nie gelaufen**. Von den 20
+`(N, M)`-Kombinationen liegen 14 in allen sechs Varianten vor; vollständig
+über alle Ordnungen ist `N ∈ {1, 2, 4}`. `N_LIST` bzw. `CFG.Ns` stehen
+deshalb vorerst auf `[1 2 4]`.
+
+Das ist zweierlei: ein vorläufiges Ergebnis und der erste Durchlauf der
+ganzen Kette, bevor der vollständige Lauf Clusterzeit verbraucht.
+
+**Was er nicht zeigt:** Bei `N ≤ 4` beträgt der Arraygewinn höchstens
+12 dB und die ADC-Regel kostet höchstens 2 Bit. Ob Beamforming bei 16×16
+noch gewinnt und ob die Regel Multiplexing dort kippt, bleibt offen — das
+sind die eigentlich interessanten Fragen.
+
+Zurückschalten auf `[1 2 4 8 16]`, sobald diese acht Kurven da sind:
+
+| Lauf | fehlt |
+|---|---|
+| MUX V0 | `16×16` bei M = 4, 16, 64, 256 · `8×8` bei M = 64, 256 |
+| MUX V1 | `8×8` und `16×16` bei M = 256 |
+
+**Alle Varianten müssen auf derselben Menge laufen.** Ideales Beamforming
+ist schon vollständig (20/20); mit `N` bis 16 gewänne es allein durch die
+größere Auswahl.
+
 ### Schritt 3 — Gearbox-Sweeps
 
 ```matlab
