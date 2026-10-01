@@ -161,9 +161,21 @@ exportgraphics(fig, fullfile(figDir, 'cmp_nopt.png'), 'Resolution', 200);
 %% ---- Abb. 3: ADC-Anteil im Optimum ------------------------------------
 fig = figure('Position', [100 100 360*nD+120 380], 'Color', 'w');
 tl = tiledlayout(fig, 1, nD, 'TileSpacing', 'compact', 'Padding', 'compact');
+% Gemeinsame Y-Achse ueber alle Distanzen, skaliert auf den tatsaechlich
+% auftretenden Anteil. Fest auf [0 100] gestellt waere die Abbildung leer:
+% der ADC liegt im Optimum bei wenigen Prozent, und das IST das Ergebnis --
+% nur sieht man es auf einer 100-%-Achse nicht.
+adcMax = 0;
+for k = 1:nV
+    for di = 1:nD
+        if isempty(data{k, di}), continue; end
+        adcMax = max(adcMax, max(100*data{k, di}.adcShareBest, [], 'omitnan'));
+    end
+end
+if ~isfinite(adcMax) || adcMax <= 0, adcMax = 1; end
 for di = 1:nD
     ax = localAxes(tl, INK2);
-    set(ax, 'YLim', [0 100]);
+    set(ax, 'YLim', [0 adcMax*1.15]);
     h = gobjects(0);
     for k = 1:nV
         dk = data{k, di};
