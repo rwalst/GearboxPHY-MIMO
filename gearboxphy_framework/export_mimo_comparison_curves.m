@@ -45,6 +45,20 @@ V = struct( ...
   'variant', {"V0", "V1", "V0", "V1", "V0", "V1"}, ...
   'channel', {"rayleigh", "rayleigh", "rayleigh", "rayleigh", "awgn", "awgn"});
 
+% Gemeinsames SNR-Raster fuer die drei RAYLEIGH-Varianten. Die Laeufe
+% entstanden mit unterschiedlicher Aufloesung: Beamforming mit 1 dB,
+% Multiplexing V1 mit 2 dB (V0 laeuft mit 1 dB). -15:2:25 ist Teilmenge
+% von -15:1:25, das feinere wird also exakt ausgeduennt, nichts
+% interpoliert. Gemessener Preis der groeberen Aufloesung: bis 0.23 dB
+% im noetigen SNR, Median 0.01 dB -- und er trifft jetzt ALLE gleich,
+% statt nur eine Seite des Vergleichs.
+%
+% Ideales Beamforming bleibt auf seinem eigenen, feineren Raster: es ist
+% exakt gerechnet statt simuliert, deckt -20..45 dB ab (256-QAM saettigt
+% ueber AWGN erst jenseits von 25 dB) und ist ohnehin nur eine
+% Obergrenze, kein Kandidat im "besten Modus".
+SNR_GRID_RAYLEIGH = -15:2:25;
+
 Ns = [1 2 4 8 16];
 Ms = [4 16 64 256];
 missingTotal = 0;
@@ -56,8 +70,10 @@ for k = 1:numel(V)
         missingTotal = missingTotal + numel(Ns)*numel(Ms);
         continue;
     end
-    exportToGearboxSEData(V(k).src, dst, struct('pattern', V(k).pattern, ...
-        'variant', V(k).variant, 'baseDir', baseDir, 'sisoFrom1x1', true));
+    o = struct('pattern', V(k).pattern, 'variant', V(k).variant, ...
+               'baseDir', baseDir, 'sisoFrom1x1', true);
+    if V(k).channel == "rayleigh", o.snrGrid = SNR_GRID_RAYLEIGH; end
+    exportToGearboxSEData(V(k).src, dst, o);
 
     % Vollstaendigkeit: jede (N, M)-Kurve muss da sein, mit der richtigen Bitzahl
     fprintf('  Vollstaendigkeit %s:\n', V(k).name);

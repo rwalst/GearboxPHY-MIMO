@@ -217,6 +217,16 @@ alle anderen Änderungen liegen in Dateien, die der Job nicht aufruft.
   und die Spitzenrate eines Modus hinge am Raster statt am Verfahren. Der
   Export druckt je Kurve `max SE` gegen die Obergrenze — dort nachsehen. Das
   ideale BF nutzt -20…45 dB (kostet nichts) und ist davon nicht betroffen.
+- **Unterschiedliche SNR-Raster der Läufe.** Beamforming wurde mit 1 dB
+  gerechnet, Multiplexing V1 mit 2 dB (weil V0 so teuer war). Der Gearbox
+  interpoliert ohnehin, das ist also kein Struktur-, sondern ein
+  Genauigkeitsunterschied: gemessen bis zu **0,23 dB** im nötigen SNR,
+  im Median 0,01 dB. Schritt 2 dünnt deshalb **alle** Rayleigh-Kurven auf
+  `-15:2:25` aus, damit der Unterschied nicht einseitig eine Seite des
+  Vergleichs trifft. `-15:2:25` ist Teilmenge von `-15:1:25`, es wird also
+  exakt ausgewählt und nichts interpoliert. Ideales Beamforming behält
+  sein feineres Raster: exakt gerechnet, weiterer Bereich, und nur eine
+  Obergrenze.
 - **Nur QAM mit M ≤ 256 im Vergleich.** ZXM, Pulse, NA-QAM und QAM M = 1024
   haben nur Gasts AWGN-Kurven; sie laufen in den Ordnern mit, werden aber
   nicht ausgewertet.
