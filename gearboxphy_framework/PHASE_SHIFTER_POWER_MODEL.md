@@ -204,6 +204,47 @@ answer to "analog vs. digital" depends on it. Use 20 mW as the active
 default. The system-level values of 2 mW [5,6] and 30–40 mW [1,4] bracket it
 and serve as a sensitivity range.
 
+## 3a. Which type is used in practice (research 2026-10-02)
+
+**Neither type dominates.** Passive, active and LO-path phase shifting all
+appear in published 28 GHz arrays and in products.
+
+| Design | Phase shifting | Source | Checked |
+|---|---|---|---|
+| ADI ADMV4828 (24–29.5 GHz, 16 channels) and ADAR1000 (8–16 GHz, 4 channels), commercial | **active**, 6-bit vector modulator | ADI product pages | search excerpt only; the datasheets could not be downloaded |
+| IBM/Ericsson, 32 elements, 130 nm SiGe (Sadhu et al., JSSC 2017) | **passive**, bidirectional RF phase shifter shared by TX and RX, followed by a phase-invariant VGA | abstract | abstract |
+| Samsung, 2×4 array, 28 nm CMOS (Kim et al., JSSC 2018) | **passive**, 3-bit switched L-C, 8–9 dB loss | ResearchGate summary | search excerpt only |
+| Bhatta et al., Sensors 2023, 65 nm CMOS | **passive**, 6-bit switched filter ("high linearity and lack of DC power consumption") | paper | page read |
+| Park et al., JSSC 2023, 65 nm CMOS | **active**, dual-vector variable-gain phase shifter | comparison table in Bhatta et al. | table |
+| Pang et al. (Tokyo Tech), JSSC 2019, 65 nm CMOS | **LO-path** phase shifting | comparison table in Bhatta et al. | table |
+| Qualcomm (Dunworth et al., ISSCC 2018) and UCSD (Kibaroglu et al., JSSC 2018) | not established | – | search excerpts were contradictory or silent |
+
+What the pattern shows:
+
+- **Commercial beamformer ICs lean active.** A vector modulator gives phase
+  and gain control in one block and needs no separate loss compensation.
+  Confirmed here only for the two ADI parts.
+- **Passive is common where linearity and TDD sharing matter.** A passive
+  phase shifter is bidirectional, so one unit serves TX and RX. An active one
+  is unidirectional and is needed twice.
+- **A passive phase shifter is never used alone.** Every design above puts
+  gain stages around it. The whole beamformer channel then draws
+  **about 50–300 mW** per channel (Bhatta 181/181 mW TX/RX, Park 73 mW TX,
+  Pang 299/148 mW, Kim about 85/50 mW; all including PA or LNA), whatever
+  the phase-shifter type.
+
+**Consequence for the model.**
+
+- "Passive = 0 mW plus a small Friis penalty" (§2.3) is a lower bound that no
+  real design reaches. The gain-compensation variant (Dutta, Skrimponis) is
+  closer to practice.
+- The per-channel totals suggest that the choice between active and passive
+  matters less than the fixed per-channel overhead of a beamformer channel.
+- Default stays **active, 20 mW per element** (matches the commercial parts
+  and is the simpler model). Passive is run with gain compensation as the
+  comparison case, and passive with the Friis penalty only as the optimistic
+  bound.
+
 ## 4. Not covered
 
 - LO-path and IF phase shifting. These need one mixer per element, so they
