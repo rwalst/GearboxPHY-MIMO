@@ -10,7 +10,7 @@ function out = analyze_mimo_comparison(opts)
 %     results_cmp_distance_<variante>.mat                (Schritt 3b, optional)
 %   und schreibt nach results_cmp_figures/:
 %     cmp_ebit.png         E_bit ueber R_eff: SISO, bestes MUX, bestes BF,
-%                          jeweils V0 (durchgezogen) und V1 (gestrichelt)
+%                          jeweils fixedB (durchgezogen) und scaledB (gestrichelt)
 %     cmp_nopt.png         energieoptimale Antennenzahl ueber R_eff
 %     cmp_adc_share.png    ADC-Anteil am Budget im jeweiligen Optimum --
 %                          zeigt direkt, was die Regel "+1 Bit je
@@ -64,8 +64,8 @@ end
 figDir = gearboxphy.paths.resultsDir(opts.figDir);
 if ~isfolder(figDir), mkdir(figDir); end
 
-VARIANTS = ["mux_V0" "mux_V1" "bf_V0" "bf_V1" "bfideal_V0" "bfideal_V1"];
-LABEL    = ["MUX V0" "MUX V1" "BF V0" "BF V1" "BF ideal V0" "BF ideal V1"];
+VARIANTS = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fixedB" "bfideal_scaledB"];
+LABEL    = ["MUX fixedB" "MUX scaledB" "BF fixedB" "BF scaledB" "BF ideal fixedB" "BF ideal scaledB"];
 C        = lines(3);                % Matlab-Blau (MUX), -Rot (BF), -Gelb (BF ideal)
 COL      = [C(1,:); C(1,:); C(2,:); C(2,:); C(3,:); C(3,:)];
 STY      = ["-" "--" "-" "--" "-" "--"];
@@ -150,7 +150,7 @@ for di = 1:nD
 end
 xlabel(tl, 'R_{eff} [bit/s]', 'FontSize', 12, 'Color', INK2);
 title(tl, sprintf(['Beamforming vs. Multiplexing, f_c = %g GHz, i.i.d. Rayleigh, ' ...
-    'best over M <= 256 and N (V0 solid, V1 dashed)'], opts.fcGHz), ...
+    'best over M <= 256 and N (fixedB solid, scaledB dashed)'], opts.fcGHz), ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 exportgraphics(fig, fullfile(figDir, 'cmp_ebit.png'), 'Resolution', 200);
 
@@ -209,7 +209,7 @@ for di = 1:nD
     end
 end
 xlabel(tl, 'R_{eff} [bit/s]', 'FontSize', 12, 'Color', INK2);
-title(tl, 'What the ADC costs at the optimum (V1: +1 bit per doubling)', ...
+title(tl, 'What the ADC costs at the optimum (scaledB: +1 bit per doubling)', ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 exportgraphics(fig, fullfile(figDir, 'cmp_adc_share.png'), 'Resolution', 200);
 

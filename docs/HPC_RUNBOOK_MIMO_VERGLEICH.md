@@ -28,14 +28,14 @@ Im Gearbox laufen alle drei im Modus `multiplexing` („eine Kurve je
 Antennenkonfiguration"); der Unterschied liegt allein in der Kurve. Beim
 idealen BF steckt der Gewinn als Verschiebung der SNR-Achse in der Kurve —
 algebraisch identisch zum alten Modus `beamforming`, aber mit einer eigenen
-Kurve je N, die V1 braucht, weil die Bitzahl dort von N abhängt.
+Kurve je N, die scaledB braucht, weil die Bitzahl dort von N abhängt.
 
 **ADC-Regel** (`QuantizedMimoMI/qam/sweep/adcBitsRule.m`):
 
 | | Bits je reeller Dimension |
 |---|---|
-| V0 | `½·log₂M + 3` (unabhängig von N) |
-| V1 | `½·log₂M + log₂N + 3` (+1 Bit je Verdopplung) |
+| fixedB | `½·log₂M + 3` (unabhängig von N) |
+| scaledB | `½·log₂M + log₂N + 3` (+1 Bit je Verdopplung) |
 
 Der DAC bleibt in beiden Varianten bei `½·log₂M`.
 
@@ -64,22 +64,22 @@ wenn etwas fehlschlägt.** Besonders aussagekräftig:
 
 | Job | Datei (in `QuantizedMimoMI/qam/sweep/`) | Ausgabe | Ressourcen |
 |---|---|---|---|
-| MUX V0 | `runQamSweepBHalf` — **läuft bereits** | `qam/results/bHalf/` | 200 Kerne, 64 GB, 24 h |
-| MUX V1 | `runQamSweepMuxV1` | `qam/results/rule_mux/` | 200 Kerne, 64 GB, 24 h |
-| BF V0+V1 | `runQamSweepBfRayleigh` | `qam/results/bf_rayleigh/` | 200 Kerne, 64 GB, 12 h |
-| BF ideal V0+V1 | `runQamSweepBfIdeal` | `qam/results/bf_ideal/` | **kein Pool, Sekunden** — exakt, keine Mittelung |
+| MUX fixedB | `runQamSweepBHalf` — **läuft bereits** | `qam/results/bHalf/` | 200 Kerne, 64 GB, 24 h |
+| MUX scaledB | `runQamSweepMuxScaledB` | `qam/results/rule_mux/` | 200 Kerne, 64 GB, 24 h |
+| BF fixedB+scaledB | `runQamSweepBfRayleigh` | `qam/results/bf_rayleigh/` | 200 Kerne, 64 GB, 12 h |
+| BF ideal fixedB+scaledB | `runQamSweepBfIdeal` | `qam/results/bf_ideal/` | **kein Pool, Sekunden** — exakt, keine Mittelung |
 
 Start z. B.:
 
 ```matlab
 cd /workspace/QuantizedMimoMI/qam/sweep
-runQamSweepMuxV1
+runQamSweepMuxScaledB
 ```
 
 Die drei großen Läufe sind unterbrechbar: fertige Konfigurationen werden
 beim Neustart übersprungen.
 
-**Speicher im laufenden V0-Job** (Abschätzung aus den Array-Formen, nicht
+**Speicher im laufenden fixedB-Job** (Abschätzung aus den Array-Formen, nicht
 gemessen). Bei 200 Workern auf 64 GB könnten diese Konfigurationen knapp
 werden oder abbrechen:
 
@@ -91,7 +91,7 @@ werden oder abbrechen:
 | 16×16, M = 256 | 3 | ~524 MB | ~105 GB |
 
 Bricht der Job an einer davon ab: mit weniger Workern neu starten, die
-fertigen Konfigurationen bleiben erhalten. Die neuen Läufe (V1, BF) leiten
+fertigen Konfigurationen bleiben erhalten. Die neuen Läufe (scaledB, BF) leiten
 Blockgröße und das Abschalten der schweren oberen Schranken selbst aus
 150 MB/Worker ab (`runRuleSweep.m`) und haben dieses Problem nicht.
 
@@ -102,8 +102,8 @@ addpath('/workspace/GearboxPHY-MIMO'); setupGearboxPath;
 export_mimo_comparison_curves
 ```
 
-Legt sechs Ordner unter `data/` an: `SE_data_mux_V0/_V1`, `SE_data_bf_V0/_V1`
-und `SE_data_bfideal_V0/_V1`. `data/SE_data` selbst bleibt unangetastet.
+Legt sechs Ordner unter `data/` an: `SE_data_mux_fixedB/_scaledB`, `SE_data_bf_fixedB/_scaledB`
+und `SE_data_bfideal_fixedB/_scaledB`. `data/SE_data` selbst bleibt unangetastet.
 
 Zwei Ausgaben prüfen:
 1. **Vollständigkeitstabelle** — jede Zelle `NxN B=..`, kein `FEHLT`/`FALSCH`.
@@ -132,8 +132,8 @@ Zurückschalten auf `[1 2 4 8 16]`, sobald diese acht Kurven da sind:
 
 | Lauf | fehlt |
 |---|---|
-| MUX V0 | `16×16` bei M = 4, 16, 64, 256 · `8×8` bei M = 64, 256 |
-| MUX V1 | `8×8` und `16×16` bei M = 256 |
+| MUX fixedB | `16×16` bei M = 4, 16, 64, 256 · `8×8` bei M = 64, 256 |
+| MUX scaledB | `8×8` und `16×16` bei M = 256 |
 
 **Alle Varianten müssen auf derselben Menge laufen.** Ideales Beamforming
 ist schon vollständig (20/20); mit `N` bis 16 gewänne es allein durch die
@@ -161,7 +161,7 @@ out = analyze_mimo_comparison();
 
 Schreibt nach `results/cmp_figures/`:
 - `cmp_ebit.png` — E_bit über R_eff: SISO (schwarz, Rayleigh), bestes MUX (blau),
-  bestes BF (rot), bestes BF ideal (gelb); V0 durchgezogen, V1 gestrichelt
+  bestes BF (rot), bestes BF ideal (gelb); fixedB durchgezogen, scaledB gestrichelt
 - `cmp_nopt.png` — energieoptimale Antennenzahl
 - `cmp_adc_share.png` — ADC-Anteil im Optimum: was die Regel kostet
 - `cmp_distance.png` — Distanzschnitt
@@ -200,7 +200,7 @@ beschränkt ist, zeigt die Abbildung also genau das — ohne dass man
 die MUX-Zahlen der Folien 36–38 vom Gruppentreffen) sind mit beiden Fehlern
 gerechnet und zu optimistisch für MUX. `run_sweep.m` im Multiplexing-Modus
 mit `SE_data` bricht jetzt absichtlich ab, und `mimo_smoke_test.m` läuft auf
-`SE_data_mux_V0`.
+`SE_data_mux_fixedB`.
 
 ### Dritte Korrektur: `trimCurve` liefert jetzt streng monotone Kurven
 
@@ -213,7 +213,7 @@ bisher nur beim ersten Maximum ab. Das genügt nicht:
   Plateau in doppelter Genauigkeit *vor* dem Maximum: mehrere Werte sind
   bitgleich, ein späterer ist um ~1e-15 größer. Das Maximum liegt hinter
   dem Plateau, das Plateau überlebt den Schnitt — `interp1` stürzt ab.
-  Genau daran scheiterte Schritt 3b bei `bfideal_V0`.
+  Genau daran scheiterte Schritt 3b bei `bfideal_fixedB`.
 - **MC-Kurven** haben keine exakten Plateaus, aber **Dellen**. Ein Filter
   gegen den unmittelbaren Vorgänger (`diff > 0`) reicht dafür nicht: in der
   Folge 5, 4, 5 fällt die 4 weg, die zweite 5 gilt gegenüber der 4 als
@@ -242,10 +242,10 @@ Fassung stürzte daran nicht ab, weil alle Werte eindeutig waren;
 | `qam/sweep/adcBitsRule.m` | neu — die Bitregel, eine Quelle für alle Läufe |
 | `qam/sweep/mldChunkRows.m` | neu — Tier-2-Blockgröße aus Speicherbudget |
 | `qam/sweep/runRuleSweep.m` | neu — Sweep für MUX und BF, `B` im Dateinamen |
-| `qam/sweep/runQamSweepMuxV1.m` | neu — Treiber MUX V1 |
-| `qam/sweep/runQamSweepBfRayleigh.m` | neu — Treiber BF V0+V1 |
+| `qam/sweep/runQamSweepMuxScaledB.m` | neu — Treiber MUX scaledB |
+| `qam/sweep/runQamSweepBfRayleigh.m` | neu — Treiber BF fixedB+scaledB |
 | `qam/core/miSisoAwgnQuant.m` | neu — exakte AWGN-SISO-Kurve (ideales BF) |
-| `qam/sweep/runQamSweepBfIdeal.m` | neu — Treiber BF ideal V0+V1 |
+| `qam/sweep/runQamSweepBfIdeal.m` | neu — Treiber BF ideal fixedB+scaledB |
 | `qam/sweep/exportToGearboxSEData.m` | SNR-Umrechnung, Varianten, Basisordner, 1×1 als SISO |
 | `qam/validate/validateBfRayleigh.m` | neu — Schritt 0, MI-Seite |
 
@@ -264,7 +264,7 @@ Fassung stürzte daran nicht ab, weil alle Werte eindeutig waren;
 | `+gearboxphy/+optimize/trimCurve.m` | streng monoton per Laufmaximum |
 | `+gearboxphy/+paths/` | neu — Wurzel/`data`/`results`, eine Pfadquelle |
 | `setupGearboxPath.m` | neu — legt `studies/` und `tests/` auf den Pfad |
-| `tests/mimo_smoke_test.m` | läuft auf `SE_data_mux_V0`, Physik-Assertion entschärft |
+| `tests/mimo_smoke_test.m` | läuft auf `SE_data_mux_fixedB`, Physik-Assertion entschärft |
 
 **Das Repo ist umstrukturiert** (2026-10-02): `gearboxphy_framework/` ist
 aufgeloest, der Framework-Ordner IST das Repo. Skripte liegen nach Studie in
@@ -272,7 +272,7 @@ aufgeloest, der Framework-Ordner IST das Repo. Skripte liegen nach Studie in
 frühere Praefix `results_`), Doku in `docs/`. Beim Abgleich mit dem HPC
 deshalb den ganzen Baum uebertragen, nicht einzelne Dateien.
 
-Der laufende V0-Job ist von keiner dieser Änderungen betroffen, auch nicht,
+Der laufende fixedB-Job ist von keiner dieser Änderungen betroffen, auch nicht,
 wenn die Dateien während des Laufs synchronisiert werden: `allBounds` rechnet
 mit dem Default exakt wie vorher, in derselben Zufallsstrom-Reihenfolge, und
 alle anderen Änderungen liegen in Dateien, die der Job nicht aufruft.
@@ -314,7 +314,7 @@ alle anderen Änderungen liegen in Dateien, die der Job nicht aufruft.
   — konservativ, also unschädlich. `N_r` volle Ketten im Budget sind für
   eine digitale Umsetzung korrekt.
 - **ADC-Leistungsmodell bei hohen Bitzahlen.** `P_ADC ∝ 2^b` (Walden) gilt
-  bis etwa 10 effektive Bit; darüber ist ein Faktor 4 je Bit üblich. V1 geht
+  bis etwa 10 effektive Bit; darüber ist ein Faktor 4 je Bit üblich. scaledB geht
   bis 11 Bit — das Modell ist dort optimistisch.
 - **CSI.** BF setzt Kanalkenntnis am Sender voraus (für `v₁`), MUX nur am
   Empfänger.
@@ -327,7 +327,7 @@ alle anderen Änderungen liegen in Dateien, die der Job nicht aufruft.
   Export druckt je Kurve `max SE` gegen die Obergrenze — dort nachsehen. Das
   ideale BF nutzt -20…45 dB (kostet nichts) und ist davon nicht betroffen.
 - **Unterschiedliche SNR-Raster der Läufe.** Beamforming wurde mit 1 dB
-  gerechnet, Multiplexing V1 mit 2 dB (weil V0 so teuer war). Der Gearbox
+  gerechnet, Multiplexing scaledB mit 2 dB (weil fixedB so teuer war). Der Gearbox
   interpoliert ohnehin, das ist also kein Struktur-, sondern ein
   Genauigkeitsunterschied: gemessen bis zu **0,23 dB** im nötigen SNR,
   im Median 0,01 dB. Schritt 2 dünnt deshalb **alle** Rayleigh-Kurven auf

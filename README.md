@@ -21,7 +21,7 @@ not a framework design choice).
 └── +paths/     root/, data/, results/ - the ONE place a repo path is built
 data/           frozen SE-curve lookup tables (unchanged inputs)
 ├── SE_data/        Gast's original curves
-└── SE_data_<v>/    exported per comparison variant (mux/bf/bfideal x V0/V1)
+└── SE_data_<v>/    exported per comparison variant (mux/bf/bfideal x fixedB/scaledB)
 results/        one folder per sweep, plus the loose per-study .mat files
 docs/           architecture, extension and power-model notes, HPC runbooks
 studies/        one folder per study, each with its run/analyze/validate scripts
@@ -40,7 +40,7 @@ setupGearboxPath.m  puts studies/ and tests/ on the MATLAB path
 ```
 
 Paths are never built from a script's own location. `+gearboxphy/+paths/`
-resolves a bare name - `"SE_data_mux_V0"`, `"cmp_mux_V0_d50"` - to an absolute
+resolves a bare name - `"SE_data_mux_fixedB"`, `"cmp_mux_fixedB_d50"` - to an absolute
 path under `data/` or `results/`, and passes an already-absolute path through
 unchanged. That is why a study script works from any working directory.
 

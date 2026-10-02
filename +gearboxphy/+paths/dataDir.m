@@ -2,7 +2,7 @@ function p = dataDir(name)
 %DATADIR  Absoluter Pfad eines Kurvenordners unter data/.
 %
 %   p = gearboxphy.paths.dataDir()            % data/SE_data (Vorgabe)
-%   p = gearboxphy.paths.dataDir("SE_data_mux_V0")
+%   p = gearboxphy.paths.dataDir("SE_data_mux_fixedB")
 %
 %   Nimmt auch einen bereits absoluten Pfad entgegen und gibt ihn
 %   unveraendert zurueck -- damit koennen Aufrufer (Tests, Exporte) weiter

@@ -124,35 +124,35 @@ end
 fprintf('\n=== G4 Export-Optionen ===\n');
 srcS = tempname; mkdir(srcS);
 baseS = fullfile(tempname, 'SE_data'); mkdir(baseS);
-dstS = fullfile(tempname, 'SE_data_bf_V0'); mkdir(dstS);
+dstS = fullfile(tempname, 'SE_data_bf_fixedB'); mkdir(dstS);
 cleanG4 = onCleanup(@() localRmdirs({srcS, fileparts(baseS), fileparts(dstS)}));
 % Basis: eine SISO-Kurve (muss mit) und eine alte MIMO-Kurve fuer eine
 % Konfiguration, die der Export NICHT schreibt (darf nicht mit)
 SNR_vec = -10:10; SE_vec = linspace(0, 4, 21);
 save(fullfile(baseS, 'SE_1024_QAM.mat'), 'SNR_vec', 'SE_vec');
 save(fullfile(baseS, 'SE_64_QAM_4x4.mat'), 'SNR_vec', 'SE_vec');
-% Quellen: BF 1x1 und 2x2 in V0 (B=5) und 2x2 in V1 (B=6)
+% Quellen: BF 1x1 und 2x2 in fixedB (B=5) und 2x2 in scaledB (B=6)
 localFakeResult(srcS, 'mi_bf_Nt1_Nr1_M16_B5.mat', 1, 16, 5, 'bf', 'total');
 localFakeResult(srcS, 'mi_bf_Nt2_Nr2_M16_B5.mat', 2, 16, 5, 'bf', 'total');
 localFakeResult(srcS, 'mi_bf_Nt2_Nr2_M16_B6.mat', 2, 16, 6, 'bf', 'total');
-o = struct('pattern', 'mi_bf_Nt*_Nr*_M*_B*.mat', 'variant', "V0", ...
+o = struct('pattern', 'mi_bf_Nt*_Nr*_M*_B*.mat', 'variant', "fixedB", ...
            'baseDir', string(baseS), 'sisoFrom1x1', true);
 exportToGearboxSEData(srcS, dstS, o);
 k1 = load(fullfile(dstS, 'SE_16_QAM.mat'));
 k2 = load(fullfile(dstS, 'SE_16_QAM_2x2.mat'));
 ok = isfile(fullfile(dstS, 'SE_1024_QAM.mat')) && ...          % Basis kopiert
-     k1.sourceB == 5 && k2.sourceB == 5 && ...                  % Variante V0 gefiltert
+     k1.sourceB == 5 && k2.sourceB == 5 && ...                  % Variante fixedB gefiltert
      strcmp(k2.sourceMode, 'bf') && k2.snrShiftDb == 0 && ...   % 'total' nicht verschoben
      isequal(k2.SNR_vec, -15:1:25) && ...
      ~isfile(fullfile(dstS, 'SE_16_QAM_1x1.mat'));              % 1x1 unter SISO-Namen
 fail = fail + ~ok;
-fprintf('  [%s] Basis kopiert, V0 gefiltert, keine Verschiebung bei total, 1x1 als SISO-Name\n', tern(ok,' OK ','FAIL'));
+fprintf('  [%s] Basis kopiert, fixedB gefiltert, keine Verschiebung bei total, 1x1 als SISO-Name\n', tern(ok,' OK ','FAIL'));
 ok = ~isfile(fullfile(dstS, 'SE_64_QAM_4x4.mat'));
 fail = fail + ~ok;
 fprintf('  [%s] alte MIMO-Kurve der Basis nicht uebernommen\n', tern(ok,' OK ','FAIL'));
 % Abweisungen
 checks = { ...
-  'Schutz von SE_data',     @() exportToGearboxSEData(srcS, baseS, struct('pattern','mi_bf_*','variant',"V0",'sisoFrom1x1',true)), 'export:protectSEData'; ...
+  'Schutz von SE_data',     @() exportToGearboxSEData(srcS, baseS, struct('pattern','mi_bf_*','variant',"fixedB",'sisoFrom1x1',true)), 'export:protectSEData'; ...
   'mehrdeutige Aufloesung', @() exportToGearboxSEData(srcS, tempname, struct('pattern','mi_bf_*')), 'export:ambiguous'};
 for c = 1:size(checks,1)
     try
@@ -164,10 +164,10 @@ for c = 1:size(checks,1)
     fail = fail + ~ok;
     fprintf('  [%s] %s abgewiesen (%s)\n', tern(ok,' OK ','FAIL'), checks{c,1}, id);
 end
-% V0-konforme Bitzahl (M=4: 1+3 = 4), sonst filtert die Variante die Datei weg
+% fixedB-konforme Bitzahl (M=4: 1+3 = 4), sonst filtert die Variante die Datei weg
 localFakeResult(srcS, 'mi_Nt2_Nr2_M4_B4.mat', 2, 4, 4, 'mux', 'perStream');
 try
-    exportToGearboxSEData(srcS, tempname, struct('pattern', 'mi_*.mat', 'variant', "V0")); id = '';
+    exportToGearboxSEData(srcS, tempname, struct('pattern', 'mi_*.mat', 'variant', "fixedB")); id = '';
 catch err
     id = err.identifier;
 end

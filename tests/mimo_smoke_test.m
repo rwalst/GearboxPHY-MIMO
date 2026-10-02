@@ -13,9 +13,9 @@
 %   DATENORDNER: die MIMO-Kurven in SE_data sind je STROM normiert und
 %   tragen kein snrReference -- loadSECurve.m weist sie seit der
 %   SNR-Korrektur ab (Multiplexing bekam sonst 10*log10(N_t) dB
-%   geschenkt). Der Test laeuft deshalb auf SE_data_mux_V0 aus
+%   geschenkt). Der Test laeuft deshalb auf SE_data_mux_fixedB aus
 %   export_mimo_comparison_curves.m.
-dataDir = gearboxphy.paths.dataDir("SE_data_mux_V0");
+dataDir = gearboxphy.paths.dataDir("SE_data_mux_fixedB");
 assert(isfolder(dataDir), 'mimo_smoke_test:noData', ...
     ['%s fehlt. Die MIMO-Kurven in SE_data werden seit der SNR-Korrektur ' ...
      'abgewiesen - erst export_mimo_comparison_curves ausfuehren.'], dataDir);
@@ -70,7 +70,7 @@ fprintf('QAM order=16: 2x2 wins at %d of %d points (informativ)\n', ...
     sum(S.Optimal_N_t == 2), numel(S.Optimal_N_t));
 
 % A non-MIMO order must still work and report N_t=N_r=1 uniformly.
-% In SE_data_mux_V0 gibt es MIMO-Kurven fuer M in {4,16,64,256}; der
+% In SE_data_mux_fixedB gibt es MIMO-Kurven fuer M in {4,16,64,256}; der
 % echte SISO-only-Fall ist dort M = 1024 (nur Gasts SE_1024_QAM.mat).
 qamSisoKey = gearboxphy.data.resultKey("QAM", 1024, 28e9);
 Ssiso = gearboxphy.data.loadAllResults(rd, qamSisoKey);

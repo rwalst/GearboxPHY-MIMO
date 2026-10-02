@@ -5,12 +5,12 @@
 %   Aufruf: in gearboxphy_framework/ einfach
 %       export_mimo_comparison_curves
 %   Braucht die Ergebnisse von Schritt 1 (siehe HPC_RUNBOOK_MIMO_VERGLEICH.md):
-%       QuantizedMimoMI/qam/results/bHalf        runQamSweepBHalf      (MUX V0)
-%       QuantizedMimoMI/qam/results/rule_mux     runQamSweepMuxV1      (MUX V1)
-%       QuantizedMimoMI/qam/results/bf_rayleigh  runQamSweepBfRayleigh (BF V0+V1)
-%       QuantizedMimoMI/qam/results/bf_ideal     runQamSweepBfIdeal    (BF ideal V0+V1)
+%       QuantizedMimoMI/qam/results/bHalf        runQamSweepBHalf      (MUX fixedB)
+%       QuantizedMimoMI/qam/results/rule_mux     runQamSweepMuxV1      (MUX scaledB)
+%       QuantizedMimoMI/qam/results/bf_rayleigh  runQamSweepBfRayleigh (BF fixedB+scaledB)
+%       QuantizedMimoMI/qam/results/bf_ideal     runQamSweepBfIdeal    (BF ideal fixedB+scaledB)
 %
-%   ERGEBNIS: SE_data_mux_V0/_V1, SE_data_bf_V0/_V1, SE_data_bfideal_V0/_V1.
+%   ERGEBNIS: SE_data_mux_fixedB/_scaledB, SE_data_bf_fixedB/_scaledB, SE_data_bfideal_fixedB/_scaledB.
 %   Jeder Ordner ist fuer sich vollstaendig:
 %     * Gasts SISO-Kurven aus SE_data (ZXM, Pulse, NA-QAM, QAM M=1024) --
 %       unveraendert AWGN, im Vergleich NICHT verwendet;
@@ -34,19 +34,19 @@ baseDir = gearboxphy.paths.dataDir('SE_data');
 
 % name, Quellordner, Dateimuster, Regel-Variante, Kanal (fuer die 1x1-Pruefung)
 V = struct( ...
-  'name',    {"mux_V0", "mux_V1", "bf_V0", "bf_V1", "bfideal_V0", "bfideal_V1"}, ...
+  'name',    {"mux_fixedB", "mux_scaledB", "bf_fixedB", "bf_scaledB", "bfideal_fixedB", "bfideal_scaledB"}, ...
   'src',     {fullfile(qamRoot,'results','bHalf'),       fullfile(qamRoot,'results','rule_mux'), ...
               fullfile(qamRoot,'results','bf_rayleigh'), fullfile(qamRoot,'results','bf_rayleigh'), ...
               fullfile(qamRoot,'results','bf_ideal'),    fullfile(qamRoot,'results','bf_ideal')}, ...
   'pattern', {'mi_Nt*_Nr*_M*.mat',        'mi_Nt*_Nr*_M*_B*.mat', ...
               'mi_bf_Nt*_Nr*_M*_B*.mat',  'mi_bf_Nt*_Nr*_M*_B*.mat', ...
               'mi_bfideal_Nt*_Nr*_M*_B*.mat', 'mi_bfideal_Nt*_Nr*_M*_B*.mat'}, ...
-  'variant', {"V0", "V1", "V0", "V1", "V0", "V1"}, ...
+  'variant', {"fixedB", "scaledB", "fixedB", "scaledB", "fixedB", "scaledB"}, ...
   'channel', {"rayleigh", "rayleigh", "rayleigh", "rayleigh", "awgn", "awgn"});
 
 % Gemeinsames SNR-Raster fuer die drei RAYLEIGH-Varianten. Die Laeufe
 % entstanden mit unterschiedlicher Aufloesung: Beamforming mit 1 dB,
-% Multiplexing V1 mit 2 dB (V0 laeuft mit 1 dB). -15:2:25 ist Teilmenge
+% Multiplexing scaledB mit 2 dB (fixedB laeuft mit 1 dB). -15:2:25 ist Teilmenge
 % von -15:1:25, das feinere wird also exakt ausgeduennt, nichts
 % interpoliert. Gemessener Preis der groeberen Aufloesung: bis 0.23 dB
 % im noetigen SNR, Median 0.01 dB -- und er trifft jetzt ALLE gleich,
@@ -106,7 +106,7 @@ end
 % Ordnern gleich sein. Rayleigh: gleiche Kanalziehung, gleicher Seed,
 % Tier 1, BF ist fuer Nt = 1 bitgenau MUX (validateBfRayleigh T1) -- eine
 % Abweichung heisst, die Laeufe hatten nicht dieselben Einstellungen (Seed,
-% nMC, SNR-Raster). AWGN (ideales BF): V0 und V1 haben fuer N = 1 dieselbe
+% nMC, SNR-Raster). AWGN (ideales BF): fixedB und scaledB haben fuer N = 1 dieselbe
 % Bitzahl und muessen deshalb identisch sein. Zwischen den Kanaelen sind
 % die 1x1-Kurven dagegen ABSICHTLICH verschieden.
 for ch = ["rayleigh" "awgn"]

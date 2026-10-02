@@ -12,7 +12,7 @@ arguments
     antennaMode (1,1) string = "multiplexing"
 end
 
-% Ein blosser Name wie "SE_data_mux_V0" wird hier EINMAL zu einem
+% Ein blosser Name wie "SE_data_mux_fixedB" wird hier EINMAL zu einem
 % absoluten Pfad unter data/ aufgeloest; absolute Pfade (Tests, temporaere
 % Verzeichnisse) gehen unveraendert durch. Vorher war die Vorgabe schlicht
 % "SE_data" -- relativ zum aktuellen Verzeichnis, was nur funktionierte,

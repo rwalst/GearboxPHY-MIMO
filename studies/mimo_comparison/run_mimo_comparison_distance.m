@@ -27,7 +27,7 @@ function run_mimo_comparison_distance()
 %     CFG (distances, rates, Ms, Ns, fcGHz), variant
 
 %% ===================== CONFIG =====================================
-VARIANTS     = ["mux_V0" "mux_V1" "bf_V0" "bf_V1" "bfideal_V0" "bfideal_V1"];
+VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fixedB" "bfideal_scaledB"];
 CFG.rates     = [1e6 1e9];              % niedrig / hoch [bit/s]
 CFG.distances = logspace(1, 4, 25);     % 10 m .. 10 km
 CFG.fcGHz     = 28;
@@ -36,12 +36,12 @@ CFG.Ms        = [4 16 64 256];
 % ALLE SECHS Varianten vollstaendig vorliegen. Von den 20 (N,M)-Kombinationen
 % fehlen noch sechs, alle in den teuersten Ecken der beiden
 % Multiplexing-Laeufe:
-%     MUX V0: 16x16 bei M=4,16,64,256 und 8x8 bei M=64,256
-%     MUX V1: 8x8 und 16x16 bei M=256
+%     MUX fixedB: 16x16 bei M=4,16,64,256 und 8x8 bei M=64,256
+%     MUX scaledB: 8x8 und 16x16 bei M=256
 %
 % ALLE Varianten MUESSEN auf dieselbe Menge beschraenkt bleiben. Ideales
 % Beamforming ist bereits vollstaendig (20/20); liefe es mit N bis 16,
-% waehrend MUX V0 bei 4 endet, gewaenne es allein durch die groessere
+% waehrend MUX fixedB bei 4 endet, gewaenne es allein durch die groessere
 % Auswahl -- genau die einseitige Asymmetrie, gegen die der ganze
 % Vergleich aufgebaut ist.
 %

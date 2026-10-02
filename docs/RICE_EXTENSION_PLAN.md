@@ -108,49 +108,49 @@ liegen bei 5–15 dB, der Bereich ist also dort fein genug, wo die Antwort
 erwartet wird.
 
 **K=0 ist bereits gerechnet** — das sind exakt die vorhandenen
-`mux_V1`/`bf_V1`-Kurven. Neu zu rechnen sind nur K ∈ {3, 10, 30}, also drei
-Läufe statt vier. Jeder entspricht im Umfang dem vorhandenen MUX-V1-Lauf
+`mux_scaledB`/`bf_scaledB`-Kurven. Neu zu rechnen sind nur K ∈ {3, 10, 30}, also drei
+Läufe statt vier. Jeder entspricht im Umfang dem vorhandenen MUX-scaledB-Lauf
 (die BF-Seite ist mit rund 100 s je Kurve vernachlässigbar); ein Job je
 K-Wert bleibt damit im bisherigen Zeitfenster.
 
-**Nur V1** — und zwar V1, nicht V0.
+**Nur scaledB** — und zwar scaledB, nicht fixedB.
 
-Ein früherer Entwurf dieses Plans schlug V0 vor, mit der Begründung, V1
+Ein früherer Entwurf dieses Plans schlug fixedB vor, mit der Begründung, scaledB
 verdopple die Kosten. Das ist nachgemessen **falsch**:
 
-| | MUX V0 | MUX V1 | je SNR-Punkt |
+| | MUX fixedB | MUX scaledB | je SNR-Punkt |
 |---|---|---|---|
 | N=4, M=16 | 54 434 s (41 Pkt.) | 28 443 s (21 Pkt.) | **1328 vs 1354 s** |
 | N=4, M=256 | 94 639 s (41 Pkt.) | 20 157 s (21 Pkt.) | 2308 vs 960 s |
 
 Der Laufzeitunterschied stammt fast vollständig aus dem SNR-Raster (21 statt
-41 Punkte), nicht aus der Bitzahl. Je Punkt kostet V1 bei `mldExact` dasselbe
-wie V0, weil die innere Summe über M^Nt läuft und **von B unabhängig** ist;
-bei M=256 war V1 sogar billiger, weil `runRuleSweep` `heavyUpper=false` aus
+41 Punkte), nicht aus der Bitzahl. Je Punkt kostet scaledB bei `mldExact` dasselbe
+wie fixedB, weil die innere Summe über M^Nt läuft und **von B unabhängig** ist;
+bei M=256 war scaledB sogar billiger, weil `runRuleSweep` `heavyUpper=false` aus
 dem Speicherbudget ableitet — auch das kein B-Effekt. Im Zuschnitt
 N ≤ 4, M ≤ 256 kosten die zusätzlichen Bits praktisch keine Rechenzeit.
 
 Damit entscheidet die Sache:
 
-1. **V1 ist die Regel, die die Studie vertritt.** Dass die Auflösung mit dem
+1. **scaledB ist die Regel, die die Studie vertritt.** Dass die Auflösung mit dem
    Kombinationsgewinn wächst, ist der physikalisch motivierte Fall. K* soll
    aus dem Modell kommen, für das das Paper argumentiert.
-2. **V0 würde systematisch zugunsten von BF verschieben.** Gemessen bei K=0
-   bewegt sich das Verhältnis BF/MUX zwischen V0 und V1 um höchstens 2,65 %,
-   aber immer in dieselbe Richtung: V1 begünstigt leicht MUX. Mit V0 zu
+2. **fixedB würde systematisch zugunsten von BF verschieben.** Gemessen bei K=0
+   bewegt sich das Verhältnis BF/MUX zwischen fixedB und scaledB um höchstens 2,65 %,
+   aber immer in dieselbe Richtung: scaledB begünstigt leicht MUX. Mit fixedB zu
    rechnen hieße, die Antwort mild in die Richtung zu schieben, in die das
    erwartete Ergebnis ohnehin zeigt.
 
 Offen: Die 2,65 % sind bei K=0 gemessen. Bei hohem K wird der Kanal Rang-1
 und die MUX-Ströme werden korreliert; ob die zusätzlichen Bits dort stärker
 wirken, ist nicht belegt — ein weiteres Argument, die vertretene Regel zu
-rechnen statt einer Näherung. V0 bleibt nachrüstbar.
+rechnen statt einer Näherung. fixedB bleibt nachrüstbar.
 
 **N ≤ 4, M ∈ {4,16,64,256}** — wie heute, aus demselben Grund (die acht
 fehlenden MUX-Kurven). Alle K-Werte auf **derselben** Menge, sonst gewinnt
 ein K allein durch die größere Auswahl.
 
-**Umfang:** 2 Modi × 3 neue K × 3 N × 4 M = 72 Kurven, V1 only. Das liegt in der
+**Umfang:** 2 Modi × 3 neue K × 3 N × 4 M = 72 Kurven, scaledB only. Das liegt in der
 Größenordnung eines der bisherigen BF-Läufe (200 Kerne, 64 GB, 12 h); BF ist
 dabei billig (ein Strom), MUX trägt die Kosten.
 
@@ -160,8 +160,8 @@ K wird wie eine weitere Variante behandelt — das ist die Änderung mit dem
 kleinsten Eingriff, weil die ganze Maschinerie (Export, Sweep, Auswertung)
 schon über eine Variantenliste läuft:
 
-    data/SE_data_mux_V0_K3/ , data/SE_data_bf_V0_K3/ , ...
-    results/cmp_mux_V0_K3_d<d>/ , ...
+    data/SE_data_mux_fixedB_K3/ , data/SE_data_bf_fixedB_K3/ , ...
+    results/cmp_mux_fixedB_K3_d<d>/ , ...
 
 In `export_mimo_comparison_curves.m`, `run_mimo_comparison_sweep.m` und
 `analyze_mimo_comparison.m` wird die feste `VARIANTS`-Liste aus

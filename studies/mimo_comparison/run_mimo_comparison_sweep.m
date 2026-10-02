@@ -3,7 +3,7 @@
 %
 %   Aufruf: in gearboxphy_framework/ einfach
 %       run_mimo_comparison_sweep
-%   Vorher: export_mimo_comparison_curves (legt SE_data_mux_V0 ... an).
+%   Vorher: export_mimo_comparison_curves (legt SE_data_mux_fixedB ... an).
 %
 %   RESSOURCEN: nodes=1  ntasks=1  cpus-per-task=100  mem=64G  time=12:00:00
 %   (der Pool ist durch die 100 Ratenpunkte auf 100 Worker begrenzt, mehr
@@ -23,10 +23,10 @@
 %   UNTERBRECHBAR: runSweep ueberspringt fertige Kombinationen und nutzt
 %   Punkt-Checkpoints. Nach einem Abbruch einfach erneut starten.
 %
-%   AUSGABE: results_cmp_<variante>_d<d>/ (z.B. results_cmp_bf_V1_d5000/)
+%   AUSGABE: results_cmp_<variante>_d<d>/ (z.B. results_cmp_bf_scaledB_d5000/)
 
 %% ===================== CONFIG =====================================
-VARIANTS     = ["mux_V0" "mux_V1" "bf_V0" "bf_V1" "bfideal_V0" "bfideal_V1"];
+VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fixedB" "bfideal_scaledB"];
 distanceVec  = [50 500 5000];
 fcVec        = 28e9;
 RVec         = logspace(3, 11, 100);
@@ -34,12 +34,12 @@ RVec         = logspace(3, 11, 100);
 % ALLE SECHS Varianten vollstaendig vorliegen. Von den 20 (N,M)-Kombinationen
 % fehlen noch sechs, alle in den teuersten Ecken der beiden
 % Multiplexing-Laeufe:
-%     MUX V0: 16x16 bei M=4,16,64,256 und 8x8 bei M=64,256
-%     MUX V1: 8x8 und 16x16 bei M=256
+%     MUX fixedB: 16x16 bei M=4,16,64,256 und 8x8 bei M=64,256
+%     MUX scaledB: 8x8 und 16x16 bei M=256
 %
 % ALLE Varianten MUESSEN auf dieselbe Menge beschraenkt bleiben. Ideales
 % Beamforming ist bereits vollstaendig (20/20); liefe es mit N bis 16,
-% waehrend MUX V0 bei 4 endet, gewaenne es allein durch die groessere
+% waehrend MUX fixedB bei 4 endet, gewaenne es allein durch die groessere
 % Auswahl -- genau die einseitige Asymmetrie, gegen die der ganze
 % Vergleich aufgebaut ist.
 %
