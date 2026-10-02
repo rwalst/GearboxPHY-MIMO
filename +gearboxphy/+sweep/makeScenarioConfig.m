@@ -79,6 +79,13 @@ arguments
     % Minimum LNA fractional bandwidth for "fom_floor"/"envelope" (the
     % survey's 5th percentile). Ignored by "fom_bandwidth".
     opts.lnaBetaMin (1,1) double {mustBePositive} = 0.05
+    % ADC power model (docs/ADC_POWER_MODEL.md, +physics/adcConstant.m).
+    %   "envelope" (default) - c_ADC as given above (0.67 fJ, the survey's
+    %       best-case envelope), byte-identical to every existing result.
+    %   "quantile5" - 3.17 fJ, the survey's 5 % quantile in the band the
+    %       Gearbox uses. It REPLACES c_ADC, so do not combine it with a
+    %       hand-set c_ADC.
+    opts.adcPowerModel (1,1) string {mustBeMember(opts.adcPowerModel, ["envelope","quantile5"])} = "envelope"
     % Per-carrier maximum bandwidth, rows [f_c B_max] in Hz. Empty
     % (default) keeps B_max = eta*f_c. When given, EVERY carrier in fcVec
     % must have a row - resolveScenarioForCarrier.m errors otherwise

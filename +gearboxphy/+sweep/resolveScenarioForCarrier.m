@@ -12,6 +12,9 @@ function carrierScenario = resolveScenarioForCarrier(scenario, f_c)
 %   so this one line reaches all of them. It takes precedence over the
 %   band's eta override. A non-empty table without a row for f_c is an
 %   error, never a silent fallback to eta.
+%
+%   scenario.adcPowerModel selects the ADC constant c_ADC, see
+%   +physics/adcConstant.m.
 [P_Mix, P_LO, etaOverride] = gearboxphy.physics.bandHardwareParams(f_c);
 carrierScenario = scenario;
 carrierScenario.f_c = f_c;
@@ -19,6 +22,12 @@ carrierScenario.P_Mix = P_Mix;
 carrierScenario.P_LO = P_LO;
 if ~isnan(etaOverride)
     carrierScenario.eta = etaOverride;
+end
+% ADC power model: only the Walden constant changes, so it is resolved
+% here once and every gear keeps reading cs.c_ADC. A scenario without the
+% field (built by hand) keeps its c_ADC.
+if isfield(scenario, 'adcPowerModel')
+    carrierScenario.c_ADC = gearboxphy.physics.adcConstant(scenario.adcPowerModel, scenario.c_ADC);
 end
 if isfield(scenario, 'B_maxByCarrier') && ~isempty(scenario.B_maxByCarrier)
     row = find(abs(scenario.B_maxByCarrier(:,1) - f_c) <= 1e-9*f_c);
