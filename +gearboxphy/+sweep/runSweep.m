@@ -24,10 +24,15 @@ function runSweep(scenario, opts)
 %   of recomputing from scratch.
 arguments
     scenario (1,1) struct
-    opts.resultsDir (1,1) string = "results"
+    opts.resultsDir (1,1) string = "main"
     opts.useParallel (1,1) logical = true
     opts.poolProfile (1,1) string = "HPCServer"
 end
+
+% Blosser Name -> results/<name>; absolute Pfade gehen durch. Muss VOR
+% dem mkdir stehen, sonst entstuende der Ordner relativ zum aktuellen
+% Verzeichnis.
+opts.resultsDir = gearboxphy.paths.resultsDir(opts.resultsDir);
 
 if ~exist(opts.resultsDir, 'dir')
     mkdir(opts.resultsDir)

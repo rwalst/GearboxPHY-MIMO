@@ -34,6 +34,8 @@ arguments
     scenario (1,1) struct
     opts.maxMarkersPerRun (1,1) double {mustBePositive} = 4
 end
+resultsDir = gearboxphy.paths.resultsDir(resultsDir);   % Name -> results/<name>
+
 markerByNt = containers.Map({1,2,4,8}, {'o','s','^','d'});
 % N_t -> "N_txN_r" legend label, filled from the antennaConfigsUsed
 % actually stored in the results (markerByNt is keyed on N_t alone, so a

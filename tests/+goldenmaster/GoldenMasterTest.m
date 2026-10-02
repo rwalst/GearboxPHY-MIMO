@@ -148,7 +148,7 @@ end
 
 function [E, B, G] = runOldQAM(R, M, f_c)
 cs = baseParams(f_c);
-SE_data = load(fullfile(frameworkRoot(), 'SE_data', sprintf('SE_%d_QAM.mat', M)));
+SE_data = load(fullfile(frameworkRoot(), 'data', 'SE_data', sprintf('SE_%d_QAM.mat', M)));
 cs.bw_factor = get_p_containment_bw(cs.alpha, 99);
 cs.SNR_vec = SE_data.SNR_vec;
 cs.mui_vec = SE_data.SE_vec ./ cs.bw_factor;
@@ -158,7 +158,7 @@ end
 
 function [E, B, G] = runOldNAQAM(R, M, f_c)
 cs = baseParams(f_c);
-SE_data = load(fullfile(frameworkRoot(), 'SE_data', sprintf('SE_%d_QAM.mat', M)));
+SE_data = load(fullfile(frameworkRoot(), 'data', 'SE_data', sprintf('SE_%d_QAM.mat', M)));
 cs.bw_factor = get_p_containment_bw(cs.alpha, 99);
 cs.SNR_vec = SE_data.SNR_vec;
 cs.mui_vec = SE_data.SE_vec ./ cs.bw_factor;
@@ -168,7 +168,7 @@ end
 
 function [E, B, G] = runOldZXM(R, M_tx, f_c)
 cs = baseParams(f_c);
-SE_data = load(fullfile(frameworkRoot(), 'SE_data', sprintf('MUI_ZXM_Mtx=%d_sigmaPN=-5.mat', M_tx)));
+SE_data = load(fullfile(frameworkRoot(), 'data', 'SE_data', sprintf('MUI_ZXM_Mtx=%d_sigmaPN=-5.mat', M_tx)));
 cs.bw_factorZXM = get_p_containment_bw_ZXM(cs.alpha, 99, M_tx);
 cs.SNR_vec = SE_data.SNR_dB_vec;
 cs.SE_vec = SE_data.I_vec ./ cs.bw_factorZXM;
@@ -178,10 +178,10 @@ end
 
 function [E, B, G] = runOldPulse(R, f_c, pulseType)
 cs = baseParams(f_c);
-SE_data = load(fullfile(frameworkRoot(), 'SE_data', 'SE_Unipolar_IR.mat'));
+SE_data = load(fullfile(frameworkRoot(), 'data', 'SE_data', 'SE_Unipolar_IR.mat'));
 cs.SNR_vec = SE_data.SNR;
 cs.SE_vec = SE_data.SE;
-raw = load(fullfile(frameworkRoot(), 'SE_data', 'dkEnergyRX_ArbSign_SE99.mat'));
+raw = load(fullfile(frameworkRoot(), 'data', 'SE_data', 'dkEnergyRX_ArbSign_SE99.mat'));
 T_PAPR = struct2table(raw.groupVal);
 logicmap = (T_PAPR.hTxName=="rc") & (T_PAPR.modultn=="dkEnergyRX") & (T_PAPR.Mtx==1);
 cs.PulsePAPR = T_PAPR.PAPR_dB(logicmap);
@@ -195,7 +195,7 @@ function [E, B, G] = runNewGear(gearName, order, R, f_c)
 baseScenario = gearboxphy.sweep.makeScenarioConfig( ...
     'maxiters', 1000, 'tolerance', 1e-8, 'numtriesPerOpt', 4, ...
     'distance', 50, ...
-    'dataDir', string(fullfile(frameworkRoot(), 'SE_data')));
+    'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')));
 cs = gearboxphy.sweep.resolveScenarioForCarrier(baseScenario, f_c);
 
 gears = gearboxphy.gears.gearRegistry();

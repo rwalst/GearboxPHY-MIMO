@@ -11,6 +11,7 @@ function fig = plotEnergyReport(resultsDir, scenario, f_c)
 %   as a real error instead (code review finding #2: a bare try/catch
 %   here used to mask both cases identically, reintroducing the exact
 %   "silent skip" failure mode this rewrite was meant to eliminate).
+resultsDir = gearboxphy.paths.resultsDir(resultsDir);   % Name -> results/<name>
 gears = gearboxphy.gears.gearRegistry();
 n = numel(scenario.RVec);
 RVec = scenario.RVec;

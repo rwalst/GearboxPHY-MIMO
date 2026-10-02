@@ -12,6 +12,7 @@ arguments
     pulseFilter (1,1) string = "rc"
     dataDir (1,1) string = "SE_data"
 end
+dataDir = gearboxphy.paths.dataDir(dataDir);   % siehe seCurveFilename.m
 filename = fullfile(dataDir, 'dkEnergyRX_ArbSign_SE99.mat');
 raw = gearboxphy.data.loadMatCached(filename);
 T_PAPR = struct2table(raw.groupVal);

@@ -14,7 +14,7 @@ function fig = plot_ebit_mimo_configs(resultsDir, order, outFile, fcList)
 %   Die Kurven enden dort, wo die jeweilige Konfiguration die Zielrate nicht
 %   mehr erreicht -- genau dieses Abreissen ist die Aussage: mehr Antennen
 %   verschieben die erreichbare Maximalrate nach rechts.
-if nargin < 1 || isempty(resultsDir), resultsDir = 'results'; end
+if nargin < 1 || isempty(resultsDir), resultsDir = 'main'; end
 if nargin < 2 || isempty(order), order = 16; end
 if nargin < 3 || isempty(outFile)
     outFile = fullfile(resultsDir,'figures',sprintf('ebit_mimo_configs_M%d.png',order));

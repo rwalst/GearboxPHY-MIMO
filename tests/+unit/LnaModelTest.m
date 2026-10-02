@@ -124,7 +124,7 @@ classdef LnaModelTest < matlab.unittest.TestCase
             % requirements as a real sweep.
             s = gearboxphy.sweep.makeScenarioConfig('lnaPowerModel', "envelope", ...
                 'B_maxByCarrier', [28e9 400e6], 'fcVec', 28e9, ...
-                'dataDir', string(fullfile(testCase.Root, 'SE_data')));
+                'dataDir', string(fullfile(testCase.Root, 'data', 'SE_data')));
             cs = gearboxphy.sweep.resolveScenarioForCarrier(s, 28e9);
             ac = struct('N_t', 1, 'N_r', 1);
             q = gearboxphy.gears.qamGear();

@@ -27,7 +27,7 @@ function fig = plot_optimal_gear_nt_color(resultsDir, fcGHz, outFile, sisoExclud
 %   Die farbige MIMO+SISO-Kurve bleibt unangetastet, also vergleichen die
 %   beiden Kurven streng genommen unterschiedliche Gear-Mengen. [] stellt
 %   das reine argmin wieder her.
-if nargin < 1 || isempty(resultsDir), resultsDir = 'results'; end
+if nargin < 1 || isempty(resultsDir), resultsDir = 'main'; end
 if nargin < 4, sisoExcludeQamOrders = 4; end
 if nargin < 2 || isempty(fcGHz),      fcGHz = 8;             end
 if nargin < 3 || isempty(outFile)

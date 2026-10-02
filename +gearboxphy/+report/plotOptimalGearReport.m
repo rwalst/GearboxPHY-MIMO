@@ -42,6 +42,8 @@ arguments
     scenario (1,1) struct
     opts.maxMarkersPerRun (1,1) double {mustBePositive} = 4
 end
+resultsDir = gearboxphy.paths.resultsDir(resultsDir);   % Name -> results/<name>
+
 gearPriority = ["Pulse-Energy", "Pulse-Arbitrary", "ZXM", "QAM"];
 maxMarkersPerRun = opts.maxMarkersPerRun;
 markerByNt = containers.Map({1,2,4,8}, {'o','s','^','d'});

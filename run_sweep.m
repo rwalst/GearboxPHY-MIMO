@@ -15,7 +15,7 @@ scenario = gearboxphy.sweep.makeScenarioConfig( ...
         struct('N_t',8,'N_r',8) ...
     });
 
-gearboxphy.sweep.runSweep(scenario, 'resultsDir', 'results');
+gearboxphy.sweep.runSweep(scenario, 'resultsDir', 'main');
 
 % All four +report/*.m functions return a figure handle but never save it
 % themselves (fig = plotXReport(...) is the contract, no exportgraphics/
@@ -28,21 +28,21 @@ gearboxphy.sweep.runSweep(scenario, 'resultsDir', 'results');
 % for orchestration/output, closes that gap without touching the report
 % functions themselves (they stay pure "build a figure", reusable as-is
 % e.g. from mimo_smoke_test.m without forcing a save).
-figDir = fullfile('results', 'figures');
+figDir = fullfile(gearboxphy.paths.resultsDir('main'), 'figures');
 if ~exist(figDir, 'dir'), mkdir(figDir); end
 
 for fi_ = 1:numel(scenario.fcVec)
-    fig = gearboxphy.report.plotEnergyReport('results', scenario, scenario.fcVec(fi_));
+    fig = gearboxphy.report.plotEnergyReport('main', scenario, scenario.fcVec(fi_));
     exportgraphics(fig, fullfile(figDir, sprintf('energy_fc%gGHz.png', scenario.fcVec(fi_)/1e9)), 'Resolution', 150);
 end
 
-fig = gearboxphy.report.plotOptimalGearReport('results', scenario);
+fig = gearboxphy.report.plotOptimalGearReport('main', scenario);
 exportgraphics(fig, fullfile(figDir, 'optimal_gear.png'), 'Resolution', 150);
 
-fig = gearboxphy.report.plotSavingsReport('results', scenario);
+fig = gearboxphy.report.plotSavingsReport('main', scenario);
 exportgraphics(fig, fullfile(figDir, 'savings.png'), 'Resolution', 150);
 
-fig = gearboxphy.report.plotPowerBudgetReport('results', scenario, "QAM", 1024, 28e9);
+fig = gearboxphy.report.plotPowerBudgetReport('main', scenario, "QAM", 1024, 28e9);
 exportgraphics(fig, fullfile(figDir, 'power_budget_QAM_1024_28GHz.png'), 'Resolution', 150);
 
 fprintf('\nReport-Grafiken gespeichert in %s\n', figDir);

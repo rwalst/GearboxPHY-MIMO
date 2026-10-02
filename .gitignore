@@ -12,6 +12,11 @@
 *.png
 *.pdf
 
+# Rauchtests legen Wegwerf-Ergebnisse an (tests/smoke_test.m,
+# tests/mimo_smoke_test.m). Sie entstehen bei jedem Lauf neu.
+results/smoke_results/
+results/mimo_smoke_results/
+
 # MATLAB-Autosicherungen und Editor-Reste
 *.asv
 *.m~
@@ -26,8 +31,7 @@
 #
 # Zum Umschalten, falls das Volumen stoert (aktuell rund 18 MB, mit der
 # BF/MUX-Vergleichsstudie werden es etwa 40 MB): die folgenden Zeilen
-# einkommentieren. Die Eingangsdaten in SE_data/ duerfen NIEMALS ignoriert
+# einkommentieren. Die Eingangsdaten in data/ duerfen NIEMALS ignoriert
 # werden -- sie enthalten Gasts Originalkurven, die hier nicht
 # reproduzierbar sind.
-# gearboxphy_framework/results*/
-# gearboxphy_framework/*.mat
+# results/

@@ -129,7 +129,7 @@ classdef GearsTest < matlab.unittest.TestCase
             % "constant" can never be silently undermined by a leftover
             % P_0 (PA_POWER_MODEL_DECISION.md Model A).
             base = gearboxphy.sweep.makeScenarioConfig( ...
-                'dataDir', string(fullfile(frameworkRoot(), 'SE_data')), ...
+                'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')), ...
                 'paPowerModel', "constant", 'P_0', 5);   % P_0 set but should be ignored
             cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);
             gear = gearboxphy.gears.qamGear();
@@ -139,7 +139,7 @@ classdef GearsTest < matlab.unittest.TestCase
 
         function qamAffineModelWithoutP0Errors(testCase)
             base = gearboxphy.sweep.makeScenarioConfig( ...
-                'dataDir', string(fullfile(frameworkRoot(), 'SE_data')), ...
+                'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')), ...
                 'paPowerModel', "affine");   % P_0 left at its NaN default
             cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);
             gear = gearboxphy.gears.qamGear();
@@ -153,7 +153,7 @@ classdef GearsTest < matlab.unittest.TestCase
             % curve - which would also change the required SNR/P_t and
             % confound the comparison.
             base = gearboxphy.sweep.makeScenarioConfig( ...
-                'dataDir', string(fullfile(frameworkRoot(), 'SE_data')), ...
+                'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')), ...
                 'paPowerModel', "affine", 'P_0', 1e-3);
             cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);
             gear = gearboxphy.gears.qamGear();
@@ -185,7 +185,7 @@ end
 
 function cs = testScenario(f_c)
 base = gearboxphy.sweep.makeScenarioConfig( ...
-    'dataDir', string(fullfile(frameworkRoot(), 'SE_data')));
+    'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')));
 cs = gearboxphy.sweep.resolveScenarioForCarrier(base, f_c);
 end
 

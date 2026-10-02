@@ -18,6 +18,8 @@ arguments
     order (1,1) double = 1024
     f_c (1,1) double = 28e9
 end
+resultsDir = gearboxphy.paths.resultsDir(resultsDir);   % Name -> results/<name>
+
 key = gearboxphy.data.resultKey(gearName, order, f_c);
 S = gearboxphy.data.loadAllResults(resultsDir, key);
 

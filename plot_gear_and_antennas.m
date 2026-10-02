@@ -20,7 +20,7 @@ function fig = plot_gear_and_antennas(resultsDir, outFile)
 %   die Konstellationsgroesse M, bei ZXM der FTN-Ueberabtastfaktor M_Tx.
 %   Pulse-Energy/-Arbitrary haben keinen solchen Parameter und bekommen
 %   deshalb gar keine Zahl.
-if nargin < 1 || isempty(resultsDir), resultsDir = 'results'; end
+if nargin < 1 || isempty(resultsDir), resultsDir = 'main'; end
 if nargin < 2 || isempty(outFile), outFile = fullfile(resultsDir,'figures','gear_and_antennas.png'); end
 
 rec = localLoad(resultsDir);
