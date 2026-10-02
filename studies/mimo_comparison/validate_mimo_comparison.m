@@ -93,7 +93,7 @@ end
 
 %% G3: Export der alten Multiplexing-Ergebnisse -------------------------
 fprintf('\n=== G3 Export alter Multiplexing-Ergebnisse (je Strom) ===\n');
-src = fullfile(mimoRoot, 'qam', 'results');
+src = fullfile(mimoRoot, 'qam', 'results', 'early');
 if isempty(dir(fullfile(src, 'mi_Nt*_Nr*_M*.mat')))
     fprintf('  [skip] keine mi_*.mat in %s\n', src);
 else

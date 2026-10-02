@@ -64,10 +64,10 @@ wenn etwas fehlschlägt.** Besonders aussagekräftig:
 
 | Job | Datei (in `QuantizedMimoMI/qam/sweep/`) | Ausgabe | Ressourcen |
 |---|---|---|---|
-| MUX V0 | `runQamSweepBHalf` — **läuft bereits** | `qam/results_bHalf/` | 200 Kerne, 64 GB, 24 h |
-| MUX V1 | `runQamSweepMuxV1` | `qam/results_rule_mux/` | 200 Kerne, 64 GB, 24 h |
-| BF V0+V1 | `runQamSweepBfRayleigh` | `qam/results_bf_rayleigh/` | 200 Kerne, 64 GB, 12 h |
-| BF ideal V0+V1 | `runQamSweepBfIdeal` | `qam/results_bf_ideal/` | **kein Pool, Sekunden** — exakt, keine Mittelung |
+| MUX V0 | `runQamSweepBHalf` — **läuft bereits** | `qam/results/bHalf/` | 200 Kerne, 64 GB, 24 h |
+| MUX V1 | `runQamSweepMuxV1` | `qam/results/rule_mux/` | 200 Kerne, 64 GB, 24 h |
+| BF V0+V1 | `runQamSweepBfRayleigh` | `qam/results/bf_rayleigh/` | 200 Kerne, 64 GB, 12 h |
+| BF ideal V0+V1 | `runQamSweepBfIdeal` | `qam/results/bf_ideal/` | **kein Pool, Sekunden** — exakt, keine Mittelung |
 
 Start z. B.:
 
