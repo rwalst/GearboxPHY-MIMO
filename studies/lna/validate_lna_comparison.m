@@ -22,9 +22,12 @@
 %       (2.4 GHz, 4 rates, narrow B_max, SISO + beamforming N = 1, 2):
 %       stamps are written and a foreign case is refused, the analysis
 %       runs, the dissertation model has ratio 1, the others >= 1.
+% Kein cd mehr: 'here' war frueher die Framework-Wurzel, seit dem
+% Aufraeumen ist es studies/<name>/. Alle Pfade kommen aus
+% gearboxphy.paths und sind absolut, das cd verlegte das
+% Arbeitsverzeichnis also nur grundlos in einen Code-Ordner.
 here = fileparts(mfilename('fullpath'));
-cd(here);
-addpath(here);
+addpath(here);   % Standalone-Aufruf ohne setupGearboxPath
 fail = 0;
 
 %% L1: unit tests ------------------------------------------------------

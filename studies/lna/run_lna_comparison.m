@@ -30,8 +30,10 @@ STUDIES      = ["siso" "beamforming"];   % drop "beamforming" for a quick first 
 USE_PARALLEL = true;
 %% ===================================================================
 
-here = fileparts(mfilename('fullpath'));
-cd(here);
+% Kein cd mehr: 'here' war frueher die Framework-Wurzel, seit dem
+% Aufraeumen ist es studies/<name>/. Alle Pfade kommen aus
+% gearboxphy.paths und sind absolut, das cd verlegte das
+% Arbeitsverzeichnis also nur grundlos in einen Code-Ordner.
 cfg = lna_comparison_config();
 
 % Build every case first: a bad option or a stamp clash stops the job

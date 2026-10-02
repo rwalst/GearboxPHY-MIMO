@@ -11,8 +11,10 @@
 %   zusaetzlich in einer .mat.
 
 clear; clc;
-here = fileparts(mfilename('fullpath'));
-cd(here);
+% Kein cd mehr: 'here' war frueher die Framework-Wurzel, seit dem
+% Aufraeumen ist es studies/<name>/. Alle Pfade kommen aus
+% gearboxphy.paths und sind absolut, das cd verlegte das
+% Arbeitsverzeichnis also nur grundlos in einen Code-Ordner.
 
 %% ===================== CONFIG =====================================
 CFG.resultsDir  = gearboxphy.paths.resultsDir("beamforming_d50");  % auch: beamforming_d5000
