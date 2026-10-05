@@ -44,9 +44,22 @@ switch gearName
             'NA-QAM has no MIMO variant (MIMO_EXTENSION.md decision 2) - antennaConfig must be SISO (N_t=N_r=1).');
         filename = fullfile(dataDir, sprintf('SE_%d_QAM.mat', order));
     case "ZXM"
-        assert(isSISO, 'gearboxphy:mimoNotSupported', ...
-            'ZXM has no MIMO variant (MIMO_EXTENSION.md decision 2) - antennaConfig must be SISO (N_t=N_r=1).');
-        filename = fullfile(dataDir, sprintf('MUI_ZXM_Mtx=%d_sigmaPN=-5.mat', order));
+        % MIMO_EXTENSION.md decision 2 excluded ZXM from MIMO because only
+        % Gast's AWGN SISO curves existed. QuantizedMimoMI/zxm now computes
+        % ZXM over an arbitrary channel matrix (zxmMimoMiAll), so the
+        % restriction is lifted for ZXM -- the other gears keep it.
+        %
+        % The SISO name is unchanged, so a folder holding OUR ZXM curves
+        % shadows the framework original of the same name. That is why
+        % exportZxmToGearboxSEData refuses to write into SE_data*,
+        % SE_data_mux* or SE_data_bf*: the two models must never sit in one
+        % folder, or which one a run used stops being recoverable.
+        if isSISO
+            filename = fullfile(dataDir, sprintf('MUI_ZXM_Mtx=%d_sigmaPN=-5.mat', order));
+        else
+            filename = fullfile(dataDir, sprintf('MUI_ZXM_Mtx=%d_sigmaPN=-5_%dx%d.mat', ...
+                order, antennaConfig.N_t, antennaConfig.N_r));
+        end
     case "Pulse-Energy"
         assert(isSISO, 'gearboxphy:mimoNotSupported', ...
             'Pulse-Energy has no MIMO variant (MIMO_EXTENSION.md decision 2) - antennaConfig must be SISO (N_t=N_r=1).');

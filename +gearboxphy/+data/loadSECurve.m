@@ -54,6 +54,10 @@ switch gearName
         raw = gearboxphy.data.loadMatCached(filename);
         seData.SNR_vec = raw.SNR_dB_vec;
         seData.SE_vec  = raw.I_vec;
+        % Ohne das Feld scheitert JEDE Mehrstrom-ZXM-Kurve unten am
+        % snrReference-Assert -- die Framework-Originale sind SISO und
+        % tragen es nicht, unsere MIMO-Kurven schreiben es.
+        if isfield(raw, 'snrReference'), seData.snrReference = string(raw.snrReference); end
     case {"Pulse-Energy", "Pulse-Arbitrary"}
         raw = gearboxphy.data.loadMatCached(filename);
         seData.SNR_vec = raw.SNR;
