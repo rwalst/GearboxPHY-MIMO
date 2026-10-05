@@ -33,6 +33,40 @@ options = optimset('TolX',optParams.tolerance,'TolFun',optParams.tolerance, ...
 if dim == 1 && nargin >= 4 && ~isempty(bounds)
     %% Scalar, box-bounded case (NA-QAM's gamma): use fminbnd.
     lb = bounds(1); ub = bounds(2);
+
+    % --- Vorab-Gitter, damit fminbnd ueberhaupt etwas zu minimieren hat ---
+    % fminbnd ist ein Golden-Section-/Parabel-Verfahren: es probiert zuerst
+    % bei rund 0,382 und 0,618 des Intervalls. Liefert die Zielfunktion
+    % dort Inf (unzulaessig), hat es kein Gefaelle und endet auf Inf --
+    % AUCH WENN anderswo im Intervall ein zulaessiger Bereich liegt.
+    %
+    % GEMESSEN an NA-QAM bei d = 5000 m: von 77 tatsaechlich zulaessigen
+    % Ratenpunkten fand der Lauf nur 26. Die 51 verlorenen liegen bei
+    % R = 1e3..1.1e7, wo das zulaessige gamma-Fenster [6e-5, 2.5e-3] bis
+    % [7e-3, 0.27] breit ist -- durchweg unterhalb von 0,382, also
+    % unterhalb des ersten Probepunkts. Bei d = 50 und 500 m geht kein
+    % einziger Punkt verloren, weil das Fenster dort bis gamma = 1 reicht.
+    % Die Luecke sah im Ergebnis wie Unzulaessigkeit aus und war keine.
+    %
+    % Das Gitter ist LOGARITHMISCH, weil das Fenster bei kleinen Raten um
+    % Groessenordnungen nach unten wandert, seine BREITE als Verhaeltnis
+    % aber etwa konstant bleibt (gemessen Faktor ~40). 256 Punkte ueber
+    % sieben Dekaden treffen jedes Fenster, das breiter als Faktor 1,07 ist.
+    scanLo = max(lb, 1e-9);
+    if ub > scanLo
+        scan = unique([lb, logspace(log10(scanLo), log10(ub), 256), ub]);
+        scanVals = arrayfun(objective_fun, scan);
+        okScan = isfinite(scanVals);
+        if any(okScan)
+            iLo = find(okScan, 1, 'first');
+            iHi = find(okScan, 1, 'last');
+            % eine Gittermasche Luft nach aussen, damit das Optimum am
+            % Rand des zulaessigen Bereichs nicht abgeschnitten wird
+            lb = scan(max(iLo-1, 1));
+            ub = scan(min(iHi+1, numel(scan)));
+        end
+    end
+
     for i = 1:numtries
         if i == 1
             lo = lb; hi = ub;
