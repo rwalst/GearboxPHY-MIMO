@@ -59,11 +59,31 @@ classdef GearsTest < matlab.unittest.TestCase
             end
         end
 
-        function nonQamGearRejectsMimoAntennaConfig(testCase)
+        function nonQamNonZxmGearRejectsMimoAntennaConfig(testCase)
+            % ZXM gehoert seit der SISO-vs-MIMO-Studie NICHT mehr hierher:
+            % QuantizedMimoMI/zxm rechnet ZXM ueber eine beliebige
+            % Kanalmatrix, also ist die Schranke fuer ZXM aufgehoben (siehe
+            % seCurveFilename.m). Fuer die uebrigen Nicht-QAM-Gaenge gilt
+            % MIMO_EXTENSION.md Entscheidung 2 unveraendert weiter.
             cs = testScenario(28e9);
             mimoConfig = struct('N_t', 2, 'N_r', 2);
-            testCase.verifyError(@() gearboxphy.data.loadSECurve("ZXM", 1, mimoConfig, cs.dataDir), ...
-                'gearboxphy:mimoNotSupported');
+            for gearName = ["NA-QAM", "Pulse-Energy", "Pulse-Arbitrary"]
+                testCase.verifyError(@() gearboxphy.data.loadSECurve(gearName, 1, mimoConfig, cs.dataDir), ...
+                    'gearboxphy:mimoNotSupported', ...
+                    sprintf('%s muesste MIMO weiterhin ablehnen', gearName));
+            end
+        end
+
+        function zxmGearAcceptsMimoAntennaConfigName(testCase)
+            % Nur die NAMENSBILDUNG wird geprueft, nicht das Laden: eine
+            % ZXM-MIMO-Kurve existiert erst nach dem Rayleigh-Lauf. Der
+            % Test faellt also auf "Datei fehlt" und NICHT mehr auf
+            % "mimoNotSupported" - genau das ist die Aussage.
+            cs = testScenario(28e9);
+            mimoConfig = struct('N_t', 2, 'N_r', 2);
+            [fn, isSISO] = gearboxphy.data.seCurveFilename("ZXM", 1, mimoConfig, cs.dataDir);
+            testCase.verifyFalse(isSISO);
+            testCase.verifySubstring(fn, 'MUI_ZXM_Mtx=1_sigmaPN=-5_2x2.mat');
         end
 
         function qamInfeasibleGammaReturnsInf(testCase)
