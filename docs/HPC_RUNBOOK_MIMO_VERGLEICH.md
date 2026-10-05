@@ -380,8 +380,47 @@ alle anderen Änderungen liegen in Dateien, die der Job nicht aufruft.
 - **ADC-Leistungsmodell bei hohen Bitzahlen.** `P_ADC ∝ 2^b` (Walden) gilt
   bis etwa 10 effektive Bit; darüber ist ein Faktor 4 je Bit üblich. scaledB geht
   bis 11 Bit — das Modell ist dort optimistisch.
-- **CSI.** BF setzt Kanalkenntnis am Sender voraus (für `v₁`), MUX nur am
-  Empfänger.
+- **CSI — die Verzerrung zugunsten von BF.** Beamforming setzt perfekte
+  Kanalkenntnis am Sender voraus (für `v₁`), Multiplexing kommt mit
+  Kenntnis am Empfänger aus. Das ist nicht nur eine Annahme, sondern eine
+  **gerichtete Verzerrung**, und sie ist im Energiemodell nicht bepreist:
+  der Rückkanal kostet hier nichts.
+
+  Dass sie MUX benachteiligt, lässt sich ohne Simulation zeigen: Die
+  Einheitsmatrix liegt in der Menge der zulässigen Präkodierer. Ein
+  CSIT-fähiges Multiplexing, das über alle `F` optimiert, ist also
+  **mindestens so gut** wie das heutige Open-Loop-MUX mit `F = I`. Die
+  ausgewiesene MUX-Zahl ist damit eine *untere* Schranke.
+
+  Wie viel Struktur dabei ungenutzt bleibt, zeigen die mittleren
+  Eigenwerte von `HᴴH` bei i.i.d. Rayleigh:
+
+  | N | E[λᵢ], absteigend | λ₁/λ_N |
+  |---|---|---|
+  | 2 | 3,52 · 0,50 | 7 |
+  | 4 | 9,74 · 4,39 · 1,56 · 0,25 | 39 |
+
+  Bei Gleichverteilung bekommt der schwächste Modus denselben
+  Leistungsanteil wie der stärkste, obwohl er 39-mal schwächer ist.
+
+  **Strukturell** ist Beamforming der Einstrom-Sonderfall optimaler
+  CSIT-Übertragung: Bei niedriger SNR legt Water-Filling alles auf den
+  stärksten Modus, und das *ist* MRT. Verglichen wird derzeit also „1
+  Strom mit CSIT" gegen „N Ströme ohne CSIT"; die Mitte — *k* Ströme mit
+  CSIT — fehlt, und genau dort läge die Antwort auf „wie viele Ströme
+  lohnen sich".
+
+  **Richtung gegenüber der Kanalverzerrung:** Diese hier begünstigt BF,
+  die Kanalannahme (i.i.d. Rayleigh) begünstigt MUX. Sie laufen
+  gegeneinander, heben sich aber nicht nachweislich auf — beide sind
+  unkontrolliert.
+
+  **Unberührt davon ist der ADC-Regelvergleich**: dort wird jeder Modus
+  mit sich selbst verglichen (`fixedB` gegen `scaledB`), CSIT kürzt sich
+  heraus.
+
+  Aufzulösen durch ein präkodiertes Multiplexing, siehe
+  `PRECODED_MUX_EXTENSION_PLAN.md`.
 - **Phasenkonvention von `v₁`.** Mit Quantisierung hängt die MI von der Phase
   des Präkodierers ab. Sie ist fest gewählt (erstes Element reell positiv),
   nicht auf MI optimiert.
