@@ -377,6 +377,23 @@ alle anderen Änderungen liegen in Dateien, die der Job nicht aufruft.
   Kombinieren heraus. Die ideale Kurve ist dadurch leicht **pessimistisch**
   — konservativ, also unschädlich. `N_r` volle Ketten im Budget sind für
   eine digitale Umsetzung korrekt.
+- **Der Rice-Sweep misst Rangarmut, nicht Sichtverbindung.** `H_LOS` ist
+  Broadside mit λ/2-Abstand, also der vollständig korrelierte Grenzfall.
+  Rang 1 folgt aus dieser **Geometrie**, nicht aus LOS: bei passendem
+  Antennenabstand (LOS-MIMO, grob `d_t·d_r ≈ λ·R/N`) ist auch ein reiner
+  Sichtverbindungskanal vollrangig, und Multiplexing funktioniert dort
+  ungeschmälert. „LOS tötet Multiplexing" wäre also falsch; richtig ist
+  „ein rangarmer Kanal tötet Multiplexing". Bei 28 GHz mit kompakten
+  Arrays auf größere Distanz ist der Kanal typischerweise rangarm — das
+  ist der Grund, warum der Sweep überhaupt etwas zeigt, und es gehört in
+  jede daraus abgeleitete Aussage. Herleitung und Zahlen in
+  `docs/RICE_EXTENSION_PLAN.md`, Abschnitt „Was K wirklich misst".
+- **Beim Rice-Sweep nicht auf den Sättigungswert schauen.** Bei K = 30
+  erreicht MUX 4×4 QPSK immer noch 7,997 von 8 bit: ein Zweiunddreißigstel
+  der Leistung steckt noch im NLOS-Anteil, und bei 25 dB sättigen auch die
+  schwachen Moden. Der Verlust zeigt sich als **SNR-Verschiebung** (bis
+  +8,42 dB gemessen), nicht als niedrigere Decke. Wer die Kurven über die
+  Sättigung vergleicht, hält den Effekt für abwesend.
 - **ADC-Leistungsmodell bei hohen Bitzahlen.** `P_ADC ∝ 2^b` (Walden) gilt
   bis etwa 10 effektive Bit; darüber ist ein Faktor 4 je Bit üblich. scaledB geht
   bis 11 Bit — das Modell ist dort optimistisch.
@@ -439,6 +456,39 @@ alle anderen Änderungen liegen in Dateien, die der Job nicht aufruft.
   exakt ausgewählt und nichts interpoliert. Ideales Beamforming behält
   sein feineres Raster: exakt gerechnet, weiterer Bereich, und nur eine
   Obergrenze.
-- **Nur QAM mit M ≤ 256 im Vergleich.** ZXM, Pulse, NA-QAM und QAM M = 1024
-  haben nur Gasts AWGN-Kurven; sie laufen in den Ordnern mit, werden aber
-  nicht ausgewertet.
+- **Nur QAM mit M ≤ 256 im Vergleich — und die anderen Gänge gewinnen.**
+  Von den 44 Kurven je Datenordner sind 20 unsere (Rayleigh, K = 0, mit
+  unserem ADC-Modell) und **24 Framework-Originale**: ZXM, Pulse/IR,
+  NA-QAM, QAM M = 1024/4096. Die sind AWGN, ohne Fading, und nicht mit
+  unserem Quantisierungsmodell gerechnet. `analyze_mimo_comparison`
+  (und `analyze_siso_vs_mimo`) lesen deshalb ausschließlich
+  `qam_M<M>_fc28GHz.mat` mit M ≤ 256 — der Vergleich steht QAM gegen QAM,
+  gleicher Kanal, gleiche Quantisierung.
+
+  Zu sagen, sie „laufen mit, werden aber nicht ausgewertet“, ist jedoch zu
+  harmlos. Gemessen am besten QAM derselben Läufe schlagen sie es über
+  weite Ratenbänder:
+
+  | d | AWGN-Gang schlägt bestes QAM bis | an der obersten Stelle |
+  |---|---|---|
+  | 50 m | **2,6·10⁸ bit/s** (68 von 91 Punkten) | `zxm_M2` 1,31·10⁻¹⁰ gegen 1,35·10⁻¹⁰ |
+  | 500 m | 1,42·10⁶ bit/s (40 von 89) | `pulsearbitrary` 1,51·10⁻⁸ gegen 1,54·10⁻⁸ |
+  | 5000 m | 1,35·10⁴ bit/s (15 von 78) | `pulsearbitrary` 1,53·10⁻⁶ gegen 1,57·10⁻⁶ |
+
+  Alle diese Gänge sind **SISO-only**. Sie würden also die SISO-Seite
+  stärken, und zwar unzulässig stark, weil ohne Fading — der Ausschluss
+  ist richtig, aber er hat einen Preis: **unterhalb dieser Raten ist die
+  Auswertung keine Gearbox-Entscheidung mehr.** Dort hätte der Gearbox
+  einen anderen Gang gewählt, und die QAM-Zahl beschreibt einen Gang, den
+  er verworfen hätte.
+
+  Konkret für SISO gegen MIMO: die Umschlagpunkte (2,4·10⁸ / 5,7·10⁶ /
+  6,6·10⁴ bit/s bei 50 / 500 / 5000 m) sind QAM-interne Aussagen. Bei 500
+  und 5000 m liegen sie oberhalb des AWGN-Bandes. Bei **50 m liegt der
+  Umschlag INNERHALB** (2,4·10⁸ gegen ein Band bis 2,6·10⁸) — dieses
+  Panel ist das am wenigsten aussagekräftige der drei.
+
+  Aufzulösen wäre das nur mit Rayleigh-MIMO-Kurven für ZXM und IR. Die
+  MI-Frameworks dafür liegen in `QuantizedMimoMI/zxm/` und `ir/`, SE-Kurven
+  sind nie exportiert worden; das ist ein eigener Clusterlauf, kein
+  Auswertungsschritt.

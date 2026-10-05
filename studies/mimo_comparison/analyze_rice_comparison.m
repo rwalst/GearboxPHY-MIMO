@@ -26,6 +26,17 @@ function out = analyze_rice_comparison(opts)
 %   Interpoliert wird in log10(K), weil der Arraygewinn und der
 %   Rangverlust beide mit K/(K+1) skalieren.
 %
+%   WAS K MISST: RANGARMUT, NICHT SICHTVERBINDUNG. H_LOS ist Broadside mit
+%   lambda/2, also vollstaendig korreliert. Ein reiner LOS-Kanal mit
+%   LOS-MIMO-Antennenabstand waere VOLLRANGIG und wuerde Multiplexing
+%   nicht schaden. K* ist deshalb die Schwelle fuer "Kanal zu rangarm fuer
+%   Multiplexing", nicht fuer "zu viel Sichtverbindung".
+%
+%   NICHT AN DER SAETTIGUNG ABLESEN: bei K = 30 erreicht MUX 4x4 QPSK noch
+%   7.997 von 8 bit. Der Verlust steckt in der benoetigten SNR (bis
+%   +8.42 dB gemessen), nicht in der Decke -- und genau deshalb schlaegt er
+%   auf E_bit durch, was diese Abbildung zeigt.
+%
 %   IDEALES BEAMFORMING ist der Grenzfall K -> unendlich (Rang 1, voller
 %   Gewinn N_t*N_r) und wird als Marke am rechten Rand eingetragen, nicht
 %   als Kurve -- es kennt kein K.

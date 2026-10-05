@@ -190,6 +190,62 @@ die Studie liefern soll.
 Schritt 1–3 und 5 sind lokal machbar und ungetestet auszuliefern; nur 4
 braucht den Cluster.
 
+## Was K wirklich misst: Rangarmut, nicht Sichtverbindung
+
+**Die wichtigste Grenze der Interpretation.** Rang 1 folgt nicht aus LOS,
+sondern aus der **Geometrie**. `H_LOS = ones(N_r,N_t)` ist Broadside mit
+λ/2-Abstand im Fernfeld — der vollständig korrelierte Grenzfall. Ein reiner
+Sichtverbindungskanal kann sehr wohl vollrangig sein: Bei passendem
+Antennenabstand (LOS-MIMO-Kriterium, grob `d_t · d_r ≈ λ·R/N`) stehen die
+Spalten von H orthogonal zueinander, und Multiplexing funktioniert in
+reinem LOS **ungeschmälert**.
+
+Der K-Sweep misst also „wie rangarm ist der Kanal", nicht „wie viel
+Sichtverbindung gibt es". Jede Aussage der Form „LOS tötet Multiplexing"
+wäre eine Überinterpretation. Richtig ist: **ein rangarmer Kanal tötet
+Multiplexing** — und bei 28 GHz mit kompakten Arrays auf größere Distanz
+ist der Kanal typischerweise rangarm, weil die Apertur gegenüber `λ·R`
+klein ist.
+
+### Was im Rang-1-Fall von Multiplexing übrig bleibt
+
+Bei Rang 1 sieht jede Empfangsantenne dieselbe Größe: die **Summe** der
+Sendesymbole. Mehr als `log2(#verschiedene Summen)` ist nicht übertragbar,
+auch rauschfrei nicht:
+
+| | voller Cap `N·log₂M` | Rang-1-Decke | Verlust |
+|---|---|---|---|
+| 2×2, QPSK | 4 bit | 3,17 | 21 % |
+| 2×2, 256-QAM | 16 bit | 9,91 | 38 % |
+| 4×4, QPSK | 8 bit | 4,64 | 42 % |
+| 4×4, 16-QAM | 16 bit | 7,40 | 54 % |
+
+Der Verlust wächst mit **beidem**, der Stromzahl und der
+Konstellationsgröße — mehr Summenpunkte fallen aufeinander. Null wird es
+nicht: 4,64 bit bei 4×4 QPSK sind mehr als die 2 bit eines Einzelstroms.
+Es ist aber kein Multiplexing mehr, sondern faktisch eine höherstufige
+Modulation auf einem Modus, erkauft mit N PAs, N ADCs und einer
+viele-zu-eins-Abbildung, die Sendeentropie verschenkt.
+`validateRice` R5 bestätigt den Grenzfall numerisch: bei K = 10⁶ fällt
+MUX 2×2 QPSK von 4,0000 auf 3,0015 bit, unter die Decke log₂(9) = 3,1699.
+
+### Bei den gerechneten K ist die Decke noch nicht gefallen
+
+Gemessene Sättigung bei 25 dB, `scaledB`:
+
+| | K=0 | K=3 | K=30 | Cap |
+|---|---|---|---|---|
+| MUX 2×2 M=4 | 3,999 | 3,999 | 3,970 | 4 |
+| MUX 4×4 M=4 | 8,001 | 8,004 | 7,997 | 8 |
+| MUX 4×4 M=16 | 16,003 | 16,000 | 15,768 | 16 |
+
+Bei K = 30 stecken noch 1/31 der Leistung im NLOS-Anteil, und bei 25 dB
+sättigen auch die schwachen Moden noch. Der Schaden zeigt sich deshalb
+**nicht als niedrigere Decke, sondern als SNR-Verschiebung** — gemessen bis
++8,42 dB für MUX 4×4 QPSK. Erst bei 16-QAM kratzt die Decke sichtbar
+(15,77 statt 16). Wer nur auf den Sättigungswert schaut, hält den Effekt
+fälschlich für abwesend.
+
 ## Was die Erweiterung NICHT klärt
 
 - **Korrelierte NLOS-Streuung.** Rice trennt nur LOS gegen vollrangiges
@@ -199,4 +255,18 @@ braucht den Cluster.
 - **CSI.** BF setzt weiter perfekte Kanalkenntnis am Sender voraus. Bei
   hohem K wird die Annahme eher leichter (der Kanal ist stabiler), aber das
   Modell misst es nicht.
-- **N > 4.** Hängt weiter an den acht fehlenden MUX-Kurven.
+- **N > 4.** Hängt weiter an den fehlenden MUX-`fixedB`-Kurven.
+- **K\* nur bei den Raten, die Schritt 3b rechnet.** `CFG.rates` steht auf
+  `[1e6 1e9]`. Der Bereich, in dem Multiplexing bei K = 0 am klarsten
+  gewinnt, liegt aber bei **1e10** (bei 500 m um Faktor 4,4, siehe die
+  Tabelle aus Schritt 4) — und genau dort ist K\* am interessantesten.
+  `analyze_rice_comparison` rundet eine angeforderte Rate auf das Raster
+  und warnt dabei (`analyzeRice:rateSnap`); gemessen wurde K\* deshalb
+  bisher nur bei 1e9. Wer die Frage für den Hochratenbereich beantworten
+  will, erweitert `CFG.rates` um `1e10` und lässt 3b für alle zehn
+  Varianten neu laufen (rund 30 min seriell, die vorhandenen
+  `cmp_distance_*.mat` werden dabei ungültig, weil `CFG` darin steckt).
+- **Antennenabstand.** Das Modell kennt nur λ/2-Broadside. Ein LOS-MIMO-
+  Entwurf mit vergrößertem Abstand kehrt die Aussage um und ist mit
+  `riceChannel`s `los`-Option (feste Winkel) nicht abgedeckt — dafür
+  bräuchte `H_LOS` echte Positionsgeometrie statt eines Steuervektorpaars.
