@@ -6,8 +6,12 @@ function out = analyze_adc_rule_curves(opts)
 %   out = analyze_adc_rule_curves();
 %   out = analyze_adc_rule_curves(mode="bf");
 %
-%   Schreibt results/cmp_figures/cmp_adc_rule_se.png und
-%   cmp_adc_rule_ebit.png.
+%   Schreibt results/cmp_figures/cmp_adc_rule_se_<modus>.png und
+%   cmp_adc_rule_ebit_<modus>.png.
+%
+%   DER MODUS GEHOERT IN DEN DATEINAMEN. Ohne ihn ueberschreibt ein Lauf
+%   mit mode="mux" die Abbildungen eines vorangegangenen mode="bf" -- und
+%   zwar lautlos, mit identisch aussehendem Ergebnis.
 %
 %   WARUM ZWEI ABBILDUNGEN STATT EINER: sie zeigen Eingang und Ausgang
 %   derselben Rechnung, und beide brauchen eine eigene Achse. Die
@@ -84,7 +88,7 @@ for ni = 1:nN
 end
 title(tl, sprintf('What the extra bit buys: %s, solid fixedB, dashed scaledB', ...
     localModeName(opts.mode)), 'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
-exportgraphics(fig, fullfile(figDir, 'cmp_adc_rule_se.png'), 'Resolution', 200);
+exportgraphics(fig, fullfile(figDir, sprintf('cmp_adc_rule_se_%s.png', opts.mode)), 'Resolution', 200);
 
 %% ================= 2. E_bit-Kurven ===================================
 nD = numel(opts.distances);
@@ -114,7 +118,7 @@ end
 title(tl, sprintf(['...and what is left of it in the budget: %s, best over ' ...
     'M \\leq 256 and N \\leq 4'], localModeName(opts.mode)), ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
-exportgraphics(fig, fullfile(figDir, 'cmp_adc_rule_ebit.png'), 'Resolution', 200);
+exportgraphics(fig, fullfile(figDir, sprintf('cmp_adc_rule_ebit_%s.png', opts.mode)), 'Resolution', 200);
 
 %% ---- Zahlen ----------------------------------------------------------
 fprintf('\n==== Was scaledB auf der SE-Kurve bringt (%s) ====\n', opts.mode);
@@ -126,7 +130,7 @@ fprintf('Median: Saettigung %+.2f %%, SNR-Ersparnis %+.2f dB\n', ...
     median([se.capPct]), median([se.gainDb]));
 out.se = se; out.mode = opts.mode;
 save(fullfile(figDir, sprintf('adc_rule_curves_%s_summary.mat', opts.mode)), 'out');
-fprintf('\ncmp_adc_rule_se.png und cmp_adc_rule_ebit.png in %s\n', figDir);
+fprintf('\ncmp_adc_rule_se_%s.png und cmp_adc_rule_ebit_%s.png in %s\n', opts.mode, opts.mode, figDir);
 end
 
 % =======================================================================
@@ -138,8 +142,16 @@ end
 
 function snr = localSnrAt(S, target)
 %LOCALSNRAT  SNR, bei der die Kurve die Ziel-SE erreicht.
-keep = [true, diff(S.SE_vec(:).') > 0];
-snr = interp1(S.SE_vec(keep), S.SNR_vec(keep), target, 'linear', NaN);
+%
+%   Streng monoton per LAUFMAXIMUM, nicht per diff > 0. Derselbe Fehler
+%   steckte schon in trimCurve.m: ein Vergleich mit dem Vorgaenger laesst
+%   in der Folge 5, 4, 5 die zweite 5 stehen, weil sie gegenueber der 4
+%   ein Anstieg ist -- und interp1 lehnt doppelte Stuetzstellen ab. Bei
+%   den exakt gerechneten bfideal-Kurven mit ihren Plateaus trat genau
+%   das auf.
+v = S.SE_vec(:).';
+keep = [true, v(2:end) > cummax(v(1:end-1))];
+snr = interp1(v(keep), S.SNR_vec(keep), target, 'linear', NaN);
 end
 
 function s = localBestE(rd, opts)
