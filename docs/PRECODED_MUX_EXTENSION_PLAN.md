@@ -74,16 +74,60 @@ der MI-Rechnung kostenlos.
 
 ## Die Normierung ist die Stelle, an der es schiefgehen kann
 
-Heute normiert `qamConstellation` auf `Es = 1` **je Strom**; die
-Gesamtsendeleistung ist damit `N_t`, und `exportToGearboxSEData` schiebt
-die SNR-Achse um `10·log₁₀(N_t)`. Das war einer der vier
-Modellasymmetrien, die für diese Studie geschlossen wurden.
+Im Repo leben zwei Konventionen nebeneinander, und jede ist in ihrer
+eigenen Datei die natürliche Wahl:
 
-Mit `‖F‖_F² = 1` ist die Gesamtleistung **1**, genau wie bei BF. Die
-präkodierten Kurven tragen deshalb `snrReference = 'total'` und dürfen
-**nicht** verschoben werden. Wird das übersehen, bekommt das präkodierte
-MUX `10·log₁₀(N_t)` dB geschenkt — bei 4×4 sechs dB, also mehr als der
-gesamte zu messende Effekt.
+| | Normierung | Gesamtleistung | `snrDb` ist … |
+|---|---|---|---|
+| MUX heute | `qamConstellation`: `E\|x_i\|² = 1` **je Komponente** | `N_t` | SNR **je Strom** |
+| BF | `‖v₁‖ = 1`, ein Strom | `1` | SNR **gesamt** |
+
+`exportToGearboxSEData` versöhnt sie, indem es `'perStream'`-Kurven um
+`10·log₁₀(N_t)` schiebt. Dahinter steckt eine einzige Invariante:
+
+> **Die Verschiebung muss `10·log₁₀(‖F‖_F²)` sein.**
+
+Heute sind das nur die zwei Sonderfälle `F = I` (`‖F‖_F² = N_t`) und
+`F = v₁` (`‖F‖_F² = 1`).
+
+**Das präkodierte MUX fällt genau dazwischen:** Es sieht aus wie MUX —
+`N_t` Ströme, `ergodicMiAuto`, derselbe Export — ist aber wie BF
+normiert. Beide Hälften der Buchführung können in **zwei
+entgegengesetzte Richtungen** auseinanderlaufen:
+
+- **Label vergessen — 6 dB Strafe.** Fehlt `snrReference` in der `.mat`,
+  nimmt `exportToGearboxSEData` `'perStream'` an und schiebt um
+  `+10·log₁₀(N_t)`. **Das ist der wahrscheinlichere Fehler, weil er der
+  Default ist.**
+- **Budget falsch — 6 dB Geschenk.** Water-Filling mit Gesamtbudget `N_t`
+  statt 1 (die naheliegende Wahl „gleiche Leistung wie bisher“) und dann
+  `'total'` dranschreiben, weil „präkodiertes MUX ist wie BF“.
+
+Eine Plausibilitätsprüfung, die man instinktiv machen würde, fällt dabei
+weg: mit `F = V·diag(√p)` haben die Spalten `‖f_i‖² = p_i ≠ 1`. Die
+Ströme sind einzeln **nicht** mehr auf `Es = 1` normiert, die Leistung
+steckt in `F`.
+
+### Warum es nicht von selbst auffällt
+
+`miGivenH.m:14` holt den Aussteuerungspegel aus dem *tatsächlichen*
+Empfangssignal:
+
+    Mu = Xall * H.';
+    sigmaYre = sqrt(mean(abs(Mu(:)).^2)/2 + sigmaN^2/2);
+
+Der Quantisierer skaliert sich also selbst auf das, was man ihm
+hinreicht — wie eine ideale AGC. Mit falsch normiertem `H*F` passt der
+ADC seinen Clipping-Pegel sauber an, die MI ist **in sich vollständig
+konsistent**, und kein Test schlägt an. Der Fehler erscheint erst als
+6-dB-Verschiebung auf der SE-Kurve — und dort sieht er wie ein
+*Ergebnis* aus, nicht wie ein Bug. Die einzige Stelle, die überhaupt
+trägt, wie viel Leistung ausgegeben wurde, ist der String
+`snrReference`.
+
+Bei 4×4 sind das `10·log₁₀(4) = 6,02` dB — mehr als der gesamte zu
+messende Effekt, und systematisch in eine Richtung, hebt sich also über
+die Realisierungen nicht heraus.
 
 ## Validierung (Schritt 0, vor dem Clusterlauf)
 
@@ -97,7 +141,9 @@ gesamte zu messende Effekt.
 
 **V2 ist der entscheidende Test.** Er verbindet den neuen Pfad mit dem
 bestehenden BF-Pfad und würde jede Verwechslung in Normierung, Phase oder
-Spaltenreihenfolge der SVD sofort zeigen. V4 ist die Probe auf das
+Spaltenreihenfolge der SVD sofort zeigen. Bei falschem Leistungsbudget ist
+`F = √N_t·v₁`, und die Kurve käme exakt `10·log₁₀(N_t)` dB **besser** als
+BF heraus — ein lautes Scheitern statt eines plausiblen Ergebnisses. V4 ist die Probe auf das
 Argument, mit dem die Erweiterung überhaupt begründet wird — schlägt es
 fehl, stimmt die Normierung nicht.
 
