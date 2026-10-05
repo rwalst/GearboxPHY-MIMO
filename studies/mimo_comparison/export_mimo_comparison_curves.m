@@ -32,7 +32,18 @@ addpath(mimoRoot); setupPath;
 qamRoot = fullfile(mimoRoot, 'qam');
 baseDir = gearboxphy.paths.dataDir('SE_data');
 
-% name, Quellordner, Dateimuster, Regel-Variante, Kanal (fuer die 1x1-Pruefung)
+% RICE-FAKTOREN. K = 0 ist der Rayleigh-Grundlauf; 3 und 30 kommen aus dem
+% Rice-Sweep (K = 10 wurde bewusst ausgelassen). Nur scaledB, nur die
+% beiden Rayleigh-Modi -- ideales Beamforming ist AWGN und kennt kein K.
+K_RICE = [3 30];
+
+% name, Quellordner, Dateimuster, Regel-Variante, Kanal (fuer die
+% 1x1-Pruefung), Rice-Faktor.
+%
+% K GEHOERT IN DIESE TABELLE, weil K = 0, 3 und 30 im SELBEN Quellordner
+% liegen und dieselbe Bitzahl haben. Ohne den Filter exportieren sie
+% alle auf denselben Dateinamen; exportToGearboxSEData bricht dann mit
+% export:ambiguous ab.
 V = struct( ...
   'name',    {"mux_fixedB", "mux_scaledB", "bf_fixedB", "bf_scaledB", "bfideal_fixedB", "bfideal_scaledB"}, ...
   'src',     {fullfile(qamRoot,'results','bHalf'),       fullfile(qamRoot,'results','rule_mux'), ...
@@ -42,7 +53,17 @@ V = struct( ...
               'mi_bf_Nt*_Nr*_M*_B*.mat',  'mi_bf_Nt*_Nr*_M*_B*.mat', ...
               'mi_bfideal_Nt*_Nr*_M*_B*.mat', 'mi_bfideal_Nt*_Nr*_M*_B*.mat'}, ...
   'variant', {"fixedB", "scaledB", "fixedB", "scaledB", "fixedB", "scaledB"}, ...
-  'channel', {"rayleigh", "rayleigh", "rayleigh", "rayleigh", "awgn", "awgn"});
+  'channel', {"rayleigh", "rayleigh", "rayleigh", "rayleigh", "awgn", "awgn"}, ...
+  'K',       {0, 0, 0, 0, 0, 0});
+
+for Kv = K_RICE
+    V(end+1) = struct('name', sprintf("mux_scaledB_K%g", Kv), ...
+        'src', fullfile(qamRoot,'results','rule_mux'), 'pattern', 'mi_Nt*_Nr*_M*_B*_K*.mat', ...
+        'variant', "scaledB", 'channel', "rayleigh", 'K', Kv); %#ok<AGROW>
+    V(end+1) = struct('name', sprintf("bf_scaledB_K%g", Kv), ...
+        'src', fullfile(qamRoot,'results','bf_rayleigh'), 'pattern', 'mi_bf_Nt*_Nr*_M*_B*_K*.mat', ...
+        'variant', "scaledB", 'channel', "rayleigh", 'K', Kv); %#ok<AGROW>
+end
 
 % Gemeinsames SNR-Raster fuer die drei RAYLEIGH-Varianten. Die Laeufe
 % entstanden mit unterschiedlicher Aufloesung: Beamforming mit 1 dB,
@@ -60,17 +81,23 @@ SNR_GRID_RAYLEIGH = -15:2:25;
 
 Ns = [1 2 4 8 16];
 Ms = [4 16 64 256];
+% Der Rice-Sweep lief nur bis 4x4 -- dort sind 8x8 und 16x16 keine Luecke,
+% sondern nie gerechnet worden. Sonst meldete die Vollstaendigkeitspruefung
+% fuer jede Rice-Variante acht Fehlstellen, die keine sind.
+NS_RICE = [1 2 4];
 missingTotal = 0;
 for k = 1:numel(V)
     dst = gearboxphy.paths.dataDir("SE_data_" + V(k).name);
     fprintf('\n################ %s ################\n', V(k).name);
+    NsV = Ns;
+    if V(k).K ~= 0, NsV = NS_RICE; end
     if ~isfolder(V(k).src)
         warning('export:noSource', 'Quelle %s fehlt - %s uebersprungen.', V(k).src, V(k).name);
-        missingTotal = missingTotal + numel(Ns)*numel(Ms);
+        missingTotal = missingTotal + numel(NsV)*numel(Ms);
         continue;
     end
     o = struct('pattern', V(k).pattern, 'variant', V(k).variant, ...
-               'baseDir', baseDir, 'sisoFrom1x1', true);
+               'K', V(k).K, 'baseDir', baseDir, 'sisoFrom1x1', true);
     if V(k).channel == "rayleigh", o.snrGrid = SNR_GRID_RAYLEIGH; end
     exportToGearboxSEData(V(k).src, dst, o);
 
@@ -78,7 +105,7 @@ for k = 1:numel(V)
     fprintf('  Vollstaendigkeit %s:\n', V(k).name);
     for M = Ms
         row = sprintf('    M=%-3d', M);
-        for N = Ns
+        for N = NsV
             if N == 1, fn = sprintf('SE_%d_QAM.mat', M);
             else,      fn = sprintf('SE_%d_QAM_%dx%d.mat', M, N, N); end
             p = fullfile(dst, fn);

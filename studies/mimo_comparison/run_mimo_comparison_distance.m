@@ -27,7 +27,14 @@ function run_mimo_comparison_distance()
 %     CFG (distances, rates, Ms, Ns, fcGHz), variant
 
 %% ===================== CONFIG =====================================
+% Die sechs Grundvarianten plus die Rice-Laeufe. K = 0 steckt bereits in
+% den ersten sechs (mux_scaledB/bf_scaledB sind der Rayleigh-Fall), die
+% K-Varianten kommen dazu. K = 10 wurde bewusst ausgelassen.
 VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fixedB" "bfideal_scaledB"];
+for Kv = [3 30]
+    VARIANTS(end+1) = sprintf("mux_scaledB_K%g", Kv); %#ok<AGROW>
+    VARIANTS(end+1) = sprintf("bf_scaledB_K%g", Kv);  %#ok<AGROW>
+end
 CFG.rates     = [1e6 1e9];              % niedrig / hoch [bit/s]
 CFG.distances = logspace(1, 4, 25);     % 10 m .. 10 km
 CFG.fcGHz     = 28;
@@ -56,6 +63,8 @@ CFG.Ns        = [1 2 4];
 % (z.B. am Arbeitsplatz) seriell. Fest auf true wuerde hier schon an
 % gcp()/parpool scheitern, bevor irgendetwas gerechnet ist.
 USE_PARALLEL  = ~isempty(ver('parallel'));
+% Fertige Varianten ueberspringen (siehe Schleife unten).
+SKIP_EXISTING = true;
 %% ===================================================================
 
 % Pfade ueber gearboxphy.paths, nicht ueber den Ort dieser Datei.
@@ -84,6 +93,16 @@ nD = numel(CFG.distances); nR = numel(CFG.rates);
 nM = numel(CFG.Ms);        nN = numel(CFG.Ns);
 for v = VARIANTS
     dataDir = gearboxphy.paths.dataDir("SE_data_" + v);
+    outFile = gearboxphy.paths.resultsDir(sprintf('cmp_distance_%s.mat', v));
+    % Wiederaufnahme: eine fertige Variante wird nicht neu gerechnet. Die
+    % MI-Sweeps machen das seit jeher; hier fehlte es, und ein Abbruch in
+    % der achten von zehn Varianten kostete alle sieben davor noch einmal.
+    % SKIP_EXISTING = false erzwingt den vollen Lauf -- noetig, wenn sich
+    % die Kurven unter data/ geaendert haben.
+    if SKIP_EXISTING && isfile(outFile)
+        fprintf('\n======== %s: liegt vor, uebersprungen ========\n', v);
+        continue
+    end
     fprintf('\n======== %s ========\n', v);
     t0 = tic;
     E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E;
@@ -100,7 +119,6 @@ for v = VARIANTS
         Eadc(di,:,:,:) = reshape(eadc, [1 nR nM nN]);   %#ok<PFOUS>
     end
     variant = v;
-    outFile = gearboxphy.paths.resultsDir(sprintf('cmp_distance_%s.mat', v));
     save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'CFG', 'variant');
     fprintf('%s fertig nach %.1f min -> %s\n', v, toc(t0)/60, outFile);
 end
