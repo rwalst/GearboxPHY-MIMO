@@ -65,6 +65,21 @@ assert(any(~cellfun(@isempty, D)), 'sisomimo:noData', ...
 out.distances = opts.distances; out.Ns = opts.Ns; out.data = {D};
 
 %% ---- Abbildung -------------------------------------------------------
+% GEMEINSAME y-Grenzen der Verhaeltniszeile ueber ALLE Distanzen. Mit
+% per-Panel-Autoskalierung sieht ein Faktor 3 bei einer Distanz aus wie
+% ein Faktor 300 bei einer anderen -- die Zeile soll aber genau den
+% Vergleich ZWISCHEN den Distanzen tragen.
+allRatio = [];
+for di = 1:nD
+    if isempty(D{di}), continue; end
+    v = D{di}.ratio; allRatio = [allRatio v(isfinite(v) & v > 0)]; %#ok<AGROW>
+end
+if isempty(allRatio)
+    ratioLim = [0.1 10];
+else
+    ratioLim = [min(allRatio)*0.7, max(max(allRatio)*1.4, 2)];
+end
+
 fig = figure('Position', [100 100 400*nD+120 820], 'Color', 'w');
 tl  = tiledlayout(fig, 3, nD, 'TileSpacing', 'compact', 'Padding', 'compact');
 
@@ -101,10 +116,19 @@ for di = 1:nD
             'Label', sprintf('%.2g bit/s', s.cross), 'LabelOrientation', 'horizontal', ...
             'FontSize', 9, 'Color', [0.835 0 0]);
     end
+    ylim(ax2, ratioLim);
     if di == 1
         ylabel(ax2, 'E_{bit}: bestes MIMO / SISO', 'FontSize', 12, 'Color', INK2);
-        text(ax2, s.R(3), 1.6, ' SISO guenstiger', 'FontSize', 9, 'Color', INK2);
-        text(ax2, s.R(3), 0.55, ' MIMO guenstiger', 'FontSize', 9, 'Color', INK2);
+        % Relativ zu den Achsgrenzen setzen, nicht auf feste Werte: bei
+        % fester Position lief der Text sonst aus der Achse heraus und in
+        % das Panel darueber.
+        yl = ylim(ax2);
+        yHi = exp(log(yl(2)) - 0.10*(log(yl(2))-log(yl(1))));
+        yLo = exp(log(yl(1)) + 0.10*(log(yl(2))-log(yl(1))));
+        text(ax2, s.R(3), yHi, ' SISO guenstiger', 'FontSize', 9, 'Color', INK2, ...
+            'VerticalAlignment', 'top');
+        text(ax2, s.R(3), yLo, ' MIMO guenstiger', 'FontSize', 9, 'Color', INK2, ...
+            'VerticalAlignment', 'bottom');
     end
 
     % --- Zeile 3: welches N gewinnt -- die eigentliche Antwort ---
@@ -168,6 +192,25 @@ for di = 1:nD
         else, fprintf('  %dx%d: %.2g', opts.Ns(k), opts.Ns(k), max(v)); end
     end
     fprintf('\n');
+end
+
+% Das Optimum am RAND des Suchraums ist kein Optimum. Wo N_opt den
+% groessten gerechneten Wert annimmt, sagt die Studie nur "mindestens so
+% viele" -- das muss in der Ausgabe stehen, nicht nur in der Abbildung.
+fprintf('\n---- Optimum am Rand des Suchraums (N = %d) ----\n', max(opts.Ns));
+for di = 1:nD
+    s = D{di};
+    if isempty(s), continue; end
+    ok = isfinite(s.Nbest);
+    atMax = ok & (s.Nbest == max(opts.Ns));
+    if any(atMax)
+        fprintf(['d = %-6g %3d von %3d Punkten (%.0f %%) am Rand, ab R = %.3g bit/s' ...
+                 '  -> dort heisst N_opt = %d nur "mindestens %d"\n'], ...
+            opts.distances(di), sum(atMax), sum(ok), 100*sum(atMax)/sum(ok), ...
+            min(s.R(atMax)), max(opts.Ns), max(opts.Ns));
+    else
+        fprintf('d = %-6g kein Randtreffer - das Optimum liegt innen.\n', opts.distances(di));
+    end
 end
 
 save(fullfile(figDir, sprintf('%s_summary.mat', opts.prefix)), 'out');
