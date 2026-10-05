@@ -12,6 +12,14 @@
 *.png
 *.pdf
 
+# AUSNAHME: die Abbildungen der BF/MUX-Vergleichsstudie. Sie sind das
+# Ergebnis der Studie, werden in docs/HPC_RUNBOOK_MIMO_VERGLEICH.md
+# eingebettet und gehen so ins Paper -- ein Bild, auf das die Doku zeigt,
+# muss im Repo liegen, sonst ist der Verweis tot. Neun Dateien, 3.3 MB.
+# Alle uebrigen Abbildungen bleiben ausgeschlossen: sie entstehen bei
+# jedem Lauf neu und aendern sich bei jeder Layoutkorrektur.
+!results/cmp_figures/*.png
+
 # Rauchtests legen Wegwerf-Ergebnisse an (tests/smoke_test.m,
 # tests/mimo_smoke_test.m). Sie entstehen bei jedem Lauf neu.
 results/smoke_results/

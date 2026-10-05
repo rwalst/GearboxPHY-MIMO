@@ -170,6 +170,70 @@ Schreibt nach `results/cmp_figures/`:
 Dazu eine Tabelle in der Konsole. Der „beste Modus" dort wird nur unter
 den Rayleigh-Modellen bestimmt; BF ideal steht als Obergrenze daneben.
 
+### Schritt 4b — die ADC-Regel für sich
+
+```matlab
+analyze_adc_rule_all                 % alle drei Modi in einer Abbildung
+analyze_adc_rule(mode="mux")         % je Modus einzeln, mit E_bit-Kurven
+```
+
+Die Sechs-Varianten-Abbildungen aus Schritt 4 zeigen `fixedB` und
+`scaledB` nebeneinander, aber nicht *gegeneinander*. Dafür ist diese hier:
+
+![ADC-Regel über alle drei Modi](../results/cmp_figures/cmp_adc_rule_all.png)
+
+Oben die Differenz in Prozent, unten der ADC-Anteil am Energiebudget, der
+sie erklärt — durchgezogen `scaledB`, gepunktet `fixedB`.
+
+Die absoluten E_bit-Kurven fehlen mit Absicht: In den Einzelabbildungen
+liegen beide Regeln sichtbar übereinander. Der Unterschied ist zu klein
+für eine logarithmische Achse über acht Dekaden, und genau deshalb ist die
+Differenz die Aussage und nicht die Kurve.
+
+| Modus | Punkte | Median | Spanne | `scaledB` günstiger |
+|---|---|---|---|---|
+| MUX | 277 | +0,00 % | −6,97 … +2,16 % | 43,3 % |
+| BF | 265 | +0,00 % | −1,66 … +2,33 % | 40,8 % |
+| BF ideal | 266 | +0,00 % | −4,87 … +2,56 % | 45,1 % |
+
+**Das zusätzliche Bit je Antennenverdopplung ist praktisch gratis, und
+kein Modus wird davon systematisch begünstigt** — das ist es, was den
+Sechs-Varianten-Vergleich fair macht.
+
+Zwei gegenläufige Effekte: Die feinere Quantisierung hebt die SE-Kurve,
+dieselbe Rate braucht also weniger Sendeleistung; der Wandler kostet
+dagegen 2^b, und davon stehen N_r Stück im Empfänger, unter `scaledB`
+wächst die ADC-Leistung also mit N² statt mit N. Welcher gewinnt, hängt
+daran, wie groß der ADC-Anteil überhaupt ist — bei 50 m erreicht er unter
+`scaledB` 3,1–4,0 %, bei 5 km nur noch 0,3 %, dort entscheidet die bessere
+Kurve.
+
+Drei Dinge, die man beim Lesen wissen muss:
+
+- **Die Zacken am rechten Rand** jedes Felds sind Randverhalten, kein
+  Regeleffekt. Dort nähern sich die Kurven ihrer Machbarkeitsgrenze, E_bit
+  biegt steil nach oben, und ein kleiner Unterschied in der erreichbaren
+  Maximalrate schlägt stark aufs Verhältnis durch. Der Extremwert −6,97 %
+  liegt genau da.
+- **Die gewählte Antennenzahl ändert sich fast nie**: 0 von 277 Punkten
+  bei MUX, 2 von 265 bei BF, 2 von 266 bei BF ideal. Die Regel ändert, was
+  der Wandler kostet, nicht welches Array der Optimierer wählt.
+- **Der ADC-Anteil von BF ideal liegt bei 5 km eine Größenordnung über dem
+  von MUX** (0,32 % gegen 0,005 %). Das ist die Modellnaht, nicht Physik:
+  Die Kurve von BF ideal kommt aus EINEM Quantisierer auf dem kombinierten
+  Signal, bezahlt werden N_r. Von den drei Modi steht dieser Regelvergleich
+  als einziger auf dieser Naht.
+
+### Schritt 4c — der Rice-Sweep
+
+```matlab
+analyze_rice_comparison
+```
+
+Schreibt `cmp_rice.png`: E_bit über dem Rice-Faktor K, darunter das
+Verhältnis BF/MUX mit dem Schnittpunkt K*. Siehe `RICE_EXTENSION_PLAN.md`
+und den Abschnitt „Grenzen" weiter unten.
+
 **Schritt 4 läuft auch ohne 3a.** Fehlen die `results/cmp_*_d<d>/`-Ordner,
 entsteht nur `cmp_distance.png` — mit einer Warnung, nicht mit einem
 Abbruch. Das ist der Normalfall am Arbeitsplatz: 3b ist dort in rund
