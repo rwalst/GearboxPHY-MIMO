@@ -40,6 +40,10 @@ arguments
     opts.fcGHz (1,1) double = 28
     opts.Ms (1,:) double = [4 16 64 256]
     opts.figDir (1,1) string = "cmp_figures"
+    % false: nur laden und zurueckgeben, keine Abbildung, keine Tabelle.
+    % analyze_adc_rule_all nutzt das, um alle drei Modi mit DERSELBEN
+    % Ladelogik zu holen, statt sie zu kopieren.
+    opts.makeFigure (1,1) logical = true
 end
 
 RULES = ["fixedB" "scaledB"];
@@ -66,6 +70,11 @@ for r = 1:numel(RULES)
 end
 assert(any(~cellfun(@isempty, D(:))), 'adcRule:noData', ...
     'Keine results/cmp_%s_*_d* gefunden - erst run_mimo_comparison_sweep ausfuehren.', opts.mode);
+
+out.mode = opts.mode; out.rules = RULES; out.distances = opts.distances; out.data = {D};
+if ~opts.makeFigure
+    return
+end
 
 %% ---- Abbildung -------------------------------------------------------
 fig = figure('Position', [100 100 380*nD+140 760], 'Color', 'w');
@@ -153,7 +162,6 @@ fprintf(['\nUeber alle %d ausgewerteten Punkte: scaledB im Median %+.2f %%, ' ..
 fprintf('Anteil der Punkte, an denen scaledB guenstiger ist: %.1f %%\n', ...
     100*mean(allD < 0));
 
-out.mode = opts.mode; out.rules = RULES; out.distances = opts.distances; out.data = {D};
 save(fullfile(figDir, sprintf('adc_rule_%s_summary.mat', opts.mode)), 'out');
 fprintf('\ncmp_adc_rule_%s.png und adc_rule_%s_summary.mat in %s\n', ...
     opts.mode, opts.mode, figDir);
