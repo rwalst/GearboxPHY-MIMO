@@ -1,12 +1,19 @@
-function out = analyze_adc_rule_mux(opts)
-%ANALYZE_ADC_RULE_MUX  Die beiden ADC-Regeln im direkten Vergleich, NUR
-%   fuer Multiplexing.
+function out = analyze_adc_rule(opts)
+%ANALYZE_ADC_RULE  Die beiden ADC-Regeln im direkten Vergleich, fuer EINEN
+%   Modus.
 %
-%   out = analyze_adc_rule_mux();
-%   out = analyze_adc_rule_mux(distances=[50 5000]);
+%   out = analyze_adc_rule();                  % Multiplexing
+%   out = analyze_adc_rule(mode="bf");         % digitales Eigen-Beamforming
+%   out = analyze_adc_rule(mode="bf", distances=[50 5000]);
 %
-%   Liest results/cmp_mux_<regel>_d<d>/ (Schritt 3a) und schreibt
-%   results/cmp_figures/cmp_adc_rule_mux.png.
+%   Liest results/cmp_<modus>_<regel>_d<d>/ (Schritt 3a) und schreibt
+%   results/cmp_figures/cmp_adc_rule_<modus>.png.
+%
+%   EIN MODUS JE ABBILDUNG, mit Absicht. Multiplexing und Beamforming
+%   reagieren verschieden auf das zusaetzliche Bit -- MUX detektiert N
+%   Stroeme gemeinsam, BF einen einzigen -- und beides uebereinander zu
+%   legen hat den Vergleich in der Sechs-Varianten-Abbildung eher
+%   verdeckt als gezeigt.
 %
 %   DIE FRAGE: lohnt das zusaetzliche ADC-Bit je Antennenverdopplung?
 %       fixedB    B = 1/2*log2(M) + 3
@@ -24,14 +31,11 @@ function out = analyze_adc_rule_mux(opts)
 %   Welcher gewinnt, haengt davon ab, wie gross der ADC-Anteil am Budget
 %   ueberhaupt ist -- und der ist klein, solange die PA dominiert.
 %
-%   NUR MULTIPLEXING. Beamforming traegt einen Strom; dort wirkt das
-%   zusaetzliche Bit anders, und beides in eine Abbildung zu legen hat den
-%   Vergleich bisher eher verdeckt als gezeigt.
-%
 %   NUR N <= 4: weiter reichen die gerechneten Sweeps nicht. Bei N = 1
 %   sind beide Regeln per Definition gleich, der Unterschied kann also nur
 %   aus 2x2 und 4x4 kommen.
 arguments
+    opts.mode (1,1) string {mustBeMember(opts.mode, ["mux","bf","bfideal"])} = "mux"
     opts.distances (1,:) double = [50 500 5000]
     opts.fcGHz (1,1) double = 28
     opts.Ms (1,:) double = [4 16 64 256]
@@ -51,7 +55,8 @@ if ~isfolder(figDir), mkdir(figDir); end
 D = cell(numel(RULES), nD);
 for r = 1:numel(RULES)
     for di = 1:nD
-        rd = gearboxphy.paths.resultsDir(sprintf('cmp_mux_%s_d%g', RULES(r), opts.distances(di)));
+        rd = gearboxphy.paths.resultsDir(sprintf('cmp_%s_%s_d%g', opts.mode, RULES(r), ...
+            opts.distances(di)));
         if ~isfolder(rd)
             warning('adcRule:missing', '%s fehlt - uebersprungen.', rd);
             continue
@@ -60,7 +65,7 @@ for r = 1:numel(RULES)
     end
 end
 assert(any(~cellfun(@isempty, D(:))), 'adcRule:noData', ...
-    'Keine results/cmp_mux_*_d* gefunden - erst run_mimo_comparison_sweep ausfuehren.');
+    'Keine results/cmp_%s_*_d* gefunden - erst run_mimo_comparison_sweep ausfuehren.', opts.mode);
 
 %% ---- Abbildung -------------------------------------------------------
 fig = figure('Position', [100 100 380*nD+140 760], 'Color', 'w');
@@ -106,13 +111,17 @@ for di = 1:nD
         ylabel(ax3, 'ADC-Anteil an E_{bit} [%]', 'FontSize', 12, 'Color', INK2);
     end
 end
-title(tl, sprintf(['ADC rule for multiplexing, f_c = %g GHz, i.i.d. Rayleigh, ' ...
-    'best over M \\leq 256 and N \\leq 4'], opts.fcGHz), ...
+MODENAME = containers.Map({'mux','bf','bfideal'}, ...
+    {'multiplexing', 'digital eigen-beamforming', 'idealized beamforming'});
+chan = 'i.i.d. Rayleigh';
+if opts.mode == "bfideal", chan = 'AWGN, rank 1'; end
+title(tl, sprintf(['ADC rule for %s, f_c = %g GHz, %s, ' ...
+    'best over M \\leq 256 and N \\leq 4'], MODENAME(char(opts.mode)), opts.fcGHz, chan), ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
-exportgraphics(fig, fullfile(figDir, 'cmp_adc_rule_mux.png'), 'Resolution', 200);
+exportgraphics(fig, fullfile(figDir, sprintf('cmp_adc_rule_%s.png', opts.mode)), 'Resolution', 200);
 
 %% ---- Tabelle ---------------------------------------------------------
-fprintf('\n==== scaledB gegen fixedB, nur Multiplexing ====\n');
+fprintf('\n==== scaledB gegen fixedB, Modus %s ====\n', opts.mode);
 fprintf('%-8s %-11s %-11s %-11s %-10s %-7s %-7s %s\n', 'd [m]', 'R [bit/s]', ...
     'fixedB', 'scaledB', 'Differenz', 'N fix', 'N scl', 'ADC-Anteil fix/scl');
 out.rows = [];
@@ -144,9 +153,10 @@ fprintf(['\nUeber alle %d ausgewerteten Punkte: scaledB im Median %+.2f %%, ' ..
 fprintf('Anteil der Punkte, an denen scaledB guenstiger ist: %.1f %%\n', ...
     100*mean(allD < 0));
 
-out.rules = RULES; out.distances = opts.distances; out.data = {D};
-save(fullfile(figDir, 'adc_rule_mux_summary.mat'), 'out');
-fprintf('\ncmp_adc_rule_mux.png und adc_rule_mux_summary.mat in %s\n', figDir);
+out.mode = opts.mode; out.rules = RULES; out.distances = opts.distances; out.data = {D};
+save(fullfile(figDir, sprintf('adc_rule_%s_summary.mat', opts.mode)), 'out');
+fprintf('\ncmp_adc_rule_%s.png und adc_rule_%s_summary.mat in %s\n', ...
+    opts.mode, opts.mode, figDir);
 end
 
 % =======================================================================
