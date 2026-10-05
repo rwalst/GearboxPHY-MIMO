@@ -65,8 +65,8 @@ for di = 1:nD
     if di == 1
         ylabel(ax, 'scaledB vs. fixedB [%]', 'FontSize', 12, 'Color', INK2);
         yl = ylim(ax);
-        text(ax, ax.XLim(1)*3, yl(2)*0.85, ' scaledB teurer', 'FontSize', 9, 'Color', INK2);
-        text(ax, ax.XLim(1)*3, yl(1)*0.85, ' scaledB guenstiger', 'FontSize', 9, 'Color', INK2);
+        text(ax, ax.XLim(1)*3, yl(2)*0.85, ' scaledB costs more', 'FontSize', 9, 'Color', INK2);
+        text(ax, ax.XLim(1)*3, yl(1)*0.85, ' scaledB is cheaper', 'FontSize', 9, 'Color', INK2);
     elseif di == nD
         legend(ax, h, 'Location', 'southwest', 'Box', 'off', 'FontSize', 10, ...
             'TextColor', INK2);
@@ -83,9 +83,9 @@ for di = 1:nD
     end
     xlabel(ax2, 'R_{eff} [bit/s]', 'FontSize', 12, 'Color', INK2);
     if di == 1
-        ylabel(ax2, 'ADC-Anteil an E_{bit} [%]', 'FontSize', 12, 'Color', INK2);
+        ylabel(ax2, 'ADC share of E_{bit} [%]', 'FontSize', 12, 'Color', INK2);
         text(ax2, ax2.XLim(1)*3, max(ylim(ax2))*0.85, ...
-            ' durchgezogen: scaledB,  gepunktet: fixedB', 'FontSize', 9, 'Color', INK2);
+            ' solid: scaledB,  dotted: fixedB', 'FontSize', 9, 'Color', INK2);
     end
 end
 title(tl, sprintf(['The ADC bit rule across all three modes, f_c = %g GHz, ' ...

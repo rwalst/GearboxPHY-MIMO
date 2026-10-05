@@ -107,8 +107,8 @@ for di = 1:nD
     ylim(ax2, localSymRange(100*(ratio-1)));
     if di == 1
         ylabel(ax2, 'scaledB vs. fixedB [%]', 'FontSize', 12, 'Color', INK2);
-        text(ax2, R(2), max(ylim(ax2))*0.75, ' scaledB teurer', 'FontSize', 9, 'Color', INK2);
-        text(ax2, R(2), min(ylim(ax2))*0.75, ' scaledB guenstiger', 'FontSize', 9, 'Color', INK2);
+        text(ax2, R(2), max(ylim(ax2))*0.75, ' scaledB costs more', 'FontSize', 9, 'Color', INK2);
+        text(ax2, R(2), min(ylim(ax2))*0.75, ' scaledB is cheaper', 'FontSize', 9, 'Color', INK2);
     end
 
     % --- Zeile 3: ADC-Anteil, erklaert das Verhaeltnis ---
@@ -117,7 +117,7 @@ for di = 1:nD
     plot(ax3, R, 100*b.adcShare, '--', 'Color', C(2,:), 'LineWidth', 2);
     xlabel(ax3, 'R_{eff} [bit/s]', 'FontSize', 12, 'Color', INK2);
     if di == 1
-        ylabel(ax3, 'ADC-Anteil an E_{bit} [%]', 'FontSize', 12, 'Color', INK2);
+        ylabel(ax3, 'ADC share of E_{bit} [%]', 'FontSize', 12, 'Color', INK2);
     end
 end
 MODENAME = containers.Map({'mux','bf','bfideal'}, ...
