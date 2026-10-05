@@ -46,7 +46,10 @@ resultsDir = gearboxphy.paths.resultsDir(resultsDir);   % Name -> results/<name>
 
 gearPriority = ["Pulse-Energy", "Pulse-Arbitrary", "ZXM", "QAM"];
 maxMarkersPerRun = opts.maxMarkersPerRun;
-markerByNt = containers.Map({1,2,4,8}, {'o','s','^','d'});
+% N_t = 16 was missing: the marker loop iterates over these keys, so a
+% point won by a 16x16 array silently got no marker at all. Added with
+% 'v' when the SISO-vs-MIMO study extended the sweep past N = 8.
+markerByNt = containers.Map({1,2,4,8,16}, {'o','s','^','d','v'});
 % N_t -> "N_txN_r" legend label, filled from the antennaConfigsUsed
 % actually stored in the results (markerByNt is keyed on N_t alone, so a
 % non-square config like 2x4 would be mislabelled if N_r were assumed

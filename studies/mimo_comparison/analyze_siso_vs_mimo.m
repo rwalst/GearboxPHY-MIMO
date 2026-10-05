@@ -118,16 +118,16 @@ for di = 1:nD
     end
     ylim(ax2, ratioLim);
     if di == 1
-        ylabel(ax2, 'E_{bit}: bestes MIMO / SISO', 'FontSize', 12, 'Color', INK2);
+        ylabel(ax2, 'E_{bit}: best MIMO / SISO', 'FontSize', 12, 'Color', INK2);
         % Relativ zu den Achsgrenzen setzen, nicht auf feste Werte: bei
         % fester Position lief der Text sonst aus der Achse heraus und in
         % das Panel darueber.
         yl = ylim(ax2);
         yHi = exp(log(yl(2)) - 0.10*(log(yl(2))-log(yl(1))));
         yLo = exp(log(yl(1)) + 0.10*(log(yl(2))-log(yl(1))));
-        text(ax2, s.R(3), yHi, ' SISO guenstiger', 'FontSize', 9, 'Color', INK2, ...
+        text(ax2, s.R(3), yHi, ' SISO cheaper', 'FontSize', 9, 'Color', INK2, ...
             'VerticalAlignment', 'top');
-        text(ax2, s.R(3), yLo, ' MIMO guenstiger', 'FontSize', 9, 'Color', INK2, ...
+        text(ax2, s.R(3), yLo, ' MIMO cheaper', 'FontSize', 9, 'Color', INK2, ...
             'VerticalAlignment', 'bottom');
     end
 
@@ -140,11 +140,11 @@ for di = 1:nD
     ylim(ax3, [0.8 max(opts.Ns)*1.3]);
     xlabel(ax3, 'R_{eff} [bit/s]', 'FontSize', 12, 'Color', INK2);
     if di == 1
-        ylabel(ax3, 'optimales N', 'FontSize', 12, 'Color', INK2);
+        ylabel(ax3, 'optimal N', 'FontSize', 12, 'Color', INK2);
     end
 end
-title(tl, sprintf(['SISO gegen MIMO, scaledB, f_c = %g GHz, i.i.d. Rayleigh, ' ...
-    'bestes M \\leq %d  (gestrichelt: Schranken-Tier)'], opts.fcGHz, max(opts.Ms)), ...
+title(tl, sprintf(['SISO against MIMO, scaledB, f_c = %g GHz, i.i.d. Rayleigh, ' ...
+    'best over M \\leq %d   (dashed: bound tier, shaded: AWGN gears win)'], opts.fcGHz, max(opts.Ms)), ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 figName = sprintf('%s.png', opts.prefix);
 exportgraphics(fig, fullfile(figDir, figName), 'Resolution', 200);
