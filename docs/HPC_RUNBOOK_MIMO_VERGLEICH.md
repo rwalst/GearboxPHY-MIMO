@@ -224,6 +224,43 @@ Drei Dinge, die man beim Lesen wissen muss:
   Signal, bezahlt werden N_r. Von den drei Modi steht dieser Regelvergleich
   als einziger auf dieser Naht.
 
+### Der Rang-1-Endpunkt (K = Inf)
+
+```matlab
+cd /workspace/QuantizedMimoMI/qam/sweep
+runQamSweepMuxRank1
+```
+
+**RESSOURCEN: nodes=1 ntasks=1 cpus-per-task=4 mem=32G time=04:00:00**
+
+Fuellt die rechte Kante der K-Achse fuer Multiplexing. Fuer Beamforming
+gab es diesen Endpunkt laengst (`runQamSweepBfIdeal`: SISO-AWGN plus
+Gewinn N_t·N_r); fuer MUX fehlte er, und die Rice-Auswertung konnte dort
+nur einen der beiden Modi zeigen.
+
+Drei Dinge, die bei diesem Lauf anders sind als bei allen anderen:
+
+- **`nMC = 1`, und das ist korrekt.** Bei K = Inf ist der Kanal
+  deterministisch (H = H_LOS, Rang 1). 400 Ziehungen lieferten 400-mal
+  dieselbe Matrix. Die Konfidenzintervalle in der Ergebnisdatei sind
+  deshalb 0 — es gibt nichts zu streuen.
+- **Mehr Kerne bringen nichts.** Parallelisiert wird ueber die
+  Realisierungen, und davon gibt es eine. Der Treiber deckelt die
+  Workerzahl deshalb bei 4. Der Job wird wegen des SPEICHERS angefordert,
+  nicht wegen der Rechenzeit: bei N = 16 und B = 11 faellt Tier 3 an, und
+  `miUpperBound` braucht dort rund 8,4 GB.
+- **N = 1, 2 und 4 rechnen am Arbeitsplatz in Minuten** und liegen in der
+  Regel schon vor. `runRuleSweep` ueberspringt vorhandene Dateien, der
+  Clusterlauf holt also nur N = 8 und 16 nach. Vorher nichts loeschen.
+
+Pruefung des Ergebnisses: Bei Rang 1 sieht jede Empfangsantenne nur die
+SUMME der Sendesymbole, mehr als `log2(#verschiedene Summen)` ist also
+nicht uebertragbar — 4,64 statt 8 bit bei 4x4 QPSK, 7,40 statt 16 bei
+4x4 16-QAM. **Eine Kurve ueber dieser Decke ist falsch.**
+
+Danach `K_RICE` in `export_mimo_comparison_curves.m` um `Inf` ergaenzen,
+damit die Variante `mux_scaledB_KInf` exportiert wird.
+
 ### Schritt 4c — der Rice-Sweep
 
 ```matlab

@@ -35,6 +35,8 @@ for Kv = [3 30]
     VARIANTS(end+1) = sprintf("mux_scaledB_K%g", Kv); %#ok<AGROW>
     VARIANTS(end+1) = sprintf("bf_scaledB_K%g", Kv);  %#ok<AGROW>
 end
+% Rang-1-Endpunkt, nur MUX -- fuer BF ist bfideal_scaledB bereits dieser Fall.
+VARIANTS(end+1) = "mux_scaledB_KInf";
 CFG.rates     = [1e6 1e9];              % niedrig / hoch [bit/s]
 CFG.distances = logspace(1, 4, 25);     % 10 m .. 10 km
 CFG.fcGHz     = 28;

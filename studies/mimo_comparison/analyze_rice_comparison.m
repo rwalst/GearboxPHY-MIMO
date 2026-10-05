@@ -69,6 +69,10 @@ for m = 1:numel(MODE)
     end
 end
 ideal = localLoad("bfideal_scaledB");
+% Der MUX-Endpunkt bei K = Inf (runQamSweepMuxRank1). Fuer BF ist
+% bfideal genau dieser Fall; fuer MUX fehlte er, und die Abbildung konnte
+% am rechten Rand nur EINEN der beiden Modi zeigen.
+muxInf = localLoad("mux_scaledB_KInf");
 assert(any(~cellfun(@isempty, D(:))), 'analyzeRice:noData', ...
     ['Keine results/cmp_distance_*scaledB*.mat gefunden - erst ' ...
      'run_mimo_comparison_distance ausfuehren.']);
@@ -82,7 +86,8 @@ tl  = tiledlayout(fig, 2, nC, 'TileSpacing', 'compact', 'Padding', 'compact');
 cases = nan(nC, 2);          % tatsaechlich getroffene (d, R)
 out = struct('cases', [], 'K', KS, 'E', [], 'ratio', [], 'Kstar', []);
 E     = nan(nC, numel(MODE), numel(KS));
-Eidl  = nan(1, nC);
+Eidl    = nan(1, nC);
+EmuxInf = nan(1, nC);
 ratio = nan(nC, numel(KS));
 Kstar = cell(1, nC);
 
@@ -99,7 +104,8 @@ for c = 1:nC
             E(c,m,k) = localBest(D{m,k}, di, ri);
         end
     end
-    if ~isempty(ideal), Eidl(c) = localBest(ideal, di, ri); end
+    if ~isempty(ideal),  Eidl(c)  = localBest(ideal,  di, ri); end
+    if ~isempty(muxInf), EmuxInf(c) = localBest(muxInf, di, ri); end
     ratio(c,:) = squeeze(E(c,2,:)) ./ squeeze(E(c,1,:));   % BF / MUX
     Kstar{c}   = localKstar(KS, ratio(c,:));
 
@@ -111,10 +117,17 @@ for c = 1:nC
         'MarkerFaceColor', 'w', 'DisplayName', 'MUX'); %#ok<AGROW>
     h(end+1) = plot(ax, x, squeeze(E(c,2,:)), '-o', 'Color', C(2,:), 'LineWidth', 2, ...
         'MarkerFaceColor', 'w', 'DisplayName', 'BF'); %#ok<AGROW>
+    % Beide Endpunkte am rechten Rand: Rang 1 ist BFs Bestfall und MUX'
+    % Schlechtfall, das soll die Abbildung nebeneinander zeigen.
+    if isfinite(EmuxInf(c))
+        h(end+1) = plot(ax, numel(KS)+0.6, EmuxInf(c), 'p', 'Color', C(1,:), ...
+            'MarkerSize', 12, 'MarkerFaceColor', C(1,:), ...
+            'DisplayName', 'MUX, Rang 1 (K \rightarrow \infty)'); %#ok<AGROW>
+    end
     if isfinite(Eidl(c))
-        h(end+1) = plot(ax, numel(KS)+0.6, Eidl(c), 'p', 'Color', C(3,:), ...
-            'MarkerSize', 12, 'MarkerFaceColor', C(3,:), ...
-            'DisplayName', 'BF ideal (K \rightarrow \infty)'); %#ok<AGROW>
+        h(end+1) = plot(ax, numel(KS)+0.6, Eidl(c), 'p', 'Color', C(2,:), ...
+            'MarkerSize', 12, 'MarkerFaceColor', C(2,:), ...
+            'DisplayName', 'BF, Rang 1 = BF ideal (K \rightarrow \infty)'); %#ok<AGROW>
     end
     set(ax, 'XTick', [x numel(KS)+0.6], 'XTickLabel', [localKLabels(KS) {'\infty'}], ...
         'XLim', [0.6 numel(KS)+1.0]);
@@ -161,11 +174,13 @@ for c = 1:nC
         fprintf('   -> %s\n', s.note);
     end
     if isfinite(Eidl(c))
-        fprintf('   -> BF ideal (K -> inf): %.3g J/bit\n', Eidl(c));
+        fprintf('   -> K = inf (Rang 1):  MUX %.3g   BF %.3g   BF/MUX %.3f\n', ...
+            EmuxInf(c), Eidl(c), Eidl(c)/EmuxInf(c));
     end
 end
 
-out.cases = cases; out.E = E; out.ratio = ratio; out.Kstar = Kstar; out.Eideal = Eidl;
+out.cases = cases; out.E = E; out.ratio = ratio; out.Kstar = Kstar;
+out.Eideal = Eidl; out.EmuxInf = EmuxInf;
 save(fullfile(figDir, 'rice_summary.mat'), 'out');
 fprintf('\ncmp_rice.png und rice_summary.mat in %s\n', figDir);
 end

@@ -35,7 +35,10 @@ baseDir = gearboxphy.paths.dataDir('SE_data');
 % RICE-FAKTOREN. K = 0 ist der Rayleigh-Grundlauf; 3 und 30 kommen aus dem
 % Rice-Sweep (K = 10 wurde bewusst ausgelassen). Nur scaledB, nur die
 % beiden Rayleigh-Modi -- ideales Beamforming ist AWGN und kennt kein K.
-K_RICE = [3 30];
+% Inf ist der Endpunkt der K-Achse: reines LOS, Rang 1. Nur fuer MUX neu
+% zu rechnen (runQamSweepMuxRank1); fuer BF gibt es ihn seit jeher als
+% bfideal. Beide zusammen schliessen die Achse rechts.
+K_RICE = [3 30 Inf];
 
 % name, Quellordner, Dateimuster, Regel-Variante, Kanal (fuer die
 % 1x1-Pruefung), Rice-Faktor.
@@ -60,9 +63,14 @@ for Kv = K_RICE
     V(end+1) = struct('name', sprintf("mux_scaledB_K%g", Kv), ...
         'src', fullfile(qamRoot,'results','rule_mux'), 'pattern', 'mi_Nt*_Nr*_M*_B*_K*.mat', ...
         'variant', "scaledB", 'channel', "rayleigh", 'K', Kv); %#ok<AGROW>
-    V(end+1) = struct('name', sprintf("bf_scaledB_K%g", Kv), ...
-        'src', fullfile(qamRoot,'results','bf_rayleigh'), 'pattern', 'mi_bf_Nt*_Nr*_M*_B*_K*.mat', ...
-        'variant', "scaledB", 'channel', "rayleigh", 'K', Kv); %#ok<AGROW>
+    % Bei K = Inf KEINE BF-Variante: diesen Endpunkt gibt es dort schon als
+    % bfideal (SISO-AWGN plus Gewinn Nt*Nr, exakt gerechnet). Ein zweiter
+    % Weg zum selben Punkt waere eine Dublette unter anderem Namen.
+    if ~isinf(Kv)
+        V(end+1) = struct('name', sprintf("bf_scaledB_K%g", Kv), ...
+            'src', fullfile(qamRoot,'results','bf_rayleigh'), 'pattern', 'mi_bf_Nt*_Nr*_M*_B*_K*.mat', ...
+            'variant', "scaledB", 'channel', "rayleigh", 'K', Kv); %#ok<AGROW>
+    end
 end
 
 % Gemeinsames SNR-Raster fuer die drei RAYLEIGH-Varianten. Die Laeufe
