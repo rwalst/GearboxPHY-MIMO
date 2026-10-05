@@ -282,6 +282,73 @@ Ergebnisdatei**, nicht aus `opts.Ns`. Solange 3b auf `[1 2 4]`
 beschränkt ist, zeigt die Abbildung also genau das — ohne dass man
 `opts.Ns` mitpflegen muss.
 
+### Schritt 4d — die dritte ADC-Regel (`alphabetB`), zwei parallele Treiber
+
+```matlab
+cd /workspace/QuantizedMimoMI/qam/sweep
+runQamSweepAlphabet1        % Allokation A
+runQamSweepAlphabet2        % Allokation B, gleichzeitig
+```
+
+**RESSOURCEN je Treiber: nodes=1 ntasks=1 cpus-per-task=200 mem=64G
+time=24:00:00** — Teil 1 rund 16 h, Teil 2 rund 18 h.
+
+Die Regel ist `B = N_t·½log₂M + 3`: sie bezahlt die Überlagerung am
+Empfänger vollständig, denn je reeller Achse überlagern sich `N_t` mal
+`√M` Stufen. Sie wächst damit **linear** in `N_t`, wo `scaledB`
+logarithmisch wächst und `fixedB` gar nicht — die drei Regeln klammern den
+Entwurfsraum also von unten (`fixedB`), in der Mitte (`scaledB`) und von
+oben (`alphabetB`).
+
+**Nur Multiplexing.** Bei Beamforming kommt EIN Strom an, das beobachtete
+Alphabet ist `M` unabhängig von `N_t`, und `alphabetB` wäre dort mit
+`fixedB` identisch. Ein BF-Lauf brauchte es nicht.
+
+Das Gitter ist kleiner als bei den anderen Regeln, weil `L = 2^B` in jeder
+Zwischenrechnung steckt und nur `B ≤ 20` rechenbar ist (`adcBitsRule`
+bricht über 30 ab und warnt über 20). Die Bitzahl je Konfiguration:
+
+| | N=1 | 2 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+| M=4 | 4 | 5 | 7 | 11 | 19 |
+| M=16 | 5 | 7 | 11 | 19 | — |
+| M=64 | 6 | 9 | 15 | — | — |
+| M=256 | 7 | 11 | 19 | — | — |
+
+`—` heißt „über der Grenze, nicht im Gitter" — die Regel liefert dort
+durchaus Werte (27, 35, 51, 67), nur keine rechenbaren.
+
+**Die Aufteilung ist gemessen, nicht geschätzt** (`alphabetGrid.m`, eine
+Quelle für beide Treiber — `validateAlphabetGrid` prüft Abdeckung,
+Eindeutigkeit, `B ≤ 20` und die Balance). Die Kosten stammen aus den
+vorhandenen `scaledB`-Läufen derselben Konfigurationen, umgerechnet auf
+Kernsekunden je Realisierung; verteilt wird nach Longest Processing Time.
+Ergebnis 1388 s gegen 1522 s, also 8,8 % Schieflage. **Mehr Ausgewogenheit
+ist nicht erreichbar**: `N_t=8/M=4` trägt allein 1320 s und damit 45 % der
+Summe — ein unteilbares Stück, das die Grenze setzt.
+
+Zwei Dinge, die man vor dem Start wissen muss:
+
+- **Eine angefangene Kurve geht nicht mehr verloren.** `runRuleSweep`
+  schreibt seit dem Checkpoint je SNR-Punkt nach jedem Punkt in
+  `results/rule_mux/checkpoints/` und setzt beim Neustart am nächsten Punkt
+  fort (Meldung: „Checkpoint: n von N Punkten liegen vor"). Vorher war eine
+  Kurve ein Alles-oder-nichts-Lauf, und bei `N_t=8/M=4` sind das 15,4 h
+  gegen ein 24-h-Fenster. Beim Neustart **nichts löschen**, auch nicht den
+  Checkpoint-Ordner. Der Checkpoint führt alle Parameter mit, die die Kurve
+  bestimmen; passen sie nicht, verwirft er sich selbst mit einer Warnung
+  (`runRuleSweep:cpStale`) statt still auf fremdem Zwischenstand
+  aufzusetzen.
+- **Ein Teil des Gitters liegt schon vor und wird übersprungen.** Für
+  `N_t=1` (alle M) und `N_t=2/M=4` liefert `alphabetB` dieselbe Bitzahl wie
+  `scaledB`, und gleiches `B` heißt dieselbe Kurve. Das ist richtig, kein
+  fehlender Lauf.
+
+Danach, für die Auswertung: in `export_mimo_comparison_curves.m` die
+Variantenliste `V` um einen Eintrag `mux_alphabetB` (`srcDir` `rule_mux`,
+`variant` `"alphabetB"`) ergänzen. Erst dann sieht die Gearbox-Seite die
+dritte Regel.
+
 ## Was sich am Code geändert hat
 
 ### Zwei Korrekturen am Energiemodell (betreffen alle MUX-Ergebnisse)
@@ -349,6 +416,14 @@ Fassung stürzte daran nicht ab, weil alle Werte eindeutig waren;
 | `qam/sweep/runQamSweepBfIdeal.m` | neu — Treiber BF ideal fixedB+scaledB |
 | `qam/sweep/exportToGearboxSEData.m` | SNR-Umrechnung, Varianten, Basisordner, 1×1 als SISO |
 | `qam/validate/validateBfRayleigh.m` | neu — Schritt 0, MI-Seite |
+| `qam/sweep/runRuleSweep.m` | Checkpoint je SNR-Punkt, Signatur gegen Fremdstand |
+| `qam/sweep/alphabetGrid.m` | neu — Gitter + gemessene Aufteilung des `alphabetB`-Sweeps |
+| `qam/sweep/runQamSweepAlphabet1.m` | neu — Treiber MUX `alphabetB`, Teil 1 von 2 |
+| `qam/sweep/runQamSweepAlphabet2.m` | neu — Treiber MUX `alphabetB`, Teil 2 von 2 |
+| `qam/validate/validateAlphabetGrid.m` | neu — Abdeckung, `B ≤ 20`, Regel, Balance |
+| `qam/sweep/runQamSweepMuxRank1.m` | neu — Rang-1-Endpunkt (K = Inf), `nMC = 1` |
+| `qam/core/riceChannel.m` | nimmt `K = Inf` (reines LOS, Rang 1) |
+| `qam/sweep/migrateVariantNames.m` | neu — Etiketten V0/V1 → `fixedB`/`scaledB` in alten `.mat` |
 
 `GearboxPHY-MIMO/`
 
@@ -366,6 +441,14 @@ Fassung stürzte daran nicht ab, weil alle Werte eindeutig waren;
 | `+gearboxphy/+paths/` | neu — Wurzel/`data`/`results`, eine Pfadquelle |
 | `setupGearboxPath.m` | neu — legt `studies/` und `tests/` auf den Pfad |
 | `tests/mimo_smoke_test.m` | läuft auf `SE_data_mux_fixedB`, Physik-Assertion entschärft |
+
+`migrateVariantNames` ist **keine Voraussetzung für den Export** — das war
+eine falsche Annahme und ist nachgeprüft: `exportToGearboxSEData` wählt die
+Dateien über `B` gegen `adcBitsRule(M, N_t, N_r, variant)` aus, nicht über
+das Feld `results.variants`, und dieses Feld liest überhaupt nichts weiter.
+Alte Kurven mit dem Etikett `V0`/`V1` exportieren also korrekt. Das Skript
+räumt nur die Metadaten auf, damit eine Ergebnisdatei die Regel benennt, mit
+der sie gerechnet wurde.
 
 **Das Repo ist umstrukturiert** (2026-10-02): `gearboxphy_framework/` ist
 aufgeloest, der Framework-Ordner IST das Repo. Skripte liegen nach Studie in

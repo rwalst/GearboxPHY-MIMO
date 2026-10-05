@@ -6,7 +6,7 @@
 %       export_mimo_comparison_curves
 %   Braucht die Ergebnisse von Schritt 1 (siehe HPC_RUNBOOK_MIMO_VERGLEICH.md):
 %       QuantizedMimoMI/qam/results/bHalf        runQamSweepBHalf      (MUX fixedB)
-%       QuantizedMimoMI/qam/results/rule_mux     runQamSweepMuxV1      (MUX scaledB)
+%       QuantizedMimoMI/qam/results/rule_mux     runQamSweepMuxScaledB (MUX scaledB)
 %       QuantizedMimoMI/qam/results/bf_rayleigh  runQamSweepBfRayleigh (BF fixedB+scaledB)
 %       QuantizedMimoMI/qam/results/bf_ideal     runQamSweepBfIdeal    (BF ideal fixedB+scaledB)
 %
