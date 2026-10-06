@@ -48,16 +48,25 @@ K_RICE = [3 30 Inf];
 % alle auf denselben Dateinamen; exportToGearboxSEData bricht dann mit
 % export:ambiguous ab.
 V = struct( ...
-  'name',    {"mux_fixedB", "mux_scaledB", "bf_fixedB", "bf_scaledB", "bfideal_fixedB", "bfideal_scaledB"}, ...
+  'name',    {"mux_fixedB", "mux_scaledB", "mux_alphabetB", "bf_fixedB", "bf_scaledB", "bfideal_fixedB", "bfideal_scaledB"}, ...
   'src',     {fullfile(qamRoot,'results','bHalf'),       fullfile(qamRoot,'results','rule_mux'), ...
+              fullfile(qamRoot,'results','rule_mux'), ...
               fullfile(qamRoot,'results','bf_rayleigh'), fullfile(qamRoot,'results','bf_rayleigh'), ...
               fullfile(qamRoot,'results','bf_ideal'),    fullfile(qamRoot,'results','bf_ideal')}, ...
   'pattern', {'mi_Nt*_Nr*_M*.mat',        'mi_Nt*_Nr*_M*_B*.mat', ...
+              'mi_Nt*_Nr*_M*_B*.mat', ...
               'mi_bf_Nt*_Nr*_M*_B*.mat',  'mi_bf_Nt*_Nr*_M*_B*.mat', ...
               'mi_bfideal_Nt*_Nr*_M*_B*.mat', 'mi_bfideal_Nt*_Nr*_M*_B*.mat'}, ...
-  'variant', {"fixedB", "scaledB", "fixedB", "scaledB", "fixedB", "scaledB"}, ...
-  'channel', {"rayleigh", "rayleigh", "rayleigh", "rayleigh", "awgn", "awgn"}, ...
-  'K',       {0, 0, 0, 0, 0, 0});
+  'variant', {"fixedB", "scaledB", "alphabetB", "fixedB", "scaledB", "fixedB", "scaledB"}, ...
+  'channel', {"rayleigh", "rayleigh", "rayleigh", "rayleigh", "rayleigh", "awgn", "awgn"}, ...
+  'K',       {0, 0, 0, 0, 0, 0, 0});
+
+% mux_alphabetB liegt im SELBEN Quellordner wie mux_scaledB (rule_mux) und
+% traegt dasselbe Dateimuster -- getrennt werden die beiden ausschliesslich
+% ueber den B-Filter in exportToGearboxSEData (B muss
+% adcBitsRule(M,Nt,Nr,variant) entsprechen). Deshalb MUSS 'variant' hier
+% stimmen; ohne den Filter exportierten beide Regeln auf dieselben
+% Zieldateinamen und exportToGearboxSEData braeche mit export:ambiguous ab.
 
 for Kv = K_RICE
     V(end+1) = struct('name', sprintf("mux_scaledB_K%g", Kv), ...
@@ -111,13 +120,29 @@ for k = 1:numel(V)
 
     % Vollstaendigkeit: jede (N, M)-Kurve muss da sein, mit der richtigen Bitzahl
     fprintf('  Vollstaendigkeit %s:\n', V(k).name);
+    % adcBitsRule warnt ab B > 20. Hier ist das kein Befund, sondern genau
+    % der Fall, den die Tabelle als "--" ausweist -- also stumm stellen.
+    wState = warning('off', 'adcBitsRule:large');
     for M = Ms
         row = sprintf('    M=%-3d', M);
         for N = NsV
             if N == 1, fn = sprintf('SE_%d_QAM.mat', M);
             else,      fn = sprintf('SE_%d_QAM_%dx%d.mat', M, N, N); end
             p = fullfile(dst, fn);
-            Bsoll = adcBitsRule(M, N, N, V(k).variant);
+            % B > 20 ist NICHT rechenbar und damit kein fehlender Lauf:
+            % L = 2^B steckt in jeder Zwischenrechnung, alphabetGrid schneidet
+            % das Gitter genau dort ab (bei alphabetB sind das 5 der 20
+            % Konfigurationen). adcBitsRule BRICHT ab B > 30 ab -- bei
+            % alphabetB waere 16x16/M=16 schon B = 35 -- daher der try.
+            try
+                Bsoll = adcBitsRule(M, N, N, V(k).variant);
+            catch
+                Bsoll = NaN;
+            end
+            if ~isfinite(Bsoll) || Bsoll > 20
+                row = [row sprintf('  %2dx%-2d  --   ', N, N)]; %#ok<AGROW>
+                continue
+            end
             if isfile(p)
                 w = load(p, 'sourceB');
                 if isfield(w, 'sourceB') && w.sourceB == Bsoll
@@ -135,6 +160,7 @@ for k = 1:numel(V)
         end
         fprintf('%s\n', row);
     end
+    warning(wState);
 end
 
 % Querpruefung: die 1x1-Kurven muessen innerhalb eines KANALS in allen
