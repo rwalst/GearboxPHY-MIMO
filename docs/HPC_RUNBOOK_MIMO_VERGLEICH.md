@@ -137,10 +137,15 @@ Checkpoint je SNR-Punkt setzt mitten in der Kurve fort.
 Zwei weitere Änderungen am Treiber, damit er zu seinen eigenen Ergebnissen
 passt:
 
-- **SNR-Raster −15:2:25 statt −15:1:25.** Der alte Wert war ein latenter
-  Fehler: die gespeicherten Kurven *haben* 21 Punkte, der Treiber hätte 41
-  erzeugt. −15:2:25 ist zudem das Raster, auf das der Export alle
-  Rayleigh-Kurven ausdünnt.
+- **SNR-Raster −15:2:25 statt −15:1:25.** Nachgemessen: der Ordner ist
+  nicht homogen — 13 Kurven haben 41 Punkte (N ≤ 4 plus 8×8/M=4, gerechnet
+  25.09.–01.10.), 5 haben 21 (die teuren, 01.–03.10.). Das Raster wurde
+  unterwegs für die teuren Konfigurationen halbiert, ohne den Treiber
+  anzupassen. Jetzt steht −15:2:25 im Treiber: die zwei offenen Kurven sind
+  die teuersten des Gitters, und der Export dünnt ohnehin alle
+  Rayleigh-Kurven darauf aus. Weil −15:2:25 eine *Teilmenge* von −15:1:25
+  ist, wählt er exakt aus und interpoliert nicht — die gemischten Raster
+  sind ohne Folge für die Auswertung.
 - **Alle 20 Dateinamen tragen `B`.** Die 18 vorhandenen Kurven sind per
   `git mv` auf `mi_Nt<N>_Nr<N>_M<M>_B<B>.mat` umgestellt, sonst hätte der
   Treiber sie nicht mehr als fertig erkannt. Nachgeprüft, dass der Export

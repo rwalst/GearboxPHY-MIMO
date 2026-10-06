@@ -6,7 +6,7 @@ function validateGear(gear)
 %   hierarchy - see ARCHITECTURE_PLAN.md section 4.1 for why this
 %   framework uses plain functions/structs instead of classdef. Called
 %   once when gearRegistry() builds its list, and again from
-%   tests/+unit/tGears.m.
+%   tests/+unit/GearsTest.m.
 requiredFunctionFields = ["prepare","initialGuess","optimizerBounds", ...
     "makeObjective","computeBudget","antennaConfigs"];
 for f = requiredFunctionFields
