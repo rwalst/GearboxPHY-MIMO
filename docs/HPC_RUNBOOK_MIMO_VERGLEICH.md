@@ -64,7 +64,7 @@ wenn etwas fehlschlägt.** Besonders aussagekräftig:
 
 | Job | Datei (in `QuantizedMimoMI/qam/sweep/`) | Ausgabe | Ressourcen |
 |---|---|---|---|
-| MUX fixedB | `runQamSweepBHalf` — **läuft bereits** | `qam/results/bHalf/` | 200 Kerne, 64 GB, 24 h |
+| MUX fixedB | `runQamSweepBHalf` — 18 von 20 Kurven liegen vor, s. u. | `qam/results/bHalf/` | 200 Kerne, 64 GB, 24 h |
 | MUX scaledB | `runQamSweepMuxScaledB` | `qam/results/rule_mux/` | 200 Kerne, 64 GB, 24 h |
 | BF fixedB+scaledB | `runQamSweepBfRayleigh` | `qam/results/bf_rayleigh/` | 200 Kerne, 64 GB, 12 h |
 | BF ideal fixedB+scaledB | `runQamSweepBfIdeal` | `qam/results/bf_ideal/` | **kein Pool, Sekunden** — exakt, keine Mittelung |
@@ -90,17 +90,22 @@ werden oder abbrechen:
 | 16×16, M = 64 | 3 | ~262 MB | ~52 GB |
 | 16×16, M = 256 | 3 | ~524 MB | ~105 GB |
 
-Bricht der Job an einer davon ab: mit weniger Workern neu starten, die
-fertigen Konfigurationen bleiben erhalten. Die neuen Läufe (scaledB, BF) leiten
-Blockgröße und das Abschalten der schweren oberen Schranken selbst aus
-150 MB/Worker ab (`runRuleSweep.m`) und haben dieses Problem nicht.
+**Diese Tabelle galt für den alten Treiber über `runConfigSweep`, und die
+frühere Empfehlung „mit weniger Workern neu starten" war falsch** — siehe den
+nächsten Abschnitt. `runQamSweepBHalf` geht inzwischen wie alle anderen Läufe
+über `runRuleSweep` und leitet Blockgröße und das Abschalten der schweren
+oberen Schranken selbst aus 150 MB/Worker ab. Das Problem besteht damit in
+keinem der Läufe mehr.
 
 #### Die zwei fehlenden fixedB-Kurven (M=256 bei 8×8 und 16×16)
 
 ```matlab
 cd /workspace/QuantizedMimoMI/qam/sweep
-runQamSweepFixedBRest
+runQamSweepBHalf
 ```
+
+Derselbe Treiber wie oben, einfach erneut starten: die 18 fertigen Kurven
+werden anhand der Datei übersprungen, gerechnet werden nur die zwei offenen.
 
 **RESSOURCEN: nodes=1 ntasks=1 cpus-per-task=200 mem=64G time=24:00:00**
 
@@ -119,23 +124,34 @@ Gemessen an 16×16/M=64, demselben Arbeitspunkt über beide Wege:
 
 Faktor 24 bei *höherem* B: in Tier 3 dominiert die schwere obere Schranke
 die Rechenzeit. Mit `heavyUpper = true` wäre 16×16/M=256 auch bei
-speichersicheren 80 Workern ein Lauf von Wochen — deshalb geht dieser
-Treiber über `runRuleSweep`, wo der Schalter aus 150 MB/Worker selbst
-fällt (hier für beide Konfigurationen: aus).
+speichersicheren 80 Workern ein Lauf von Wochen — deshalb läuft
+`runQamSweepBHalf` jetzt über `runRuleSweep`, wo der Schalter aus
+150 MB/Worker selbst fällt (hier für beide Konfigurationen: aus). **Die
+Workerzahl bleibt 200.**
 
 Laufzeitschranke aus den `scaledB`-Zwillingen mit **größerem** L: 8×8/B=10
 brauchte 11,2 h, 16×16/B=11 brauchte 22,4 h. Mit B=7 liegt beides darunter,
 zusammen also unter 34 h. Reicht ein 24-h-Fenster nicht: neu starten, der
 Checkpoint je SNR-Punkt setzt mitten in der Kurve fort.
 
-Zwei Folgen, beide unkritisch für die Auswertung:
+Zwei weitere Änderungen am Treiber, damit er zu seinen eigenen Ergebnissen
+passt:
 
-- `results.upper` ist die lockerere Klammer. Die Gearbox nimmt
-  `results.lower`, und die untere Schranke ist von `heavyUpper` unberührt.
-- Der Dateiname trägt `B` (`mi_Nt8_Nr8_M256_B7.mat`). Das Export-Muster
-  greift beide Formen, aber `runConfigSweep` erkennt ihn nicht als fertig —
-  `runQamSweepBHalf` danach **nicht** wieder anwerfen, es würde die zwei
-  Kurven erneut rechnen und wieder am Speicher scheitern.
+- **SNR-Raster −15:2:25 statt −15:1:25.** Der alte Wert war ein latenter
+  Fehler: die gespeicherten Kurven *haben* 21 Punkte, der Treiber hätte 41
+  erzeugt. −15:2:25 ist zudem das Raster, auf das der Export alle
+  Rayleigh-Kurven ausdünnt.
+- **Alle 20 Dateinamen tragen `B`.** Die 18 vorhandenen Kurven sind per
+  `git mv` auf `mi_Nt<N>_Nr<N>_M<M>_B<B>.mat` umgestellt, sonst hätte der
+  Treiber sie nicht mehr als fertig erkannt. Nachgeprüft, dass der Export
+  davon unberührt bleibt: Export vor und nach der Umbenennung, 42 Dateien,
+  alle Zahlen identisch — Unterschied nur in `generatedOn` und im
+  Herkunftsstring `source`, der jetzt den neuen Namen nennt.
+
+Eine Folge bleibt, unkritisch: `results.upper` ist für die zwei neuen Kurven
+die lockerere Klammer. Die Gearbox nimmt `results.lower`, und die untere
+Schranke ist von `heavyUpper` unberührt — die obere ist hier Diagnose, nicht
+Ergebnis.
 
 ### Schritt 2 — Export in die Gearbox-Datenordner (Minuten)
 
@@ -466,7 +482,8 @@ Fassung stürzte daran nicht ab, weil alle Werte eindeutig waren;
 | `qam/sweep/runQamSweepMuxRank1.m` | neu — Rang-1-Endpunkt (K = Inf), `nMC = 1` |
 | `qam/core/riceChannel.m` | nimmt `K = Inf` (reines LOS, Rang 1) |
 | `qam/sweep/migrateVariantNames.m` | neu — Etiketten V0/V1 → `fixedB`/`scaledB` in alten `.mat` |
-| `qam/sweep/runQamSweepFixedBRest.m` | neu — die zwei fehlenden fixedB-Kurven über `runRuleSweep` |
+| `qam/sweep/runQamSweepBHalf.m` | über `runRuleSweep` statt `runConfigSweep`, Raster −15:2:25, Namen mit `B` |
+| `qam/results/bHalf/*.mat` | 18 Kurven umbenannt auf `…_B<B>.mat` (Inhalt unverändert) |
 
 `GearboxPHY-MIMO/`
 
