@@ -95,6 +95,48 @@ fertigen Konfigurationen bleiben erhalten. Die neuen Läufe (scaledB, BF) leiten
 Blockgröße und das Abschalten der schweren oberen Schranken selbst aus
 150 MB/Worker ab (`runRuleSweep.m`) und haben dieses Problem nicht.
 
+#### Die zwei fehlenden fixedB-Kurven (M=256 bei 8×8 und 16×16)
+
+```matlab
+cd /workspace/QuantizedMimoMI/qam/sweep
+runQamSweepFixedBRest
+```
+
+**RESSOURCEN: nodes=1 ntasks=1 cpus-per-task=200 mem=64G time=24:00:00**
+
+Genau diese zwei Konfigurationen sind an der obigen Speichertabelle
+gescheitert, und **nicht an der Workerzahl**. Entscheidend ist `heavyUpper`:
+`runConfigSweep` kennt den Schalter nicht und rechnet `miUpperBound` immer,
+das je Worker `256000·N_r·2^B` Byte hält — 524 MB bei 16×16/B=7, also
+105 GB bei 200 Workern.
+
+Gemessen an 16×16/M=64, demselben Arbeitspunkt über beide Wege:
+
+| Weg | B | `heavyUpper` | t je Realisierung | bei 200 Workern |
+|---|---|---|---|---|
+| `runConfigSweep` | 6 | an | 2854 s | 33,3 h |
+| `runRuleSweep` | 10 | aus | 120 s | 1,4 h |
+
+Faktor 24 bei *höherem* B: in Tier 3 dominiert die schwere obere Schranke
+die Rechenzeit. Mit `heavyUpper = true` wäre 16×16/M=256 auch bei
+speichersicheren 80 Workern ein Lauf von Wochen — deshalb geht dieser
+Treiber über `runRuleSweep`, wo der Schalter aus 150 MB/Worker selbst
+fällt (hier für beide Konfigurationen: aus).
+
+Laufzeitschranke aus den `scaledB`-Zwillingen mit **größerem** L: 8×8/B=10
+brauchte 11,2 h, 16×16/B=11 brauchte 22,4 h. Mit B=7 liegt beides darunter,
+zusammen also unter 34 h. Reicht ein 24-h-Fenster nicht: neu starten, der
+Checkpoint je SNR-Punkt setzt mitten in der Kurve fort.
+
+Zwei Folgen, beide unkritisch für die Auswertung:
+
+- `results.upper` ist die lockerere Klammer. Die Gearbox nimmt
+  `results.lower`, und die untere Schranke ist von `heavyUpper` unberührt.
+- Der Dateiname trägt `B` (`mi_Nt8_Nr8_M256_B7.mat`). Das Export-Muster
+  greift beide Formen, aber `runConfigSweep` erkennt ihn nicht als fertig —
+  `runQamSweepBHalf` danach **nicht** wieder anwerfen, es würde die zwei
+  Kurven erneut rechnen und wieder am Speicher scheitern.
+
 ### Schritt 2 — Export in die Gearbox-Datenordner (Minuten)
 
 ```matlab
@@ -424,6 +466,7 @@ Fassung stürzte daran nicht ab, weil alle Werte eindeutig waren;
 | `qam/sweep/runQamSweepMuxRank1.m` | neu — Rang-1-Endpunkt (K = Inf), `nMC = 1` |
 | `qam/core/riceChannel.m` | nimmt `K = Inf` (reines LOS, Rang 1) |
 | `qam/sweep/migrateVariantNames.m` | neu — Etiketten V0/V1 → `fixedB`/`scaledB` in alten `.mat` |
+| `qam/sweep/runQamSweepFixedBRest.m` | neu — die zwei fehlenden fixedB-Kurven über `runRuleSweep` |
 
 `GearboxPHY-MIMO/`
 
