@@ -120,7 +120,30 @@ for k = 1:numel(V)
     o = struct('pattern', V(k).pattern, 'variant', V(k).variant, ...
                'K', V(k).K, 'baseDir', baseDir, 'sisoFrom1x1', true);
     if V(k).channel == "rayleigh", o.snrGrid = SNR_GRID_RAYLEIGH; end
-    exportToGearboxSEData(V(k).src, dst, o);
+    % DIAGNOSE STATT ABBRUCH ZEHN EBENEN TIEF. exportToGearboxSEData liegt
+    % im ANDEREN Repo (QuantizedMimoMI/qam/sweep/). Ist das veraltet, bricht
+    % der Export mit adcBitsRule:tooLarge ab, und die Meldung sagt nur
+    % "B = 35 ... nicht rechenbar" -- ohne Hinweis darauf, dass die Ursache
+    % ein fehlender Pull in einem anderen Repo ist. Der Fall ist echt
+    % aufgetreten, nachdem mux_alphabetB in die Liste kam: rule_mux enthaelt
+    % die Kurven BEIDER Regeln, der B-Filter fragt also auch bei
+    % 16x16/M=16 nach alphabetB (B = 35), und erst
+    % QuantizedMimoMI 5dce4b4 faengt das im Filter ab.
+    try
+        exportToGearboxSEData(V(k).src, dst, o);
+    catch err
+        if startsWith(err.identifier, 'adcBitsRule:')
+            error('export:qamRepoTooOld', ...
+                ['%s: exportToGearboxSEData hat ein nicht rechenbares B ' ...
+                 'nicht abgefangen (%s). Das andere Repo ist zu alt -- es ' ...
+                 'braucht mindestens QuantizedMimoMI 5dce4b4:\n' ...
+                 '    git -C %s pull\n' ...
+                 'Urspruengliche Meldung: %s'], ...
+                V(k).name, err.identifier, mimoRoot, err.message);
+        else
+            rethrow(err);
+        end
+    end
 
     % Vollstaendigkeit: jede (N, M)-Kurve muss da sein, mit der richtigen Bitzahl
     fprintf('  Vollstaendigkeit %s:\n', V(k).name);
