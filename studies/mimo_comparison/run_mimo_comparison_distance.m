@@ -127,8 +127,9 @@ for v = VARIANTS
     % sie als fertig -- die Auswertung rechnet dann still auf dem alten
     % Raster weiter. Dieselbe Klasse Fehler wie die Checkpoint-Signatur in
     % QuantizedMimoMI/qam/sweep/runRuleSweep.m.
-    if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG)
-        fprintf('\n======== %s: liegt vor (passende CFG), uebersprungen ========\n', v);
+    if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) ...
+            && localUpToDate(outFile, dataDir)
+        fprintf('\n======== %s: liegt vor (passende CFG, Kurven aelter), uebersprungen ========\n', v);
         continue
     end
     fprintf('\n======== %s ========\n', v);
@@ -186,6 +187,19 @@ for mi = 1:nM
         end
     end
 end
+end
+
+function tf = localUpToDate(outFile, dataDir)
+%LOCALUPTODATE  Sind die QUELLKURVEN aelter als das Ergebnis?
+%   Die CFG-Pruefung allein genuegt nicht: kommen neue Kurven in
+%   data/SE_data_<variante>/, bleibt die CFG gleich und der Lauf haelt das
+%   alte Ergebnis fuer fertig. Genau das passierte am 2026-10-07, als die
+%   zwei fehlenden MUX-fixedB-Kurven (M=256 bei 8x8/16x16) vom HPC kamen --
+%   cmp_distance_mux_fixedB.mat trug die richtige CFG und waere
+%   uebersprungen worden, obwohl die Eingangsdaten andere sind.
+o = dir(outFile);
+d = dir(fullfile(dataDir, '*.mat'));
+tf = ~isempty(d) && max([d.datenum]) <= o.datenum;
 end
 
 function tf = localCfgMatches(outFile, CFG)
