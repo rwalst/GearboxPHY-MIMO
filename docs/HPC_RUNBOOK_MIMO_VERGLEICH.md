@@ -336,13 +336,26 @@ und den Abschnitt „Grenzen" weiter unten.
 
 **Schritt 4 läuft auch ohne 3a.** Fehlen die `results/cmp_*_d<d>/`-Ordner,
 entsteht nur `cmp_distance.png` — mit einer Warnung, nicht mit einem
-Abbruch. Das ist der Normalfall am Arbeitsplatz: 3b ist dort in rund
-10 Minuten seriell fertig, 3a braucht den Cluster. Umgekehrt ist 3b
-schon immer optional.
+Abbruch. Umgekehrt ist 3b schon immer optional.
+
+**RICHTIGSTELLUNG (2026-10-07): 3b gehört auf den Cluster, nicht auf den
+Arbeitsplatz.** Hier stand „3b ist dort in rund 10 Minuten seriell fertig".
+Das galt für `CFG.Ns = [1 2 4]`. Mit `[1 2 4 8 16]` sind es gemessen
+**2,7–2,9 min je Variante** bei seriellem Lauf (keine Parallel Computing
+Toolbox am Arbeitsplatz), also rund 25 min für die acht nicht-Rice-
+Varianten — und `mux_scaledB_KInf` lief zweimal über 30 Minuten und hat
+MATLAB beide Male mitgenommen (PID-Limit der Sandbox). Auf dem Cluster
+greift dagegen `parfor` über die 25 Distanzen; die Ressourcenzeile im
+Treiberkopf (32 Kerne, 64 GB, 6 h) ist dafür gedacht.
+
+Die Regel ist damit dieselbe wie für alles andere in diesem Runbook:
+**jeder Lauf, der den Gearbox-Optimierer aufruft — 3a UND 3b — gehört auf
+den HPC.** Lokal bleiben nur der Export (Schritt 2, Sekunden) und die
+Auswertung (Schritt 4, lädt `.mat` und zeichnet).
 
 Die Antennenachse von `cmp_distance.png` kommt aus `CFG.Ns` **der
 Ergebnisdatei**, nicht aus `opts.Ns`. Solange 3b auf `[1 2 4]`
-beschränkt ist, zeigt die Abbildung also genau das — ohne dass man
+beschränkt war, zeigte die Abbildung also genau das — ohne dass man
 `opts.Ns` mitpflegen muss.
 
 ### Schritt 4d — die dritte ADC-Regel (`alphabetB`), zwei parallele Treiber
@@ -411,6 +424,79 @@ Danach, für die Auswertung: in `export_mimo_comparison_curves.m` die
 Variantenliste `V` um einen Eintrag `mux_alphabetB` (`srcDir` `rule_mux`,
 `variant` `"alphabetB"`) ergänzen. Erst dann sieht die Gearbox-Seite die
 dritte Regel.
+
+### Schritt 4e — BF gegen MUX in EINER Auswertung
+
+```matlab
+addpath('/workspace/GearboxPHY-MIMO'); setupGearboxPath;
+out = analyze_bf_vs_mux_qam;          % lokal, Sekunden
+```
+
+Fasst die drei Achsen zusammen, die die Einzelabbildungen getrennt zeigen:
+**Kanal × ADC-Regel × Distanz**, plus die Ratenachse aus 3a. Maß ist
+q = E_bit(BF)/E_bit(MUX), jeweils als Hüllkurve über (M, N) — jeder Modus
+darf seine beste Konfiguration wählen, denn genau das tut das Gearbox.
+q < 1 heißt BF günstiger.
+
+Ergebnis beim Stand N ≤ 4 (vor dem Umstellen auf das volle Raster),
+Schnittdistanz d\* ab der BF günstiger ist, bei R = 1 Gbit/s:
+
+| Kanal | d\* |
+|---|---|
+| K=0 (Rayleigh) | 184 m (fixedB) / 187 m (scaledB) |
+| K=3 | 66 m |
+| K=30 | 52 m |
+| Rang 1 | 46 m |
+
+Monoton im Kanal: je LOS-ähnlicher, desto früher gewinnt BF. Bei
+R = 1 Mbit/s gibt es keinen Schnitt — BF ist nie schlechter und ab ~3 km
+klar besser (q = 0,56 bei 10 km für K=0, 0,42 bei K=30). Die **Ratenachse
+läuft gegenläufig**: bei 10 Gbit/s braucht BF das 2,6- bis 4,4-fache.
+Hohe Rate begünstigt MUX, große Distanz begünstigt BF.
+
+**Zwei Marken, die die Funktion selbst setzt**, ohne die man die Tabelle
+falsch liest:
+
+- `=` beide Modi wählen N = 1, sind also dasselbe System — q = 1 ist dort
+  keine Aussage über BF gegen MUX.
+- `R` ein Modus sitzt am größten verfügbaren N, sein Optimum ist vom
+  Raster abgeschnitten.
+
+**Die Fairness liegt in der Auswertung, nicht mehr in den Treibern.** Früher
+musste jede Variante auf dieselbe `Ns`-Menge beschränkt bleiben, damit kein
+Modus durch die größere Auswahl gewinnt. Jetzt maskiert
+`analyze_bf_vs_mux_qam` je Zelle **symmetrisch**: fehlt eine
+(M,N)-Kombination auf einer Seite, wird sie auf beiden verworfen — in 3b
+über `E`, in 3a über `E_per_bit_all` zusammen mit `antennaConfigsUsed`
+(nicht über die dort schon gebildete Hüllkurve `E_per_bit`, die sich nicht
+mehr maskieren lässt). Deshalb dürfen 3a und 3b jetzt je Variante so weit
+rechnen, wie ihre Kurven reichen.
+
+### Stand des N-Rasters je Variante (2026-10-07)
+
+| Variante | N | Anmerkung |
+|---|---|---|
+| `mux_scaledB`, `bf_fixedB`, `bf_scaledB`, `bfideal_*` | 1…16 | 20/20 Kurven, 3b gerechnet |
+| `mux_fixedB` | 1…16 | 18/20 — M=256 fehlt bei 8×8 und 16×16 |
+| `mux_alphabetB` | 1…16 | 15/20 — B > 20 ist nicht rechenbar (`alphabetGrid`) |
+| `mux_scaledB_KInf` | 1…16 exportiert | 3b noch offen |
+| `*_K3`, `*_K30` | 1…4 | die MI-Läufe rechnen nicht weiter |
+
+Offen auf dem HPC, in dieser Reihenfolge:
+
+1. **3b** für `mux_scaledB_KInf` und `mux_alphabetB` — der Rest wird per
+   Signatur übersprungen (s. u.), es rechnet also nur diese zwei.
+2. **3a** mit `N_LIST = [1 2 4 8 16]` — die feine Ratenachse liegt bisher
+   nur für N ≤ 4 vor, und nur für K = 0.
+3. `runQamSweepBHalf` für die zwei fehlenden MUX-`fixedB`-Kurven.
+4. Rice-MI bei N = 8, 16, falls die Kanalachse über das volle Raster soll
+   (`runQamSweepRiceMux`/`-Bf` rechnen heute nur N ≤ 4).
+
+**3b setzt je Variante wieder auf.** Übersprungen wird nur, wenn die
+vorhandene Datei dieselbe `CFG` trägt (Distanzen, Raten, Ms, Ns). Vorher
+genügte `isfile`, und das war eine Falle: ändert sich `CFG.Ns`, liegt die
+alte Datei noch da und der Lauf hält sie für fertig — die Auswertung
+rechnet dann still auf dem alten Raster weiter.
 
 ## Was sich am Code geändert hat
 

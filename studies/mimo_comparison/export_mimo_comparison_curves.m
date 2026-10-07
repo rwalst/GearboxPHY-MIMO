@@ -107,7 +107,11 @@ for k = 1:numel(V)
     dst = gearboxphy.paths.dataDir("SE_data_" + V(k).name);
     fprintf('\n################ %s ################\n', V(k).name);
     NsV = Ns;
-    if V(k).K ~= 0, NsV = NS_RICE; end
+    % NS_RICE gilt fuer die Rice-Laeufe (K = 3, 30), deren MI-Sweeps nur
+    % N <= 4 rechnen. NICHT fuer K = Inf: runQamSweepMuxRank1 rechnet das
+    % volle Gitter, und seine N = 8/16-Kurven kamen erst nach dem letzten
+    % Exportlauf -- der Ordner war deshalb nur veraltet, nicht begrenzt.
+    if V(k).K ~= 0 && isfinite(V(k).K), NsV = NS_RICE; end
     if ~isfolder(V(k).src)
         warning('export:noSource', 'Quelle %s fehlt - %s uebersprungen.', V(k).src, V(k).name);
         missingTotal = missingTotal + numel(NsV)*numel(Ms);

@@ -30,26 +30,20 @@ VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fix
 distanceVec  = [50 500 5000];
 fcVec        = 28e9;
 RVec         = logspace(3, 11, 100);
-% ACHTUNG, VORLAEUFIG: N_LIST ist auf [1 2 4] beschraenkt, weil erst dort
-% ALLE SECHS Varianten vollstaendig vorliegen. Von den 20 (N,M)-Kombinationen
-% fehlen noch sechs, alle in den teuersten Ecken der beiden
-% Multiplexing-Laeufe:
-%     MUX fixedB: 16x16 bei M=4,16,64,256 und 8x8 bei M=64,256
-%     MUX scaledB: 8x8 und 16x16 bei M=256
+% N_LIST deckt das volle Raster ab. Bis 2026-10-07 stand hier [1 2 4] mit
+% der Begruendung, alle sechs Varianten muessten auf dieselbe Menge
+% beschraenkt bleiben -- sonst gewinnt ein Modus allein durch die groessere
+% Auswahl. Die Begruendung gilt weiter, nur liegt die Durchsetzung jetzt an
+% der richtigen Stelle: analyze_bf_vs_mux_qam maskiert je Zelle SYMMETRISCH
+% (fehlt eine (M,N)-Kombination auf einer Seite, wird sie auf beiden
+% verworfen) und benutzt dafuer E_per_bit_all zusammen mit
+% antennaConfigsUsed, nicht die hier schon gebildete Huellkurve E_per_bit.
 %
-% ALLE Varianten MUESSEN auf dieselbe Menge beschraenkt bleiben. Ideales
-% Beamforming ist bereits vollstaendig (20/20); liefe es mit N bis 16,
-% waehrend MUX fixedB bei 4 endet, gewaenne es allein durch die groessere
-% Auswahl -- genau die einseitige Asymmetrie, gegen die der ganze
-% Vergleich aufgebaut ist.
-%
-% Zurueckschalten, sobald die acht fehlenden Kurven da sind:
-%     N_LIST = [1 2 4 8 16];
-% Was die Beschraenkung NICHT zeigt: bei N <= 4 betraegt der Arraygewinn
-% hoechstens 12 dB und die ADC-Regel kostet hoechstens 2 Bit. Ob
-% Beamforming bei 16x16 noch gewinnt und ob die Regel Multiplexing dort
-% kippt, bleibt offen.
-N_LIST       = [1 2 4];
+% Was noch fehlt, damit das Raster wirklich voll ist: MUX fixedB hat
+% M=256 bei 8x8 und 16x16 nicht (runQamSweepBHalf, zwei Kurven). Die
+% Maskierung nimmt diese beiden Zellen dann auch BF weg -- das Ergebnis ist
+% damit korrekt, nur nicht ausgereizt.
+N_LIST       = [1 2 4 8 16];
 USE_PARALLEL = true;
 %% ===================================================================
 

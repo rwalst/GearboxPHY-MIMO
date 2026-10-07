@@ -52,6 +52,7 @@ arguments
     opt.fcGHz (1,1) double = 28
     opt.Ms (1,:) double = [4 16 64 256]     % M=1024 nur SISO, s. Kopf
     opt.dTab (1,:) double = [10 100 316 1000 3162 10000]  % Tabellenspalten
+    opt.Ns3a (1,:) double = [1 2 4 8 16]    % kanonische N-Liste der 3a-Wuerfel
 end
 
 resDir = gearboxphy.paths.resultsDir('');
@@ -188,12 +189,31 @@ for k = 1:numel(V)
 
     % Nur die gewaehlten M behalten (M=1024 ist SISO-only, s. Kopf)
     keepM = ismember(double(Cm.Ms(:).'), Msel);
-    Em = Em(:,:,keepM,:); Eb = Eb(:,:,keepM,:);
+    % GEMEINSAME N-MENGE. Seit 3b je Variante so weit rechnet, wie ihre
+    % Kurven reichen, koennen die beiden Seiten eines Paares verschiedene
+    % Ns tragen (z.B. mux_scaledB_KInf noch 1..4, bfideal_scaledB schon
+    % 1..16). Verglichen wird dann ueber den Schnitt -- alles andere waere
+    % entweder ein Formfehler oder ein unfairer Vergleich.
+    NsM = double(Cm.Ns(:).'); NsB = double(Cb.Ns(:).');
+    NsK = intersect(NsM, NsB, 'stable');
+    assert(~isempty(NsK), 'analyze_bf_vs_mux_qam:noCommonN', ...
+        '%s und %s haben keine gemeinsame Antennenzahl.', V(k).mux, V(k).bf);
+    [~, iM] = ismember(NsK, NsM); [~, iB] = ismember(NsK, NsB);
+    Em = Em(:,:,keepM,iM); Eb = Eb(:,:,keepM,iB);
     for f = ["tx","rx","pa","adc"]
-        Sm.(f) = Sm.(f)(:,:,keepM,:); Sb.(f) = Sb.(f)(:,:,keepM,:);
+        Sm.(f) = Sm.(f)(:,:,keepM,iM); Sb.(f) = Sb.(f)(:,:,keepM,iB);
     end
-    MsK = double(Cm.Ms(keepM)); NsK = double(Cm.Ns(:).');
+    MsK = double(Cm.Ms(keepM));
 
+    % SYMMETRISCHE MASKE, und hier sitzt die Fairness des Vergleichs:
+    % fehlt eine (M,N)-Kombination auf EINER Seite, wird sie auf BEIDEN
+    % verworfen. Sonst gewinnt der Modus mit der vollstaendigeren
+    % Kurvenmenge allein durch die groessere Auswahl -- genau die
+    % Asymmetrie, gegen die die Studie aufgebaut ist. Betrifft real:
+    % mux_fixedB fehlt M=256 bei 8x8/16x16, mux_alphabetB fehlt alles mit
+    % B > 20, die Rice-Varianten rechnen nur N <= 4.
+    both = isfinite(Em) & isfinite(Eb);
+    Em(~both) = NaN; Eb(~both) = NaN;
     [em, Mm, Nm, im] = localEnv(Em, MsK, NsK);
     [eb, Mb, Nb, ib] = localEnv(Eb, MsK, NsK);
     q = eb ./ em;
@@ -201,7 +221,7 @@ for k = 1:numel(V)
     nd = size(Em,1); nr = size(Em,2);
     flag = repmat("  ", nd, nr);
     flag(Nm == 1 & Nb == 1) = "=";                       % dasselbe System
-    atEdge = (Nm == max(NsK)) | (Nb == max(NsK));
+    atEdge = (Nm == max(NsK)) | (Nb == max(NsK));   % max der GEMEINSAMEN Menge
     flag(atEdge & flag ~= "=") = "R";                    % randbegrenzt
 
     D(end+1) = struct('chan',V(k).chan, 'rule',V(k).rule, 'q',q, 'flag',flag, ...
@@ -222,12 +242,16 @@ S = struct('tx',T.Etx, 'rx',T.Erx, 'pa',T.Epa, 'adc',T.Eadc);
 end
 
 function localSameGrid(C, ref, name)
+%LOCALSAMEGRID  Distanzen, Raten und Ms MUESSEN gleich sein -- sonst
+%   vergleicht man Aepfel mit Birnen. Ns darf abweichen: der 3b-Treiber
+%   rechnet je Variante so weit, wie ihre Kurven reichen, und die
+%   symmetrische Maske in localLoadAll sorgt fuer die Fairness.
 assert(isequal(C.distances(:).', ref.distances) && isequal(C.rates(:).', ref.rates) ...
-    && isequal(double(C.Ms(:).'), double(ref.Ms)) && isequal(double(C.Ns(:).'), double(ref.Ns)), ...
+    && isequal(double(C.Ms(:).'), double(ref.Ms)), ...
     'analyze_bf_vs_mux_qam:grid', ...
-    ['%s liegt auf einem anderen Raster als die erste Variante. Ein ' ...
-     'Verhaeltnis zwischen beiden waere bedeutungslos -- 3b fuer alle ' ...
-     'Varianten mit derselben CFG neu rechnen.'], name);
+    ['%s liegt auf einem anderen Distanz-/Raten-/M-Raster als die erste ' ...
+     'Variante. Ein Verhaeltnis zwischen beiden waere bedeutungslos -- 3b ' ...
+     'fuer beide mit derselben CFG neu rechnen.'], name);
 end
 
 function [e, Mopt, Nopt, idx] = localEnv(E, Ms, Ns)
@@ -288,10 +312,16 @@ A = struct('rule',{}, 'distance',{}, 'R',{}, 'q',{}, 'Rshow',{}, 'qShow',{});
 Rshow = [1e4 1e6 1e8 1e10];
 for rule = ["fixedB","scaledB"]
     for dd = [50 500 5000]
-        em = localEnvelope3a(resDir, sprintf('mux_%s_d%d', rule, dd), opt);
-        eb = localEnvelope3a(resDir, sprintf('bf_%s_d%d', rule, dd), opt);
-        if isempty(em) || isempty(eb), continue; end
-        R = em.R; q = eb.E ./ em.E;
+        cm = localCube3a(resDir, sprintf('mux_%s_d%d', rule, dd), opt);
+        cb = localCube3a(resDir, sprintf('bf_%s_d%d', rule, dd), opt);
+        if isempty(cm) || isempty(cb), continue; end
+        % SYMMETRISCHE MASKE wie im 3b-Teil: fehlt eine (M,N)-Kombination
+        % auf einer Seite, wird sie auf beiden verworfen.
+        Am = cm.E; Ab = cb.E;
+        both = isfinite(Am) & isfinite(Ab);
+        Am(~both) = NaN; Ab(~both) = NaN;
+        R = cm.R;
+        q = squeeze(min(min(Ab,[],3),[],2)).' ./ squeeze(min(min(Am,[],3),[],2)).';
         qs = nan(1, numel(Rshow));
         for j = 1:numel(Rshow)
             [~, i] = min(abs(R - Rshow(j)));
@@ -303,22 +333,38 @@ for rule = ["fixedB","scaledB"]
 end
 end
 
-function o = localEnvelope3a(resDir, folder, opt)
-%LOCALENVELOPE3A  Huellkurve ueber M aus den qam_M<M>-Dateien eines
-%   3a-Ordners. E_per_bit ist dort schon die Huellkurve ueber die
-%   Antennenkonfigurationen.
+function o = localCube3a(resDir, folder, opt)
+%LOCALCUBE3A  3a-Ordner als Wuerfel E(nR x nM x nN) statt als Huellkurve.
+%   E_per_bit in den Gear-Dateien ist SCHON das Minimum ueber die
+%   Antennenkonfigurationen -- damit laesst sich nicht mehr symmetrisch
+%   maskieren, und ein Modus mit vollstaendigerer Kurvenmenge gewinnt
+%   allein durch die groessere Auswahl. Deshalb E_per_bit_all zusammen mit
+%   antennaConfigsUsed, aufgespannt auf eine kanonische N-Liste.
 rd = fullfile(resDir, sprintf('cmp_%s', folder));
-if ~isfolder(rd), o = []; return; end
-E = []; R = [];
-for M = opt.Ms
-    f = fullfile(rd, sprintf('qam_M%d_fc%gGHz.mat', M, opt.fcGHz));
+o = [];
+if ~isfolder(rd), return; end
+R = []; cube = []; Ns = [];
+for mi = 1:numel(opt.Ms)
+    f = fullfile(rd, sprintf('qam_M%d_fc%gGHz.mat', opt.Ms(mi), opt.fcGHz));
     if ~isfile(f), continue; end
     T = load(f);
-    if isempty(R), R = T.RVec(:).'; end
-    e = T.E_per_bit(:).';
-    if isempty(E), E = e; else, E = min(E, e); end
+    if isempty(R)
+        R = T.RVec(:).';
+        Ns = opt.Ns3a;
+        cube = nan(numel(R), numel(opt.Ms), numel(Ns));
+    end
+    cfg = T.antennaConfigsUsed;
+    if iscell(cfg) && isscalar(cfg) && iscell(cfg{1}), cfg = cfg{1}; end
+    Eall = T.E_per_bit_all;
+    for ci = 1:numel(cfg)
+        c = cfg{ci};
+        if isstruct(c), nt = c.N_t; else, nt = c(1); end
+        ni = find(Ns == nt, 1);
+        if isempty(ni) || ci > size(Eall,2), continue; end
+        cube(:, mi, ni) = Eall(:, ci);
+    end
 end
-if isempty(E), o = []; else, o = struct('R',R, 'E',E); end
+if ~isempty(cube), o = struct('R',R, 'E',cube, 'Ns',Ns); end
 end
 
 function localFigures(D, A, d, rates, figDir, opt)
