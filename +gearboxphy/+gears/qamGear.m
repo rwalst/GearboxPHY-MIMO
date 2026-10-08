@@ -85,6 +85,23 @@ ctx.sqrt_fc = sqrt(cs.f_c);
 % no array gain baked in) - pathLossDb is unchanged and unaware of
 % antenna count.
 ctx.L_dB = gearboxphy.physics.linkBudgetDb(cs, antennaConfig);
+% Analog beamforming (docs/ANALOG_BEAMFORMING.md): chain counts, phase-
+% shifter power and loss. Disabled by default; then nothing below reads
+% anything but ctx.abf.enabled and the per-chain path is unchanged.
+ctx.abf = gearboxphy.physics.analogBeamformingParams(cs, antennaConfig);
+if ctx.abf.enabled
+    ctx.L_dB = ctx.L_dB + ctx.abf.extra_L_dB;
+end
+% LO power per side: P_LO, plus the distribution to every mixer beyond the
+% first if the scenario asks for it (loDistributionPower.m; 0 by default).
+% An analog array has ONE mixer per side.
+if ctx.abf.enabled
+    nMixTx = ctx.abf.nChainsTx; nMixRx = ctx.abf.nChainsRx;
+else
+    nMixTx = ctx.N_t; nMixRx = ctx.N_r;
+end
+ctx.P_LO_Tx = cs.P_LO + gearboxphy.physics.loDistributionPower(cs, nMixTx);
+ctx.P_LO_Rx = cs.P_LO + gearboxphy.physics.loDistributionPower(cs, nMixRx);
 
 PAPR_QAM_Linear = 3*(sqrt(M)-1)/(sqrt(M)+1);
 % PAPR_RRC (the original get_QAM_PAPR.m/qammod-based, more accurate
@@ -155,8 +172,14 @@ if ~core.feasible
 end
 hw = ctx.hw;
 gamma = core.gamma;
-out = (1/R) * ( (gamma+hw.epsilon_trans*(1-gamma))*(core.P_PA+core.P_DAC+hw.P_LO+core.P_Mix_Tx) ...
-              + (gamma+hw.epsilon_rec*(1-gamma))*(core.P_ADC+core.P_LNA+hw.P_LO+core.P_Mix_Rx) );
+if ctx.abf.enabled
+    % phase shifters ride along with the chain they sit in
+    out = (1/R) * ( (gamma+hw.epsilon_trans*(1-gamma))*(core.P_PA+core.P_DAC+ctx.P_LO_Tx+core.P_Mix_Tx+ctx.abf.P_PS_Tx) ...
+                  + (gamma+hw.epsilon_rec*(1-gamma))*(core.P_ADC+core.P_LNA+ctx.P_LO_Rx+core.P_Mix_Rx+ctx.abf.P_PS_Rx) );
+    return
+end
+out = (1/R) * ( (gamma+hw.epsilon_trans*(1-gamma))*(core.P_PA+core.P_DAC+ctx.P_LO_Tx+core.P_Mix_Tx) ...
+              + (gamma+hw.epsilon_rec*(1-gamma))*(core.P_ADC+core.P_LNA+ctx.P_LO_Rx+core.P_Mix_Rx) );
 end
 
 function budget = computeBudget(ctx, x, R)
@@ -165,12 +188,17 @@ hw = ctx.hw;
 gamma = core.gamma;
 budget.PA     = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*core.P_PA;
 budget.DAC    = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*core.P_DAC;
-budget.LO_Tx  = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*hw.P_LO;
+budget.LO_Tx  = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*ctx.P_LO_Tx;
 budget.Mix_Tx = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*core.P_Mix_Tx;
 budget.LNA    = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*core.P_LNA;
-budget.LO_Rx  = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*hw.P_LO;
+budget.LO_Rx  = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*ctx.P_LO_Rx;
 budget.Mix_Rx = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*core.P_Mix_Rx;
 budget.ADC    = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*core.P_ADC;
+% Only in analog mode, so a digital budget keeps exactly its eight fields.
+if ctx.abf.enabled
+    budget.PS_Tx = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*ctx.abf.P_PS_Tx;
+    budget.PS_Rx = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*ctx.abf.P_PS_Rx;
+end
 end
 
 function core = computeCore(x, ctx, R)
@@ -214,6 +242,19 @@ core.feasible = true;
 % unscaled dissertation formula. Setting scenario.paPowerModel="affine"
 % with a real scenario.P_0 switches to Model B (Auer et al. 2011): each
 % PA also draws a fixed per-chain overhead, adding N_t*P_0 on top.
+if ctx.abf.enabled
+    % --- analog beamforming: ONE converter/mixer chain per side, N PAs
+    % and N LNAs. The driver that makes up the phase-shifter loss scales
+    % the RF-dependent PA power only, not a fixed per-PA overhead P_0.
+    P_PA_rf = gearboxphy.physics.powerAmplifier(P_t, ctx.sqrt_fc, ctx.papr, hw.c_PA, 1, 0);
+    core.P_PA = ctx.N_t * hw.P_0 + ctx.abf.kappa_Tx * P_PA_rf;
+    core.P_ADC = ctx.abf.nChainsRx * gearboxphy.physics.adcPower(B, ctx.pow2_b_ADC, hw.f_b, hw.c_ADC);
+    core.P_LNA = ctx.N_r * ctx.abf.lnaFactor * gearboxphy.physics.lnaPowerFor(hw.lna, B);
+    core.P_DAC = ctx.abf.nChainsTx * gearboxphy.physics.dacPower(B, ctx.b_DAC, ctx.pow2_b_DAC, hw.DAC_VDD, hw.DAC_I0, hw.DAC_Cp);
+    core.P_Mix_Tx = ctx.abf.nChainsTx * hw.P_Mix;
+    core.P_Mix_Rx = ctx.abf.nChainsRx * hw.P_Mix;
+    return
+end
 core.P_PA = gearboxphy.physics.powerAmplifier(P_t, ctx.sqrt_fc, ctx.papr, hw.c_PA, ctx.N_t, hw.P_0);
 core.P_ADC = ctx.N_r * gearboxphy.physics.adcPower(B, ctx.pow2_b_ADC, hw.f_b, hw.c_ADC);
 core.P_LNA = ctx.N_r * gearboxphy.physics.lnaPowerFor(hw.lna, B);

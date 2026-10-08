@@ -86,11 +86,53 @@ arguments
     %       Gearbox uses. It REPLACES c_ADC, so do not combine it with a
     %       hand-set c_ADC.
     opts.adcPowerModel (1,1) string {mustBeMember(opts.adcPowerModel, ["envelope","quantile5"])} = "envelope"
+    % Beamforming architecture (docs/ANALOG_BEAMFORMING.md,
+    % +physics/analogBeamformingParams.m). QAM gear only.
+    %   "digital" (default) - one converter chain per antenna, as before;
+    %       byte-identical to every existing result.
+    %   "analog"  - one DAC pair, one ADC pair and one mixer per side, one
+    %       phase shifter per element. One stream: needs
+    %       antennaMode="beamforming", or analogCurvesCarryArrayGain=true
+    %       with single-stream curves that already contain the array gain.
+    opts.beamformingArch (1,1) string {mustBeMember(opts.beamformingArch, ["digital","analog"])} = "digital"
+    opts.analogCurvesCarryArrayGain (1,1) logical = false
+    % Phase shifter for "analog" (docs/PHASE_SHIFTER_POWER_MODEL.md):
+    %   "active" - psPower per element, no loss;
+    %   "passive_penalty" - no DC power, loss as driver power and noise
+    %       penalty (optimistic bound);
+    %   "passive_compensated" - loss made up by LNA gain.
+    opts.psType (1,1) string {mustBeMember(opts.psType, ["active","passive_penalty","passive_compensated"])} = "active"
+    % NaN = per-carrier default of +physics/phaseShifterParams.m.
+    opts.psPower (1,1) double = NaN          % [W] per element, active only
+    opts.psLossDb (1,1) double = NaN         % [dB] insertion loss, passive only
+    % Phase resolution; Inf = no quantisation loss.
+    opts.psBits (1,1) double {mustBePositive} = 6
+    % Gains behind the passive penalties (phaseShifterPenalty.m).
+    % psGainPA = 20 dB is an assumption; the LNA values are lnaPower.m's.
+    opts.psGainPA (1,1) double {mustBePositive} = 100
+    opts.psGainLNA (1,1) double {mustBePositive} = 32
+    opts.psNoiseFactorLNA (1,1) double {mustBePositive} = 3
+    % LO distribution (+physics/loDistributionPower.m).
+    %   "shared" (default) - one LO per side whatever the number of
+    %       mixers; byte-identical to every existing result.
+    %   "per_mixer" - every mixer beyond the first adds an LO buffer of
+    %       loDistPowerPerMixer. Charges digital arrays (N mixers per
+    %       side); analog beamforming has one mixer and is unchanged.
+    opts.loDistributionModel (1,1) string {mustBeMember(opts.loDistributionModel, ["shared","per_mixer"])} = "shared"
+    % [W] per additional mixer; NaN = per-carrier default (28 GHz: 16.6 mW).
+    opts.loDistPowerPerMixer (1,1) double = NaN
     % Per-carrier maximum bandwidth, rows [f_c B_max] in Hz. Empty
     % (default) keeps B_max = eta*f_c. When given, EVERY carrier in fcVec
     % must have a row - resolveScenarioForCarrier.m errors otherwise
     % rather than silently falling back to eta.
     opts.B_maxByCarrier (:,2) double = zeros(0, 2)
+end
+if opts.beamformingArch == "analog"
+    assert(opts.antennaMode == "beamforming" || opts.analogCurvesCarryArrayGain, ...
+        'gearboxphy:analogNeedsSingleStream', ...
+        ['beamformingArch="analog" needs antennaMode="beamforming", or ' ...
+         'analogCurvesCarryArrayGain=true together with single-stream curves ' ...
+         'that already contain the array gain.']);
 end
 scenario = opts;   % plain struct, not an object
 end

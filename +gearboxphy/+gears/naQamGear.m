@@ -40,6 +40,7 @@ end
 end
 
 function ctx = prepare(order, cs, antennaConfig)
+gearboxphy.physics.assertDigitalArch(cs, antennaConfig, "NA-QAM");
 M = order;
 seData = gearboxphy.data.loadSECurve("NA-QAM", M, antennaConfig, cs.dataDir, localMode(cs));
 ctx.N_t = antennaConfig.N_t;
@@ -69,6 +70,10 @@ ctx.pow2_b_ADC = 2^ctx.b_ADC;
 ctx.sqrt_fc = sqrt(cs.f_c);
 % Einzige Stelle, an der die Antennenzahl ins Linkbudget eingeht.
 ctx.L_dB = gearboxphy.physics.linkBudgetDb(cs, antennaConfig);
+% LO power per side, with the optional distribution to every mixer beyond
+% the first (loDistributionPower.m; 0 by default).
+ctx.P_LO_Tx = cs.P_LO + gearboxphy.physics.loDistributionPower(cs, ctx.N_t);
+ctx.P_LO_Rx = cs.P_LO + gearboxphy.physics.loDistributionPower(cs, ctx.N_r);
 PAPR_QAM_Linear = 3*(sqrt(M)-1)/(sqrt(M)+1);
 ctx.papr = 10^((10*log10(PAPR_QAM_Linear)+3+3.17)/10);
 
@@ -123,8 +128,8 @@ if ~core.feasible
 end
 hw = ctx.hw;
 gamma = core.gamma;
-out = (1/R) * ( (gamma+hw.epsilon_trans*(1-gamma))*(core.P_PA+ctx.P_DAC+hw.P_LO+ctx.P_Mix_Tx) ...
-              + (gamma+hw.epsilon_rec*(1-gamma))*(ctx.P_ADC+ctx.P_LNA+hw.P_LO+ctx.P_Mix_Rx) );
+out = (1/R) * ( (gamma+hw.epsilon_trans*(1-gamma))*(core.P_PA+ctx.P_DAC+ctx.P_LO_Tx+ctx.P_Mix_Tx) ...
+              + (gamma+hw.epsilon_rec*(1-gamma))*(ctx.P_ADC+ctx.P_LNA+ctx.P_LO_Rx+ctx.P_Mix_Rx) );
 end
 
 function budget = computeBudget(ctx, x, R)
@@ -133,10 +138,10 @@ hw = ctx.hw;
 gamma = core.gamma;
 budget.PA     = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*core.P_PA;
 budget.DAC    = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*ctx.P_DAC;
-budget.LO_Tx  = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*hw.P_LO;
+budget.LO_Tx  = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*ctx.P_LO_Tx;
 budget.Mix_Tx = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*ctx.P_Mix_Tx;
 budget.LNA    = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*ctx.P_LNA;
-budget.LO_Rx  = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*hw.P_LO;
+budget.LO_Rx  = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*ctx.P_LO_Rx;
 budget.Mix_Rx = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*ctx.P_Mix_Rx;
 budget.ADC    = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*ctx.P_ADC;
 end

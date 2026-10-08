@@ -17,6 +17,7 @@ gear.computeBudget = @computeBudget;
 end
 
 function ctx = prepare(order, cs, antennaConfig)
+gearboxphy.physics.assertDigitalArch(cs, antennaConfig, "ZXM");
 M_tx = order;
 seData = gearboxphy.data.loadSECurve("ZXM", M_tx, antennaConfig, cs.dataDir, localMode(cs));
 ctx.N_t = antennaConfig.N_t;
@@ -33,6 +34,10 @@ end
 
 ctx.B_max = cs.eta * cs.f_c;
 ctx.L_dB = gearboxphy.physics.linkBudgetDb(cs, antennaConfig);
+% LO power per side, with the optional distribution to every mixer beyond
+% the first (loDistributionPower.m; 0 by default).
+ctx.P_LO_Tx = cs.P_LO + gearboxphy.physics.loDistributionPower(cs, ctx.N_t);
+ctx.P_LO_Rx = cs.P_LO + gearboxphy.physics.loDistributionPower(cs, ctx.N_r);
 ctx.sqrt_fc = sqrt(cs.f_c);
 % ZXM has a roughly-constant PAPR regardless of order (Neuhaus OJCOMS) -
 % not derived from M_tx like QAM's PAPR is.
@@ -95,8 +100,8 @@ if ~core.feasible
 end
 hw = ctx.hw;
 gamma = core.gamma;
-out = (1/R) * ( (gamma+hw.epsilon_trans*(1-gamma))*(core.P_PA+core.P_DAC+hw.P_LO+core.P_Mix_Tx) ...
-              + (gamma+hw.epsilon_rec*(1-gamma))*(core.P_ADC+core.P_LNA+hw.P_LO+core.P_Mix_Rx) );
+out = (1/R) * ( (gamma+hw.epsilon_trans*(1-gamma))*(core.P_PA+core.P_DAC+ctx.P_LO_Tx+core.P_Mix_Tx) ...
+              + (gamma+hw.epsilon_rec*(1-gamma))*(core.P_ADC+core.P_LNA+ctx.P_LO_Rx+core.P_Mix_Rx) );
 end
 
 function budget = computeBudget(ctx, x, R)
@@ -105,10 +110,10 @@ hw = ctx.hw;
 gamma = core.gamma;
 budget.PA     = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*core.P_PA;
 budget.DAC    = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*core.P_DAC;
-budget.LO_Tx  = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*hw.P_LO;
+budget.LO_Tx  = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*ctx.P_LO_Tx;
 budget.Mix_Tx = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*core.P_Mix_Tx;
 budget.LNA    = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*core.P_LNA;
-budget.LO_Rx  = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*hw.P_LO;
+budget.LO_Rx  = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*ctx.P_LO_Rx;
 budget.Mix_Rx = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*core.P_Mix_Rx;
 budget.ADC    = (1/R)*(gamma+hw.epsilon_rec*(1-gamma))*core.P_ADC;
 end

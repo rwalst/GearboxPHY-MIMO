@@ -18,7 +18,10 @@ if f_c == 2.4e9
 elseif f_c == 8e9
     P_act = 16.6e-3; L_dB = 11;    % Kibaroglu (active); Chen 2015 8-14 dB (passive)
 elseif f_c == 28e9
-    P_act = 20e-3;   L_dB = 9.5;   % 14.4-25.2 mW (active); Basaligheh 2020 RTPS
+    % Survey of 151 phase shifters (LituratureReview/ps_survey): active
+    % median 24 mW; passive in CMOS at 28-40 GHz 6.4-11.9 dB for 3-5 bit,
+    % median 7.6 dB (reflection type 7.75-9.5 dB).
+    P_act = 20e-3;   L_dB = 7.5;
 elseif f_c == 60e9
     P_act = 19.8e-3; L_dB = 9.9;   % Yu 2016 TMTT (active); 130 nm BiCMOS RTPS
 else

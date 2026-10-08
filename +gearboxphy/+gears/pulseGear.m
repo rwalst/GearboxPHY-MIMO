@@ -37,6 +37,7 @@ end
 end
 
 function ctx = prepare(pulseType, cs, antennaConfig)
+gearboxphy.physics.assertDigitalArch(cs, antennaConfig, pulseType);
 seData = gearboxphy.data.loadSECurve("Pulse-" + pulseType, 1, antennaConfig, cs.dataDir, localMode(cs));
 ctx.N_t = antennaConfig.N_t;
 ctx.N_r = antennaConfig.N_r;
