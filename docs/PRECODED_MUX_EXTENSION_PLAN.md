@@ -465,3 +465,183 @@ Die Ratenobergrenze in `+gearboxphy/+gears/qamGear.m` ist
 — die Prüfung ist dann zu locker, schlägt also nicht fälschlich an, prüft
 aber auch nichts mehr. Mit `s` in der `antennaConfig` wird daraus
 `s·log₂M` und die Prüfung trägt wieder.
+
+---
+
+# Nachtrag 2: Der DAC — die Frage hat die Seite gewechselt (2026-10-08)
+
+## Das Problem in einer Zeile
+
+`qamGear.m:74` setzt `b_DAC = ½log₂M`. Das sind genau `√M` Stufen je Achse
+für eine Konstellation mit `√M` Stufen je Achse — **Fehler null, exakte
+Darstellung**. Der Kommentar daneben begründet es damit, dass
+DAC-Quantisierung in keinem SE-Modell steckt und mehr Bit „nur Leistung
+kosteten und im Modell nichts brächten".
+
+Unter Präkodierung sendet Antenne `i` nicht mehr `x_i`, sondern
+`(Fx)_i = Σ_j F_ij x_j`. Schon bei `s = 1` ist das `v₁ᵢ·x` — ein
+skaliertes und **gedrehtes** QAM-Symbol. Das liegt auf keinem festen
+I/Q-Raster.
+
+## Gemessen: was ein `½log₂M`-DAC damit macht
+
+Vollaussteuerung jeweils optimal auf den Spitzenwert gesetzt, also der
+freundlichste Fall:
+
+| `M` | `b = ½log₂M` | EVM ungedreht | EVM gedreht |
+|---|---|---|---|
+| 4 | 1 | 0,00 % | **47,7 %** |
+| 16 | 2 | 0,00 % | 25,6 % |
+| 64 | 3 | 0,00 % | 15,8 % |
+| 256 | 4 | 0,00 % | 8,3 % |
+
+Bei QPSK kann der Wandler je Achse zwei Werte ausgeben; ein beliebig
+gedrehtes QPSK-Symbol braucht beliebige `(I,Q)`. Das ist kein
+Korrekturterm, das ist ein zerstörtes Signal. Und der Trend läuft gegen
+uns: **das Problem ist bei kleinem `M` am schlimmsten**, und `M = 4`
+wählt das Gearbox in rund 94 % aller Zellen.
+
+## Die Frage wechselt die Kategorie
+
+Von „wie viele Stufen hat das Alphabet" zu „wie groß darf der Fehler
+sein". Die Studie musste das nie beantworten, weil der Fehler bisher
+exakt null war. Es gibt deshalb auch **keinen Aufschlag auf `½log₂M`**,
+den man hinschreiben könnte: ein Darstellungsmaß und ein Fehlerbudget
+sind verschiedene Währungen.
+
+> **Korrektur an einer Zwischenfassung dieses Nachtrags.** Ich hatte
+> „Δb gegen den unpräkodierten Fall" gerechnet und kam für `s = 1` auf
+> −0,5 Bit. Das ist falsch: gegen einen Fehler von exakt null lässt sich
+> kein Verhältnis bilden. Belastbar aus jener Rechnung bleiben nur die
+> Differenzen ZWISCHEN präkodierten Fällen, nicht der Anker zum
+> unpräkodierten.
+
+## Die Herleitung
+
+Die DAC-Verzerrung ist räumlich weiß und sieht am Empfänger `tr(HᴴH)`;
+das präkodierte Signal sieht `Σpᵢλᵢ = N_r·g(s/N)`. Mit `b` Bit je Achse
+und Aussteuerungsfaktor `c`:
+
+    SDR = 3 · 4^b · g(s/N) / c²        →     b = ½log₂( SDR · c² / 3g )
+
+`N` fällt heraus. Zwei gegenläufige Terme:
+
+| | Wirkung | Grund |
+|---|---|---|
+| `c` steigt mit `s` | kostet Bit | `(Fx)_i` ist eine Summe von `s` Symbolen, Richtung Gauß — gemessen 1,0 (QPSK) bis ~3,0 |
+| `g` sinkt mit `s` | spart Bit | der Arraygewinn hilft dem Signal, nicht der weißen Verzerrung (`g` aus Nachtrag 1, Abschnitt 2) |
+
+## Wieviel Bit wirklich
+
+| Fall | `M` | `½log₂M` | SDR=10 dB | SDR=20 dB | SDR=30 dB | SDR=40 dB |
+|---|---|---|---|---|---|---|
+| `s=1` (digitales BF) | 4 | 1 | 0,4 | **2,1** | 3,7 | 5,4 |
+| `s=1` | 256 | 4 | 1,1 | **2,8** | 4,4 | 6,1 |
+| `s=8` | 4 | 1 | 2,3 | **4,0** | 5,7 | 7,3 |
+| `s=8` | 256 | 4 | 2,4 | **4,1** | 5,8 | 7,4 |
+
+Zwei Dinge daran:
+
+- Die Differenz `s = 1 → s = 8` ist rund **1,9 Bit** und hängt kaum an
+  `M`. Das ist der Preis der Überlagerung.
+- **Die beiden Kriterien kreuzen sich.** Bei `M = 4` ist exakte
+  Darstellung billig (1 Bit), unter Drehung aber wertlos; bei `M = 256`
+  sind die 4 Bit gegenüber einem 20-dB-Ziel schon großzügig. Eine
+  Konstante, die man auf `½log₂M` addiert, gibt es nicht.
+
+## Drei Mechanismen, nicht einer
+
+| | wirkt bei | Kosten |
+|---|---|---|
+| (a) beliebiger komplexer Koeffizient | jedem Präkodierer, auch `s = 1` | bricht die exakte Darstellung, ~+0,3 Bit über den Scheitelfaktor |
+| (b) Überlagerung von `s` Symbolen | nur `s ≥ 2` | bis +1,5 Bit |
+| (c) Arraygewinn auf dem Signal, nicht auf der Verzerrung | jedem Präkodierer | bis −1 Bit, am meisten bei kleinem `s/N` |
+
+Daraus die Einordnung: **nicht CSIT kostet Bit, sondern Drehung und
+Überlagerung.** `F = I` hat genau einen reellen positiven Eintrag je
+Zeile — deshalb ist Open-Loop-MUX exakt darstellbar und bleibt es.
+
+## Rückwirkend: die vorhandenen BF-Kurven sind unterbezahlt
+
+Digitales Beamforming ist `s = 1` und hat CSIT seit der ersten Kurve. Es
+wird mit `b_DAC = ½log₂M` abgerechnet, braucht bei `M = 4` aber 2–4 Bit.
+`dacPower.m` ist `P = 2·(½·V_DD·I₀·(2^b−1) + C_p·V_DD²·b·B)`, der
+führende Term also `∝ 2^b − 1`: von `b = 1` auf `b = 2,1` ist das Faktor
+3,3.
+
+### Der DAC-Anteil, gemessen — und er ist kein Randposten
+
+Aus `PowerBudget` der vorhandenen 3a-Läufe, QAM `M = 4`, i.i.d. Rayleigh,
+Anteil am Gesamtbudget im jeweiligen Optimum:
+
+| Ordner | `R_eff` | DAC % | ADC % | PA % |
+|---|---|---|---|---|
+| mux, d = 50 m | 1 Mbit/s | 0,20 | 0,02 | 0,52 |
+| mux, d = 50 m | 955 Mbit/s | **15,10** | 1,21 | 23,91 |
+| mux, d = 50 m | 10,7 Gbit/s | **30,50** | 5,42 | 19,75 |
+| mux, d = 500 m | 955 Mbit/s | 8,14 | 3,07 | 40,51 |
+| mux, d = 5 km | 955 Mbit/s | 0,24 | 0,01 | 97,18 |
+| **bf**, d = 50 m | 955 Mbit/s | **19,91** | 1,18 | 16,19 |
+| **bf**, d = 500 m | 955 Mbit/s | **24,27** | 4,91 | 32,28 |
+| **bf**, d = 500 m | 4,2 Gbit/s | **34,60** | 6,72 | 28,52 |
+| **bf**, d = 5 km | 955 Mbit/s | 3,53 | 0,68 | 90,03 |
+
+Über alle gerechneten Punkte liegt das Maximum bei **63 %**
+(`cmp_bfideal_fixedB_d50`, `M = 64`).
+
+**Das ist eine Größenordnung mehr als der ADC-Anteil**, um den die ganze
+Bit-Regel-Studie geführt wurde (dort ≤ 7 %, meist ≤ 3 %). Faktor 3,3 auf
+den führenden DAC-Term bei 24 % Anteil bedeutet rund **+55 % Energie je
+Bit** — mehr als die meisten Effekte, die die Studie bisher gemessen hat.
+
+Drei Dinge folgen daraus:
+
+1. **Es trifft Beamforming härter als Multiplexing.** Bei `d = 500 m`,
+   1 Gbit/s hat BF 24,3 % DAC-Anteil gegen 8,1 % bei MUX — und BF ist der
+   Modus, der die zusätzlichen Bit braucht, während Open-Loop-MUX keine
+   braucht.
+2. **Es trifft genau dort, wo die Schnittdistanz liegt.** `d*` ist 762 m
+   bei 1 Gbit/s; dort ist der BF-DAC-Anteil zweistellig. Bei 5 km fällt er
+   auf 3,5 %, weil die PA 90 % frisst — dort ändert sich nichts.
+   Die Korrektur würde `d*` also **nach außen** schieben, zugunsten von
+   Multiplexing.
+3. **Die Richtung ist bekannt, die Größe nicht.** Wieviel `d*` wandert,
+   steht erst nach einem Lauf mit korrigiertem `b_DAC` fest.
+
+Betroffen ist alles in `Groupmeetings/BF_vs_MUX_Channels.pptx`.
+
+## Der architektonische Ausweg
+
+Die Drehung muss nicht im Basisband sitzen. Steht sie in einem
+**Phasenschieber hinter dem DAC**, sieht der Wandler wieder ein
+unverändertes QAM-Symbol: exakt, `½log₂M`, Fehler null. Das ist analoges
+bzw. hybrides Beamforming, und `qamGear.m:253` bildet es bereits ab
+(`ctx.abf.nChainsTx` DACs statt `ctx.N_t`).
+
+Damit kippt ein Vergleich, den die Studie bisher einseitig geführt hat:
+**digitales BF zahlt für die Drehung, analoges nicht.** Das ist ein
+Vorteil für analoges Beamforming, den die laufende Analog-Studie derzeit
+nicht verbucht — siehe `ANALOG_BEAMFORMING.md`.
+
+## Zu entscheiden
+
+| | Frage | Wirkung |
+|---|---|---|
+| 1 | **SDR-Ziel**: wie weit unter dem thermischen Rauschen soll die DAC-Verzerrung liegen? | 10 dB je Dekade im Ziel sind 1,66 Bit — der größte Hebel von allen |
+| 2 | **Vollaussteuerung** fest für alle Antennen, oder je Antenne und Realisierung gesetzt? | verschiebt `s = 1` um 0,7 Bit |
+| 3 | Werden die vorhandenen BF-Kurven nachgerechnet? | erst messen, wie groß der DAC-Anteil überhaupt ist |
+
+Alle drei sind Nutzerentscheidungen, keine Herleitungen. Mein Vorschlag:
+**20 dB und Aussteuerung je Antenne.**
+
+Zu Punkt 3 hatte ich zunächst vorgeschlagen, erst den DAC-Anteil zu
+messen und die Frage bei wenigen Prozent als Fußnote abzulegen. **Die
+Messung oben widerlegt das**: der Anteil liegt bei 15–35 % dort, wo die
+Studie ihre Aussagen trifft, und bis 63 % im Extrem. Die vorhandenen
+BF-Kurven müssen nachgerechnet werden, und zwar bevor die Zahlen aus
+`BF_vs_MUX_Channels.pptx` weiterverwendet werden.
+
+Der Aufwand dafür ist klein: `b_DAC` ist ein Eintrag in `qamGear.m`, die
+MI-Kurven bleiben unberührt (sie nehmen weiterhin einen idealen DAC an),
+es sind nur die Schritte 3a/3b und die Analyse neu zu rechnen —
+Minuten, kein Clusterlauf.
