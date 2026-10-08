@@ -27,6 +27,15 @@
 
 %% ===================== CONFIG =====================================
 VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fixedB" "bfideal_scaledB"];
+% alphabetB nur, wenn exportiert. Die Regel ist MUX-only -- bei Beamforming
+% kommt EIN Strom an, das beobachtete Alphabet ist M unabhaengig von N_t,
+% adcBitsRule faellt dort mit fixedB zusammen; ein BF-alphabetB-Lauf waere
+% bitgleich zu bf_fixedB. Ohne diesen Eintrag fehlt der Ratenachse und
+% analyze_best_gear Teil B die dritte ADC-Spalte -- genau das war der Stand
+% am 2026-10-08, obwohl 3b alphabetB schon trug.
+if isfolder(gearboxphy.paths.dataDir("SE_data_mux_alphabetB"))
+    VARIANTS(end+1) = "mux_alphabetB"; %#ok<AGROW>
+end
 distanceVec  = [50 500 5000];
 fcVec        = 28e9;
 RVec         = logspace(3, 11, 100);
