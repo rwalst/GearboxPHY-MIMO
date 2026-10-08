@@ -31,9 +31,10 @@ function out = analyze_adc_rule(opts)
 %   Welcher gewinnt, haengt davon ab, wie gross der ADC-Anteil am Budget
 %   ueberhaupt ist -- und der ist klein, solange die PA dominiert.
 %
-%   NUR N <= 4: weiter reichen die gerechneten Sweeps nicht. Bei N = 1
-%   sind beide Regeln per Definition gleich, der Unterschied kann also nur
-%   aus 2x2 und 4x4 kommen.
+%   DAS N-RASTER KOMMT AUS DEN DATEN, nicht aus dieser Datei: der Titel
+%   nennt das groesste N, das in antennaConfigsUsed steht (heute 16, bis
+%   Oktober 2026 waren es 4). Bei N = 1 sind beide Regeln per Definition
+%   gleich, der Unterschied kann also nur aus N >= 2 kommen.
 arguments
     opts.mode (1,1) string {mustBeMember(opts.mode, ["mux","bf","bfideal"])} = "mux"
     opts.distances (1,:) double = [50 500 5000]
@@ -125,7 +126,7 @@ MODENAME = containers.Map({'mux','bf','bfideal'}, ...
 chan = 'i.i.d. Rayleigh';
 if opts.mode == "bfideal", chan = 'AWGN, rank 1'; end
 title(tl, sprintf(['ADC rule for %s, f_c = %g GHz, %s, ' ...
-    'best over M \\leq 256 and N \\leq 4'], MODENAME(char(opts.mode)), opts.fcGHz, chan), ...
+    'best over M \\leq 256 and N \\leq %g'], MODENAME(char(opts.mode)), opts.fcGHz, chan, localNmax(D)), ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 exportgraphics(fig, fullfile(figDir, sprintf('cmp_adc_rule_%s.png', opts.mode)), 'Resolution', 200);
 
@@ -181,7 +182,15 @@ for M = opts.Ms
         s.R = S.RVec(:).';
         n = numel(s.R);
         s.Ebest = inf(1,n); s.Nopt = ones(1,n); s.adcShare = nan(1,n);
+        s.Nmax = NaN;
         first = false;
+    end
+    if isfield(S, 'antennaConfigsUsed')
+        % Je nach Schreibweg liegt das als Cell-Array oder als Struct-Array
+        % vor -- beide Formen kommen in results/ vor.
+        ac = S.antennaConfigsUsed;
+        if iscell(ac), nts = cellfun(@(c) c.N_t, ac); else, nts = [ac.N_t]; end
+        s.Nmax = max([s.Nmax, nts(:).']);
     end
     assert(numel(S.RVec) == numel(s.R), 'adcRule:grid', '%s: anderes Ratenraster', f);
     e = S.E_per_bit(:).';
@@ -198,6 +207,16 @@ for M = opts.Ms
 end
 if first, s = []; return; end
 s.Ebest(~isfinite(s.Ebest)) = NaN;
+end
+
+function n = localNmax(D)
+%LOCALNMAX  Groesstes N, das in den geladenen Daten ueberhaupt vorkommt.
+n = NaN;
+for k = 1:numel(D)
+    if ~isempty(D{k}) && isfield(D{k}, 'Nmax')
+        n = max([n, D{k}.Nmax]);
+    end
+end
 end
 
 function r = localSymRange(v)

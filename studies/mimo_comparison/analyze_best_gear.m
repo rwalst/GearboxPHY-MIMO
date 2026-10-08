@@ -214,12 +214,12 @@ for ri = 1:numel(rates)
         end
         set(ax, 'XScale','log', 'YScale','log', 'YTick',[1 2 4 8 16], ...
             'YLim',[0.8 22]);
-        xlabel(ax,'Distanz [m]'); ylabel(ax,'gewaehltes N');
+        xlabel(ax,'Distance [m]'); ylabel(ax,'selected N');
         title(ax, sprintf('%s, %s', D(k).chan, D(k).rule), 'FontSize',9);
         if k == 1, legend(ax,'Location','northwest','FontSize',7); end
     end
-    sgtitle(fig, sprintf(['Gewaehlte Antennenzahl, R_{eff} = %.0e bit/s ' ...
-        '(gefuellt = dieser Modus guenstiger; Zahl = M, falls nicht 4)'], rates(ri)));
+    sgtitle(fig, sprintf(['Selected antenna count, R_{eff} = %.0e bit/s ' ...
+        '(filled = this mode is cheaper; number = M where it is not 4)'], rates(ri)));
     if opt.save
         exportgraphics(fig, fullfile(figDir, ...
             sprintf('best_gear_config_R%.0e.png', rates(ri))), 'Resolution',150);
@@ -248,7 +248,7 @@ for k = 1:nk
     grid(ax,'on'); xlabel(ax,'R_{eff} [bit/s]');
     title(ax, sprintf('d = %g m, %s', B(k).distance, B(k).rule), 'FontSize',9);
 end
-sgtitle(fig, 'Welcher Gang haelt das Minimum (QAM dreifach: SISO / MUX / BF)');
+sgtitle(fig, 'Which gear holds the minimum (QAM three ways: SISO / MUX / BF)');
 if opt.save
     exportgraphics(fig, fullfile(figDir, 'best_gear_family.png'), 'Resolution',150);
 end

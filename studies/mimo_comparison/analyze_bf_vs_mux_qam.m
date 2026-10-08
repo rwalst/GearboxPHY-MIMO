@@ -82,7 +82,7 @@ V(end+1) = struct('chan',"K=0",    'rule',"alphabetB",'mux',"mux_alphabetB",    
 % er waere bitgleich. Siehe runQamSweepAlphabet1.m "NUR MULTIPLEXING".
 V(end+1) = struct('chan',"K=3",    'rule',"scaledB", 'mux',"mux_scaledB_K3",   'bf',"bf_scaledB_K3",    'bfLimit',false);
 V(end+1) = struct('chan',"K=30",   'rule',"scaledB", 'mux',"mux_scaledB_K30",  'bf',"bf_scaledB_K30",   'bfLimit',false);
-V(end+1) = struct('chan',"Rang 1", 'rule',"scaledB", 'mux',"mux_scaledB_KInf", 'bf',"bfideal_scaledB",  'bfLimit',true);
+V(end+1) = struct('chan',"Rank 1", 'rule',"scaledB", 'mux',"mux_scaledB_KInf", 'bf',"bfideal_scaledB",  'bfLimit',true);
 % RANG 1 GIBT ES NUR FUER scaledB. Ein fixedB-Rang-1-Lauf auf der
 % MUX-Seite existiert nicht (runQamSweepMuxRank1 rechnet scaledB), und
 % mux_fixedB gegen bfideal_fixedB zu stellen waere KEIN Kanalvergleich:
@@ -397,11 +397,11 @@ for ri = 1:numel(rates)
     end
     yline(ax, 1, 'k--', 'HandleVisibility','off');
     set(ax, 'XScale','log', 'YScale','log');
-    xlabel(ax, 'Distanz [m]'); ylabel(ax, 'E_{bit}(BF) / E_{bit}(MUX)');
+    xlabel(ax, 'Distance [m]'); ylabel(ax, 'E_{bit}(BF) / E_{bit}(MUX)');
     title(ax, sprintf('R_{eff} = %.0e bit/s', rates(ri)));
     if ri == 1, legend(ax, 'Location','southwest', 'FontSize',8); end
 end
-sgtitle(fig, 'BF gegen MUX: Kanal und ADC-Regel ueber der Distanz');
+sgtitle(fig, 'Beamforming against multiplexing: channel and ADC rule over the distance');
 if opt.save
     exportgraphics(fig, fullfile(figDir, 'bf_vs_mux_qam_distance.png'), 'Resolution',150);
 end
@@ -413,12 +413,12 @@ if ~isempty(A)
     for k = 1:numel(A)
         ls = st(1 + (A(k).rule == "scaledB"));
         plot(ax, A(k).R, A(k).q, ls, 'DisplayName', ...
-             sprintf('%s, d=%g m', A(k).rule, A(k).distance));
+             sprintf('%s, d = %g m', A(k).rule, A(k).distance));
     end
     yline(ax, 1, 'k--', 'HandleVisibility','off');
     set(ax, 'XScale','log', 'YScale','log');
     xlabel(ax, 'R_{eff} [bit/s]'); ylabel(ax, 'E_{bit}(BF) / E_{bit}(MUX)');
-    title(ax, 'BF gegen MUX ueber der Rate (K = 0, aus Schritt 3a)');
+    title(ax, 'Beamforming against multiplexing over the rate (K = 0, from step 3a)');
     legend(ax, 'Location','best', 'FontSize',8);
     if opt.save
         exportgraphics(fig2, fullfile(figDir, 'bf_vs_mux_qam_rate.png'), 'Resolution',150);

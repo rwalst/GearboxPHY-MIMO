@@ -122,12 +122,12 @@ for c = 1:nC
     if isfinite(EmuxInf(c))
         h(end+1) = plot(ax, numel(KS)+0.6, EmuxInf(c), 'p', 'Color', C(1,:), ...
             'MarkerSize', 12, 'MarkerFaceColor', C(1,:), ...
-            'DisplayName', 'MUX, Rang 1 (K \rightarrow \infty)'); %#ok<AGROW>
+            'DisplayName', 'MUX, rank 1 (K \rightarrow \infty)'); %#ok<AGROW>
     end
     if isfinite(Eidl(c))
         h(end+1) = plot(ax, numel(KS)+0.6, Eidl(c), 'p', 'Color', C(2,:), ...
             'MarkerSize', 12, 'MarkerFaceColor', C(2,:), ...
-            'DisplayName', 'BF, Rang 1 = BF ideal (K \rightarrow \infty)'); %#ok<AGROW>
+            'DisplayName', 'BF, rank 1 = ideal BF (K \rightarrow \infty)'); %#ok<AGROW>
     end
     set(ax, 'XTick', [x numel(KS)+0.6], 'XTickLabel', [localKLabels(KS) {'\infty'}], ...
         'XLim', [0.6 numel(KS)+1.0]);
@@ -150,7 +150,7 @@ for c = 1:nC
             'LabelVerticalAlignment', 'bottom', 'FontSize', 9, 'Color', C(2,:));
     end
     set(ax2, 'XTick', x, 'XTickLabel', localKLabels(KS), 'XLim', [0.6 numel(KS)+1.0]);
-    xlabel(ax2, 'Rice-Faktor K', 'FontSize', 12, 'Color', INK2);
+    xlabel(ax2, 'Ricean K factor', 'FontSize', 12, 'Color', INK2);
     if c == 1
         ylabel(ax2, 'E_{bit}(BF) / E_{bit}(MUX)', 'FontSize', 12, 'Color', INK2);
     end

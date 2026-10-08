@@ -209,7 +209,10 @@ for di = 1:nD
     end
 end
 xlabel(tl, 'R_{eff} [bit/s]', 'FontSize', 12, 'Color', INK2);
-title(tl, 'What the ADC costs at the optimum (scaledB: +1 bit per doubling)', ...
+% Die Abbildung zeigt ALLE SECHS Varianten, also beide Bit-Regeln. Der
+% Titel nannte bis 2026-10-08 nur scaledB -- er beschrieb eine Kurve, nicht
+% die Abbildung.
+title(tl, 'What the ADC costs at the optimum (both bit rules, all three modes)', ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 exportgraphics(fig, fullfile(figDir, 'cmp_adc_share.png'), 'Resolution', 200);
 

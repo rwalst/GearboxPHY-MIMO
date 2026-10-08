@@ -89,7 +89,7 @@ for di = 1:nD
     end
 end
 title(tl, sprintf(['The ADC bit rule across all three modes, f_c = %g GHz, ' ...
-    'best over M \\leq 256 and N \\leq 4'], opts.fcGHz), ...
+    'best over M \\leq 256 and N \\leq %g'], opts.fcGHz, localNmax(R)), ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 exportgraphics(fig, fullfile(figDir, 'cmp_adc_rule_all.png'), 'Resolution', 200);
 
@@ -118,6 +118,19 @@ fprintf('\ncmp_adc_rule_all.png und adc_rule_all_summary.mat in %s\n', figDir);
 end
 
 % =======================================================================
+function n = localNmax(R)
+%LOCALNMAX  Groesstes N ueber alle drei Modi -- aus den Daten, nicht fest.
+n = NaN;
+for m = 1:numel(R)
+    D = R{m}.data{1};
+    for k = 1:numel(D)
+        if ~isempty(D{k}) && isfield(D{k}, 'Nmax')
+            n = max([n, D{k}.Nmax]);
+        end
+    end
+end
+end
+
 function localStyle(ax, INK2)
 hold(ax, 'on'); grid(ax, 'on'); box(ax, 'off');
 set(ax, 'XScale', 'log', 'FontSize', 11, 'XColor', INK2, 'YColor', INK2, 'GridAlpha', 0.12);
