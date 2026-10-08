@@ -34,9 +34,49 @@ Phasenquantisierung nachgeprueft (beides in `docs/ANALOG_BEAMFORMING.md`).
       einige Zehntel dB.
 - [ ] **Nur QAM.** ZXM und die Puls-Gaenge haben keine analoge Variante; sie brechen bei
       Mehrantennen-Analog mit Fehler ab.
-- [ ] **Hybrides Beamforming** (wenige digitale Ketten, je Kette ein analoges Teilarray) fehlt.
+
+## Ausblick, zurueckgestellt
+
+- [ ] **Butler-Matrix** (Plan in `docs/BUTLER_MATRIX_PLAN.md`). Zwei Verwendungen:
+      A fester Strahl mit einer Kette (ein weiterer Phasenschieber-Typ, kleiner Eingriff,
+      keine neuen Kurven; braucht vorher Daempfungswerte aus der Literatur) und
+      B K Stroeme ueber K Strahlen (analoge Trennung der Stroeme; verlangt, dass das Framework
+      Stromzahl und Antennenzahl trennt, neue MI-Kurven und ein Kanalmodell mit wenigen
+      Pfaden -- im Rayleigh-Kanal bringt B nichts).
+- [ ] **Hybrides Beamforming** haengt an derselben Framework-Aenderung wie B (K Ketten bei N
+      Antennen) und waere danach mit wenig Zusatzaufwand moeglich.
 
 ## Studie
+
+- [ ] **Architektur je Seite und asymmetrische Arrays.** Bisher sind in jeder Variante BEIDE
+      Seiten analog (oder beide digital) und haben gleich viele Antennen (N x N). Nicht
+      gerechnet: Mischfaelle (analoger Sender, digitaler Empfaenger und umgekehrt) und
+      N_t ungleich N_r, also etwa grosses Array an der Basisstation und kleines am Endgeraet.
+      Der QAM-Gang zaehlt Sende- und Empfangsseite schon getrennt; noetig waere ein Schalter
+      `beamformingArch` je Seite und ein Antennenraster mit N_t ungleich N_r. Im LOS-Fall
+      reichen die vorhandenen Kurven (Gewinn N_t*N_r im Linkbudget), im Rayleigh-Fall
+      braucht es neue Kurven aus `runQamSweepBfAnalog` fuer N_t ungleich N_r (der Treiber
+      rechnet bisher nur N x N; `analogBfGain` selbst kann rechteckige Kanaele).
+
+      MI-Kurven fuer die Mischfaelle (die MI haengt nur am effektiven Kanal und am Ort der
+      Quantisierung im Empfaenger; die Sender-Architektur wirkt nur ueber die Sendegewichte,
+      DAC-Quantisierung steckt in keinem Modell):
+      - LOS: KEINE neuen Kurven. Bei Rang 1 sind die optimalen Sendegewichte reine Phasen,
+        ein analoger Sender verliert nichts. Beide Mischfaelle nutzen `bfideal`: exakt bei
+        analogem Empfaenger, als die uebliche leicht pessimistische Naeherung bei digitalem
+        (0.02 bis 0.09 bit, frueher nachgerechnet). Zu aendern ist nur die Hardware-Zaehlung.
+      - Rayleigh, Sender digital / Empfaenger analog: neue Kurven, aber billig. Nur der
+        Gewinn je Realisierung aendert sich (Sender gewichtet Betrag und Phase, Empfaenger
+        nur Phasen), danach wieder Mittelung der SISO-Kurve. Erweiterung von `analogBfGain`
+        um eine Seite ohne Betragsbedingung; Minuten.
+      - Rayleigh, Sender analog / Empfaenger digital: neue Kurven, teurer. Quantisierung je
+        Antenne, also ein Lauf wie `runQamSweepBfRayleigh` mit Phasengewichten statt des
+        dominanten Singulaervektors (`ergodicMiBeamforming` braucht eine Option fuer den
+        Vorcodierer). HPC, Groessenordnung des bisherigen digitalen BF-Laufs.
+        Abkuerzung fuer eine erste Aussage: die digitale Rayleigh-Kurve um das
+        Gewinnverhaeltnis verschieben (grob 0.5 dB, UNGEPRUEFT) -- Naeherung, kein Ergebnis.
+      - N_t ungleich N_r kostet unabhaengig davon: jede neue Kombination braucht im
+        Rayleigh-Fall eigene Kurven, in allen Varianten.
 
 - [ ] **Raster.** Zwei Raten ueber 25 Distanzen, aus dem BF/MUX-Vergleich uebernommen. Fuer
       "ab wann lohnt analog" waere ein Raster ueber die Rate bei festen Distanzen
