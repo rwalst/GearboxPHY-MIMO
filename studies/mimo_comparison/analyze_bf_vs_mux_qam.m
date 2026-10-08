@@ -53,7 +53,16 @@ arguments
     opt.Ms (1,:) double = [4 16 64 256]     % M=1024 nur SISO, s. Kopf
     opt.dTab (1,:) double = [10 100 316 1000 3162 10000]  % Tabellenspalten
     opt.Ns3a (1,:) double = [1 2 4 8 16]    % kanonische N-Liste der 3a-Wuerfel
+    opt.capN (1,1) double = Inf             % alle Varianten auf N <= capN deckeln
 end
+
+% WOZU capN: die Kanalachse ist nur vergleichbar, wenn alle Kanaele auf
+% DEMSELBEN N-Raster stehen. Heute reichen K = 0 und Rang 1 bis N = 16, die
+% Rice-Laeufe nur bis 4 -- die Reihe der Schnittdistanzen ueber den Kanal
+% mischt also zwei Rasterweiten und ist kein Kanaltrend. Mit capN = 4
+% rechnet die Funktion alles gleich und liefert die lesbare Reihe; ohne
+% capN nutzt jede Variante, was sie hat. Beide Sichten gehoeren in eine
+% Darstellung, und zwar beschriftet.
 
 resDir = gearboxphy.paths.resultsDir('');
 figDir = fullfile(resDir, 'cmp_figures');
@@ -83,7 +92,7 @@ V(end+1) = struct('chan',"Rang 1", 'rule',"scaledB", 'mux',"mux_scaledB_KInf", '
 % dort beide Seiten denselben Grenzfall meinen: H = 1 deterministisch.
 
 % ---- laden und auf das gemeinsame Raster pruefen -----------------------
-[D, ref] = localLoadAll(V, resDir, opt.Ms);
+[D, ref] = localLoadAll(V, resDir, opt.Ms, opt.capN);
 d = ref.distances; rates = ref.rates; Ns = ref.Ns; Ms = ref.Ms;
 
 fprintf('\n');
@@ -172,7 +181,7 @@ end
 end
 
 % =======================================================================
-function [D, ref] = localLoadAll(V, resDir, Msel)
+function [D, ref] = localLoadAll(V, resDir, Msel, capN)
 %LOCALLOADALL  3b-Dateien laden, Huellkurven und Marken bilden.
 %   Prueft, dass alle Varianten auf DEMSELBEN Raster liegen -- ohne das
 %   waere jedes Verhaeltnis zwischen zwei Varianten bedeutungslos.
@@ -202,6 +211,7 @@ for k = 1:numel(V)
     % entweder ein Formfehler oder ein unfairer Vergleich.
     NsM = double(Cm.Ns(:).'); NsB = double(Cb.Ns(:).');
     NsK = intersect(NsM, NsB, 'stable');
+    NsK = NsK(NsK <= capN);                 % s. Kopf
     assert(~isempty(NsK), 'analyze_bf_vs_mux_qam:noCommonN', ...
         '%s und %s haben keine gemeinsame Antennenzahl.', V(k).mux, V(k).bf);
     [~, iM] = ismember(NsK, NsM); [~, iB] = ismember(NsK, NsB);
