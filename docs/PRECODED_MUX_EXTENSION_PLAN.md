@@ -186,3 +186,151 @@ niedriger Rate ein Modus (also Beamforming), bei hoher alle.
   BF und präkodiertes MUX, nicht das Open-Loop-MUX — die Richtung dieser
   dritten Verzerrung wäre wieder eine andere.
 - **N > 4.** Hängt weiter an den beiden fehlenden `fixedB`-Kurven.
+
+---
+
+# Nachtrag nach Durchsicht des MI-Kerns (2026-10-08)
+
+Drei Stellen, an denen der Plan oben an der Implementierung vorbeigeht.
+Alle drei fallen erst im Clusterlauf auf — zwei als verschwendete
+Rechenzeit, eine als Fehlersuche an einem Test, der aus einem legitimen
+Grund fehlschlägt.
+
+## 1. `s` gehört in den Sweep, nicht ins Water-Filling
+
+Der Plan oben lässt die Zahl der aktiven Moden aus dem Water-Filling
+fallen. Das kollidiert mit drei Dingen im Bestand:
+
+**`ergodicMiAuto` entscheidet die Tier-Wahl EINMAL je Konfiguration.**
+Der Kopfkommentar sagt warum: sie „hängt nicht von `H` ab". Mit
+Water-Filling hängt die aktive Modenzahl sehr wohl von `H` ab — und vom
+SNR-Punkt. `oBase.method` und `Xall` werden aber vor dem `parfor`
+gebildet und an alle Worker gebroadcastet. Die Vorberechnung wäre damit
+schlicht falsch.
+
+**Eine Nullspalte in `F` spart nichts.** `nComb = M^Nt` steht in
+`ergodicMiAuto.m:31`, unabhängig davon, wie viele Spalten von `H*F`
+tatsächlich Null sind. Eine Realisierung, in der Water-Filling genau
+einen Modus wählt, kostet dann so viel wie das volle Multiplexing,
+obwohl sie Beamforming rechnet. Der Wert bliebe richtig — die inaktiven
+Komponenten von `x` tragen nichts zu `yq` bei, also auch nichts zur MI —
+nur bezahlt man `M^16` für ein `M^1`-Problem.
+
+**Richtig ist, `Heff` auf seine `s` Spalten ungleich Null zu reduzieren**
+und `Xall` mit `s` Komponenten zu bauen. Dann ist `nComb = M^s`, und das
+ist der eigentliche Hebel: `s = 2` ist bei jedem `M` höchstens Tier 2
+(`M² ≤ 65536`), unabhängig von `N`. Die heutige 16×16-Kurve ist nicht
+teuer, weil sie 16 Antennen hat, sondern weil sie 16 Ströme hat.
+
+**Daraus folgt der Zuschnitt:** `s` wird gesweept wie `M` und `N`, mit
+gleicher Leistung auf den `s` stärksten Moden — also Stufe 2 der
+Leistungsverteilung als Produktionspfad, nicht Stufe 1. Water-Filling
+bleibt als Gegenprobe auf EINER Konfiguration.
+
+Das ist nicht nur billiger, es ist auch die richtige Zielfunktion.
+Water-Filling maximiert die Gaußsche Rate bei fester Leistung. Das
+Gearbox minimiert Energie je Bit, und der ADC-Preis hängt über die
+Bit-Regel an `s`. Diese beiden Optima fallen nicht zusammen. Lässt man
+das Gearbox `s` aus der Kandidatenliste wählen, beantwortet es die Frage
+des Plans — „wie viele Ströme lohnen sich" — nach seinem eigenen Maß
+statt nach einem fremden.
+
+Für das Gearbox ist das **keine neue Optimierungsdimension**:
+`+sweep/runSweep.m` zählt die Kandidaten aus `gear.antennaConfigs`
+ohnehin durch. `s` verlängert diese Liste, mehr nicht.
+
+## 2. Die ADC-Regel bedeutet unter Präkodierung etwas anderes
+
+Der Zuschnitt „nur scaledB" hält die Regel konstant, aber nicht ihre
+Begründung:
+
+| Regel | heute begründet mit | unter Präkodierung |
+|---|---|---|
+| `fixedB` | `½log₂M`, unabhängig von allem | unverändert gültig |
+| `alphabetB` | `N_t` Ströme überlagern sich | **`s`** Ströme überlagern sich → `s·½log₂M + 3` |
+| `scaledB` | Amplitude je Antenne wächst mit `√N_t` | gilt so nicht mehr: die Gesamtleistung ist auf 1 normiert, nicht auf `N_t` |
+
+`alphabetB` ist damit unter Präkodierung erstmals bei grossen Arrays
+rechenbar: 16×16 mit `s = 2` und `M = 4` verlangt `B = 5` statt `B = 19`.
+Genau die Zelle, an der die Regel heute die Antwort kippt (Folie 9 des
+ADC-Decks: MUX geht bei 1 km von `(4,16)` auf `(4,8)` zurück), wäre dann
+überhaupt erst sauber zu rechnen.
+
+`scaledB` braucht eine Entscheidung: `log₂N_r` beibehalten (Wandlerzahl,
+Argument über die Dynamik am Empfänger) oder durch `log₂s` ersetzen
+(Argument über die Überlagerung). **Das ist eine Nutzerentscheidung, keine
+Herleitung** — sie steht auf derselben Stufe wie die Wahl von `alphabetB`
+gegen `½log₂N_t` im Oktober.
+
+## 3. V4 kann aus einem legitimen Grund fehlschlagen
+
+> V4: präkodiertes MUX ≥ Open-Loop-MUX an jedem SNR-Punkt … schlägt es
+> fehl, stimmt die Normierung nicht.
+
+Der Schluss trägt nicht. Die Einheitsmatrix liegt zwar in der zulässigen
+Menge, aber Gauß-Water-Filling **sucht sie dort nicht**: es maximiert die
+Gaußsche Kapazität, nicht die quantisierte Endalphabet-MI. Ein
+Präkodierer, der für Gauß optimal ist, kann für QAM hinter einem
+`B`-Bit-ADC schlechter sein als gleiche Leistung. V4 darf also als
+*Diagnose* laufen, nicht als Abbruchkriterium — sonst sucht man einen
+Normierungsfehler, den es nicht gibt.
+
+**Der schärfere Test an dieser Stelle ist ein anderer.** Bei `s = N_t`
+und gleicher Leistung ist `F = V/√N_t` unitär bis auf den Faktor. Für
+einen *gaussverteilten* Eingang wäre das ein No-Op — `V P Vᴴ` lässt die
+Kovarianz `HHᴴ` unberührt. Für QAM hinter einem Quantisierer ist es
+keines: die Konstellation dreht sich gegen das feste Quantisierungsraster.
+Also:
+
+| | Prüfung | Kriterium |
+|---|---|---|
+| V6 | `s = N_t`, gleiche Leistung, gegen Open-Loop-MUX nach dem `10log₁₀(N_t)`-Shift | Differenz in der Größenordnung des MC-Fehlers. **Keinesfalls 3/6/9/12 dB** |
+
+V6 misst genau die 6-dB-Falle, vor der der Plan oben warnt, und trennt
+sie von echten Effekten: Was übrig bleibt, ist die Drehung gegen das
+Raster — ein Messartefakt der Präkodierung, kein Informationsgewinn. Beim
+Vergleich von `s = N_t` gegen Open-Loop muss dieser Rest bekannt sein,
+sonst wird er als CSIT-Gewinn gelesen.
+
+Ebenfalls zu korrigieren: `H·V` ist bei K = 0 **nicht** verteilungsgleich
+zu `H`. Die Rechtsrotationsinvarianz des i.i.d.-Gauß-Kanals gilt für ein
+von `H` unabhängiges unitäres `Q`; `V` stammt aus der SVD von `H` selbst,
+und `H·V = U·Σ` hat orthogonale Spalten mit fallender Norm. Ein Test, der
+Verteilungsgleichheit prüft, würde zu Recht scheitern.
+
+## Was das für die Rang-1-Zahl bedeutet
+
+Der Zuschnitt „nur K = 0" ist für einen ersten Lauf richtig, lässt aber
+die Zahl stehen, die am stärksten betroffen ist. Im Rang-1-Kanal hat
+`HᴴH` genau einen Eigenwert ungleich Null. Präkodiertes MUX mit `s = 1`
+**ist** dort Beamforming, Spalte für Spalte identisch — also `q = 1`
+exakt, nicht `0,029`.
+
+Die `0,029` aus `BF_vs_MUX_Channels.pptx` (Folie 7) misst damit nicht
+„Beamforming schlägt Multiplexing", sondern „ein Sender mit CSIT schlägt
+einen ohne" — in einem Kanal, in dem das Fehlen von CSIT maximal weh tut.
+Das ist ein richtiges Ergebnis mit falscher Überschrift. Es gehört
+spätestens dann richtiggestellt, wenn der präkodierte Lauf vorliegt; bis
+dahin trägt die Folie die Einschränkung nicht.
+
+## Zuschnitt, überarbeitet
+
+- Produktionspfad: `s` stärkste Moden, gleiche Leistung, `s` gesweept.
+- Raster: `N ∈ {1,2,4}`, `M ∈ {4,16,64,256}`, `s ∈ {1..N}` → 24 Kurven.
+  Davon sind die 4 mit `s = 1` bitgleich zu vorhandenen BF-Kurven (Test
+  V2) und müssen nicht gerechnet werden.
+- Kosten: `s = 1` und `s = 2` sind Tier 2 und billig; die Rechenzeit
+  steckt praktisch vollständig in `s = 4` bei `M ∈ {64,256}` — das ist
+  genau die heutige 4×4-Kurve. **Vor dem Clusterlauf einen Zeitmesspunkt
+  nehmen**, nicht aus der `#SBATCH`-Zeile schätzen (die letzte Schätzung
+  nach dieser Methode lag um Faktor 30 daneben).
+- `N ∈ {8,16}` mit `s ≤ 2` ist der erste Ausbau: `nComb` bleibt klein,
+  nur `L^(2N_r)` wächst. Das ist die Zelle, in der heute gar nichts steht.
+
+## Gearbox-Seite, Ergänzung
+
+Die Ratenobergrenze in `+gearboxphy/+gears/qamGear.m` ist
+`N_t·log₂M`. Eine präkodierte Kurve mit `s < N_t` sättigt bei `s·log₂M`
+— die Prüfung ist dann zu locker, schlägt also nicht fälschlich an, prüft
+aber auch nichts mehr. Mit `s` in der `antennaConfig` wird daraus
+`s·log₂M` und die Prüfung trägt wieder.
