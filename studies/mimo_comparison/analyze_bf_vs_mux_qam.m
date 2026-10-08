@@ -65,6 +65,12 @@ if opt.save && ~isfolder(figDir), mkdir(figDir); end
 V = struct('chan',{}, 'rule',{}, 'mux',{}, 'bf',{}, 'bfLimit',{});
 V(end+1) = struct('chan',"K=0",    'rule',"fixedB",  'mux',"mux_fixedB",       'bf',"bf_fixedB",        'bfLimit',false);
 V(end+1) = struct('chan',"K=0",    'rule',"scaledB", 'mux',"mux_scaledB",      'bf',"bf_scaledB",       'bfLimit',false);
+V(end+1) = struct('chan',"K=0",    'rule',"alphabetB",'mux',"mux_alphabetB",    'bf',"bf_fixedB",        'bfLimit',false);
+% alphabetB GEGEN bf_fixedB, und das ist kein Fluechtigkeitsfehler: bei
+% Beamforming kommt EIN Strom an, das beobachtete Alphabet ist M
+% unabhaengig von N_t, und adcBitsRule(M,Nt,Nr,"alphabetB") faellt dort mit
+% fixedB zusammen. Ein eigener BF-alphabetB-Lauf existiert deshalb nicht --
+% er waere bitgleich. Siehe runQamSweepAlphabet1.m "NUR MULTIPLEXING".
 V(end+1) = struct('chan',"K=3",    'rule',"scaledB", 'mux',"mux_scaledB_K3",   'bf',"bf_scaledB_K3",    'bfLimit',false);
 V(end+1) = struct('chan',"K=30",   'rule',"scaledB", 'mux',"mux_scaledB_K30",  'bf',"bf_scaledB_K30",   'bfLimit',false);
 V(end+1) = struct('chan',"Rang 1", 'rule',"scaledB", 'mux',"mux_scaledB_KInf", 'bf',"bfideal_scaledB",  'bfLimit',true);
