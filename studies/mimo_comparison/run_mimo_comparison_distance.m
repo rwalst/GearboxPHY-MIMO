@@ -68,15 +68,15 @@ CFG.Ms        = [4 16 64 256];
 % analyze_bf_vs_mux_qam maskiert je Zelle symmetrisch -- fehlt eine
 % (M,N)-Kombination auf einer Seite, wird sie auf BEIDEN verworfen. Damit
 % darf hier jede Variante so weit rechnen, wie ihre Kurven reichen.
-NS_FULL = [1 2 4 8 16];
-NS_LOW  = [1 2 4];                      % Rice: MI-Laeufe reichen nicht weiter
-NS_BY_VARIANT = containers.Map( ...
-    {'mux_fixedB','mux_scaledB','mux_alphabetB','bf_fixedB','bf_scaledB', ...
-     'bfideal_fixedB','bfideal_scaledB','mux_scaledB_KInf', ...
-     'mux_scaledB_K3','bf_scaledB_K3','mux_scaledB_K30','bf_scaledB_K30'}, ...
-    {NS_FULL, NS_FULL, NS_FULL, NS_FULL, NS_FULL, ...
-     NS_FULL, NS_FULL, NS_FULL, ...
-     NS_LOW, NS_LOW, NS_LOW, NS_LOW});
+NS_FULL = [1 2 4 8 16];                 % Obergrenze dessen, was die Studie kennt
+% KEINE festverdrahtete Tabelle je Variante mehr. Hier stand eine Map, die
+% die Rice-Varianten auf [1 2 4] festnagelte, weil ihre MI-Laeufe damals
+% nicht weiter reichten. Das ist genau die Sorte Eintrag, die nach dem
+% naechsten MI-Lauf still falsch wird: die Kurven liegen dann bis N = 16
+% vor, die Tabelle sagt weiter 4, und niemand merkt es. Stattdessen wird je
+% Variante im Exportordner nachgesehen, welche Antennenzahlen ueberhaupt
+% Kurven haben (localAvailableNs) -- die Daten sind die Quelle, nicht eine
+% Liste im Treiber.
 CFG.Ns        = NS_FULL;                % Vorgabe; je Variante unten gesetzt
 % Automatisch: auf dem Cluster parallel, ohne Parallel Computing Toolbox
 % (z.B. am Arbeitsplatz) seriell. Fest auf true wuerde hier schon an
@@ -118,9 +118,12 @@ for v = VARIANTS
     % der achten von zehn Varianten kostete alle sieben davor noch einmal.
     % SKIP_EXISTING = false erzwingt den vollen Lauf -- noetig, wenn sich
     % die Kurven unter data/ geaendert haben.
-    % N je Variante, s. Kopf.
-    if isKey(NS_BY_VARIANT, char(v)), CFG.Ns = NS_BY_VARIANT(char(v)); else, CFG.Ns = NS_FULL; end
+    % N je Variante aus den vorhandenen Kurven, s. Kopf.
+    CFG.Ns = localAvailableNs(dataDir, NS_FULL, CFG.Ms);
+    assert(~isempty(CFG.Ns), 'run_mimo_comparison_distance:noCurves', ...
+        '%s enthaelt keine einzige (M,N)-Kurve der Studie.', dataDir);
     nN = numel(CFG.Ns);
+    fprintf('   N = %s (aus den vorhandenen Kurven)\n', mat2str(CFG.Ns));
     % SKIP nur bei PASSENDER Signatur. Vorher genuegte isfile(outFile), und
     % das war eine Falle: aendert sich CFG (z.B. Ns von [1 2 4] auf
     % [1 2 4 8 16]), liegt die alte Datei noch da und der Lauf ueberspringt
@@ -186,6 +189,28 @@ for mi = 1:nM
             end
         end
     end
+end
+end
+
+function Ns = localAvailableNs(dataDir, NsAll, Ms)
+%LOCALAVAILABLENS  Welche Antennenzahlen hat dieser Exportordner wirklich?
+%   Behalten wird ein N, sobald dafuer MINDESTENS EINE Modulationsordnung
+%   eine Kurve hat -- die Raggedness innerhalb eines N (etwa alphabetB, dem
+%   M=64/256 bei N>=8 fehlt, oder die bewusst nicht gerechneten Ecken der
+%   Rice-Laeufe) faengt die symmetrische Maskierung in
+%   analyze_bf_vs_mux_qam ab, nicht diese Funktion.
+%
+%   N = 1 heisst SE_<M>_QAM.mat, N > 1 heisst SE_<M>_QAM_<N>x<N>.mat.
+Ns = [];
+for N = NsAll
+    found = false;
+    for M = Ms
+        if N == 1, nm = sprintf('SE_%d_QAM.mat', M);
+        else,      nm = sprintf('SE_%d_QAM_%dx%d.mat', M, N, N);
+        end
+        if isfile(fullfile(dataDir, nm)), found = true; break; end
+    end
+    if found, Ns(end+1) = N; end %#ok<AGROW>
 end
 end
 
