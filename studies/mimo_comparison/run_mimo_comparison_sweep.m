@@ -34,7 +34,7 @@ VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fix
 % analyze_best_gear Teil B die dritte ADC-Spalte -- genau das war der Stand
 % am 2026-10-08, obwohl 3b alphabetB schon trug.
 if isfolder(gearboxphy.paths.dataDir("SE_data_mux_alphabetB"))
-    VARIANTS(end+1) = "mux_alphabetB"; %#ok<AGROW>
+    VARIANTS(end+1) = "mux_alphabetB";
 end
 distanceVec  = [50 500 5000];
 fcVec        = 28e9;
