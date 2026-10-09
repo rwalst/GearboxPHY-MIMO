@@ -46,6 +46,39 @@ Der Sweep nutzt bisher nur K = 0.
 Die digitale Rayleigh-Referenz fuer Fall 2 ist `results/cmp_distance_bf_fixedB.mat` aus
 `run_mimo_comparison_distance`; die Auswertung vergleicht bisher nur gegen `dbf_ideal`.
 
+## Mischformen: eine Seite analog, die andere digital
+
+Lokal gelaufen sind nur die Pruefungen. Kein Sweep, keine Kurvenrechnung.
+
+LOS, laeuft sofort (Kurven aus `SE_data_bfideal_fixedB`):
+
+| Schritt | Wo | Aufruf | Ressourcen |
+|---|---|---|---|
+| 0 Pruefen | GearboxPHY-MIMO | `setupGearboxPath; validate_analog_bf` | unter 1 min; B11 prueft die Mischformen |
+| 1 Sweep | GearboxPHY-MIMO | `setupGearboxPath; run_analog_bf_mixed_distance` | nodes=1 ntasks=1 cpus-per-task=32 mem=64G time=12:00:00 |
+
+Schritt 1 schreibt `results/abfmix_distance_<variante>_<lo>.mat` fuer fuenf Varianten
+(`mix_txA_rxD_active`, `mix_txA_rxD_passive`, `mix_txD_rxA_active`, `mix_txD_rxA_passive_comp`,
+`mix_txD_rxA_passive_pen`) mal zwei LO-Faelle (`loShared`, `lo12p5mW`), also zehn Dateien.
+Raster wie `run_analog_bf_distance`; Referenzen sind dessen Ergebnisse. Nur ADC-Modell
+`envelope`.
+
+Rayleigh, braucht vorher neue Kurven:
+
+| Schritt | Wo | Aufruf | Ressourcen |
+|---|---|---|---|
+| A0 Pruefen | QuantizedMimoMI/qam/validate | `validateBfAnalog` | etwa eine Minute; A9, A10 pruefen die Mischfaelle |
+| A1a Kurven, Empfaenger analog | QuantizedMimoMI/qam/sweep | `runQamSweepBfAnalog` | nodes=1 cpus-per-task=4 mem=8G time=00:30:00; rechnet nur die fehlenden `bf_analog_rx`-Kurven |
+| A1b Kurven, Sender analog | QuantizedMimoMI/qam/sweep | `runQamSweepBfTxAnalog` | nodes=1 cpus-per-task=200 mem=64G time=12:00:00 (wie `runQamSweepBfRayleigh`, eine ADC-Regel statt zwei; NICHT gemessen) |
+| A2 Export | GearboxPHY-MIMO | `setupGearboxPath; export_analog_bf_curves` | Sekunden; legt `SE_data_abfrx_fixedB` und `SE_data_abftx_fixedB` an, soweit die Quellen da sind |
+| 1 Sweep | GearboxPHY-MIMO | `setupGearboxPath; run_analog_bf_mixed_distance` | rechnet nur die neuen `mixray_*`-Varianten |
+
+A1a und A1b sind unabhaengig; der Sweep nimmt jede der beiden Kurvenfamilien mit, sobald ihr
+Ordner existiert.
+
+Eine Auswertung, die die Mischformen neben die reinen Faelle legt, gibt es noch nicht
+(`analyze_analog_bf` kennt nur `abf_distance_*`).
+
 ## Was zu pruefen ist, wenn etwas nicht passt
 
 - `validate_analog_bf` B3 scheitert: die 1x1-Kurven in `SE_data_bfideal_fixedB` passen nicht

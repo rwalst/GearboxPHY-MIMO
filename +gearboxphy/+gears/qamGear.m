@@ -243,8 +243,8 @@ core.feasible = true;
 % with a real scenario.P_0 switches to Model B (Auer et al. 2011): each
 % PA also draws a fixed per-chain overhead, adding N_t*P_0 on top.
 if ctx.abf.enabled
-    % --- analog beamforming: ONE converter/mixer chain per side, N PAs
-    % and N LNAs. The driver that makes up the phase-shifter loss scales
+    % --- analog beamforming: ONE converter/mixer chain on every ANALOG
+    % side (abf.nChains* = N on a side that stays digital), N PAs and N LNAs. The driver that makes up the phase-shifter loss scales
     % the RF-dependent PA power only, not a fixed per-PA overhead P_0.
     P_PA_rf = gearboxphy.physics.powerAmplifier(P_t, ctx.sqrt_fc, ctx.papr, hw.c_PA, 1, 0);
     core.P_PA = ctx.N_t * hw.P_0 + ctx.abf.kappa_Tx * P_PA_rf;

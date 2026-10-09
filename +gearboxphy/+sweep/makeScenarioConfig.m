@@ -96,6 +96,11 @@ arguments
     %       with single-stream curves that already contain the array gain.
     opts.beamformingArch (1,1) string {mustBeMember(opts.beamformingArch, ["digital","analog"])} = "digital"
     opts.analogCurvesCarryArrayGain (1,1) logical = false
+    % Architecture PER SIDE for the mixed cases. "" (default) follows
+    % beamformingArch; "digital"/"analog" overrides it for that side only,
+    % e.g. beamformingArchTx="analog" with a digital receiver.
+    opts.beamformingArchTx (1,1) string {mustBeMember(opts.beamformingArchTx, ["","digital","analog"])} = ""
+    opts.beamformingArchRx (1,1) string {mustBeMember(opts.beamformingArchRx, ["","digital","analog"])} = ""
     % Phase shifter for "analog" (docs/PHASE_SHIFTER_POWER_MODEL.md):
     %   "active" - psPower per element, no loss;
     %   "passive_penalty" - no DC power, loss as driver power and noise
@@ -127,7 +132,11 @@ arguments
     % rather than silently falling back to eta.
     opts.B_maxByCarrier (:,2) double = zeros(0, 2)
 end
-if opts.beamformingArch == "analog"
+anyAnalog = opts.beamformingArch == "analog" || opts.beamformingArchTx == "analog" || opts.beamformingArchRx == "analog";
+if opts.beamformingArch == "analog" && opts.beamformingArchTx == "digital" && opts.beamformingArchRx == "digital"
+    anyAnalog = false;
+end
+if anyAnalog
     assert(opts.antennaMode == "beamforming" || opts.analogCurvesCarryArrayGain, ...
         'gearboxphy:analogNeedsSingleStream', ...
         ['beamformingArch="analog" needs antennaMode="beamforming", or ' ...

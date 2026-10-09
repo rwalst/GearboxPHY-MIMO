@@ -5,6 +5,18 @@ Phasenquantisierung nachgeprueft (beides in `docs/ANALOG_BEAMFORMING.md`).
 
 ## Vor der Auswertung zu entscheiden
 
+- [ ] **DAC-Aufloesung der digitalen Seite.** Die digitalen Referenzen (`dbf_ideal*`) und die
+      Mischform "Sender digital, Empfaenger analog" zahlen fuer den DAC `1/2*log2(M)` Bit;
+      ein digitaler Beamformer sendet aber gedrehte Symbole und braucht mehr. Die vorhandenen
+      Ergebnisse sind deshalb zu guenstig fuer digital: bei 1 Mbit/s ohne Wirkung, bei
+      1 Gbit/s in einer Stichprobe mit 20-dB-Fehlerbudget 20 bis 25 %
+      (`Groupmeetings/abf_results/dac_spotcheck.m`). Analoge Sender sind nicht betroffen.
+      Entschieden am 2026-10-09: MI-Kurven mit DAC-Quantisierung, eine je Stufe
+      `1/2*log2(M) + 0..3`, gebaut von der Sitzung des praekodierten Multiplexings --
+      `docs/DAC_QUANTISATION_SPEC.md`. Danach hier: Treiber um die Stufen erweitern (Minimum
+      ueber die Stufen), Kurven fuer "Sender digital, Empfaenger analog" mit demselben
+      Quantisierer rechnen, digitale Referenzen und betroffene Mischformen neu rechnen.
+
 - [ ] **Verstaerkungsausgleich beim passiven Phasenschieber.** `passive_compensated`
       multipliziert die LNA-Leistung mit der Daempfung (x 5.6 bei 7.5 dB). Das folgt aus der
       LNA-Formel der Dissertation (Leistung proportional zum Gewinn). Unter dem Survey-Modell
@@ -48,7 +60,12 @@ Phasenquantisierung nachgeprueft (beides in `docs/ANALOG_BEAMFORMING.md`).
 
 ## Studie
 
-- [ ] **Architektur je Seite und asymmetrische Arrays.** Bisher sind in jeder Variante BEIDE
+- [ ] **Mischformen auswerten.** Schalter je Seite (`beamformingArchTx/Rx`), Treiber
+      `run_analog_bf_mixed_distance`, Kurventreiber fuer beide Rayleigh-Mischfaelle und der
+      Export sind gebaut und geprueft, aber nichts davon ist gelaufen. Es fehlt eine
+      Auswertung, die `abfmix_distance_*` neben `abf_distance_*` legt.
+- [ ] **Asymmetrische Arrays** (N_t ungleich N_r) fehlen weiterhin, siehe naechster Punkt.
+- [ ] **Architektur je Seite und asymmetrische Arrays (urspruenglicher Eintrag).** Bisher sind in jeder Variante BEIDE
       Seiten analog (oder beide digital) und haben gleich viele Antennen (N x N). Nicht
       gerechnet: Mischfaelle (analoger Sender, digitaler Empfaenger und umgekehrt) und
       N_t ungleich N_r, also etwa grosses Array an der Basisstation und kleines am Endgeraet.

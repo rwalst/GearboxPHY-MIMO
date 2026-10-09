@@ -32,7 +32,7 @@ classdef AnalogBeamformingTest < matlab.unittest.TestCase
         function digitalResultsDoNotDependOnTheNewFields(testCase)
             % Same point, scenario with and without the analog fields: bit for bit.
             [gear, csD] = localGear("digital", "active");
-            fn = {'beamformingArch','analogCurvesCarryArrayGain','psType','psPower','psLossDb','psBits', ...
+            fn = {'beamformingArch','beamformingArchTx','beamformingArchRx','analogCurvesCarryArrayGain','psType','psPower','psLossDb','psBits', ...
                   'psGainPA','psGainLNA','psNoiseFactorLNA','loDistributionModel','loDistPowerPerMixer'};
             csOld = rmfield(csD, fn);
             cfg = struct('N_t', 4, 'N_r', 4);
@@ -166,11 +166,72 @@ classdef AnalogBeamformingTest < matlab.unittest.TestCase
                                  gear.computeBudget(gear.prepare(16, dS, c1), x, R));
         end
 
+        function perSideOverridesFollowAndOverride(testCase)
+            cfg = struct('N_t', 8, 'N_r', 4);
+            % both overrides analog == beamformingArch analog
+            a = gearboxphy.physics.analogBeamformingParams(localScenario("analog", "active"), cfg);
+            b = gearboxphy.physics.analogBeamformingParams( ...
+                localScenario("digital", "active", 'beamformingArchTx', "analog", 'beamformingArchRx', "analog"), cfg);
+            testCase.verifyEqual(a, b);
+            % analog overridden to digital on both sides == disabled
+            c = gearboxphy.physics.analogBeamformingParams( ...
+                localScenario("analog", "active", 'beamformingArchTx', "digital", 'beamformingArchRx', "digital"), cfg);
+            testCase.verifyFalse(c.enabled);
+        end
+
+        function mixedTxAnalogRxDigital(testCase)
+            cs = localScenario("digital", "passive_penalty", 'beamformingArchTx', "analog", 'psBits', 2, 'psLossDb', 7.5);
+            abf = gearboxphy.physics.analogBeamformingParams(cs, struct('N_t', 8, 'N_r', 8));
+            L = 10^(7.5/10);
+            testCase.verifyTrue(abf.enabled);
+            testCase.verifyEqual([abf.nChainsTx abf.nChainsRx], [1 8]);
+            testCase.verifyEqual(abf.kappa_Tx, 1 + (L - 1)/100, 'RelTol', 1e-12);
+            % nothing happens on the digital receive side
+            testCase.verifyEqual(abf.P_PS_Rx, 0);
+            testCase.verifyEqual(abf.lnaFactor, 1);
+            testCase.verifyEqual(abf.deltaRx_dB, 0);
+            % quantisation loss of ONE side only
+            one = gearboxphy.physics.analogBeamformingParams( ...
+                localScenario("analog", "active", 'psBits', 2), struct('N_t', 8, 'N_r', 1));
+            testCase.verifyEqual(abf.quantLoss_dB, one.quantLoss_dB, 'RelTol', 1e-12);
+            % compensated == penalty when the receiver is digital
+            csC = localScenario("digital", "passive_compensated", 'beamformingArchTx', "analog", 'psBits', 2, 'psLossDb', 7.5);
+            testCase.verifyEqual(gearboxphy.physics.analogBeamformingParams(csC, struct('N_t', 8, 'N_r', 8)).extra_L_dB, abf.extra_L_dB);
+        end
+
+        function mixedBudgetsCountChainsPerSide(testCase)
+            x = [log10(2e8), 0.7]; R = 1e8; N = 8; cfg = struct('N_t', N, 'N_r', N);
+            [gear, dD] = localGear("digital", "active", 'psBits', Inf);
+            [~, aA] = localGear("analog", "active", 'psBits', Inf);
+            [~, aD] = localGear("digital", "active", 'psBits', Inf, 'beamformingArchTx', "analog");
+            [~, dA] = localGear("digital", "active", 'psBits', Inf, 'beamformingArchRx', "analog");
+            b = @(cs) gear.computeBudget(gear.prepare(16, cs, cfg), x, R);
+            bDD = b(dD); bAA = b(aA); bAD = b(aD); bDA = b(dA);
+            % Tx analog, Rx digital: transmit side as all-analog, receive side as all-digital
+            for f = ["DAC","Mix_Tx","LO_Tx","PS_Tx"], testCase.verifyEqual(bAD.(f), bAA.(f), 'RelTol', 1e-12); end
+            for f = ["ADC","Mix_Rx","LO_Rx","LNA"],   testCase.verifyEqual(bAD.(f), bDD.(f), 'RelTol', 1e-12); end
+            testCase.verifyEqual(bAD.PS_Rx, 0);
+            % Tx digital, Rx analog: the other way round
+            for f = ["DAC","Mix_Tx","LO_Tx"],         testCase.verifyEqual(bDA.(f), bDD.(f), 'RelTol', 1e-12); end
+            for f = ["ADC","Mix_Rx","LO_Rx","PS_Rx"], testCase.verifyEqual(bDA.(f), bAA.(f), 'RelTol', 1e-12); end
+            testCase.verifyEqual(bDA.PS_Tx, 0);
+            % same link budget in all four (active, no quantisation): same PA
+            testCase.verifyEqual([bAD.PA bDA.PA bAA.PA], [bDD.PA bDD.PA bDD.PA], 'RelTol', 1e-12);
+            % LO distribution charges only the digital side
+            [~, aDlo] = localGear("digital", "active", 'psBits', Inf, 'beamformingArchTx', "analog", 'loDistributionModel', "per_mixer");
+            bLo = b(aDlo); g = x(2);
+            testCase.verifyEqual(bLo.LO_Tx, bAD.LO_Tx);
+            testCase.verifyEqual(bLo.LO_Rx - bAD.LO_Rx, (1/R) * (g + aD.epsilon_rec * (1 - g)) * 7 * 16.6e-3, 'RelTol', 1e-9);
+        end
+
         function analogNeedsASingleStream(testCase)
             testCase.verifyError(@() gearboxphy.sweep.makeScenarioConfig('beamformingArch', "analog"), ...
                 'gearboxphy:analogNeedsSingleStream');
             s = gearboxphy.sweep.makeScenarioConfig('beamformingArch', "analog", 'analogCurvesCarryArrayGain', true);
             testCase.verifyEqual(s.antennaMode, "multiplexing");
+            % one analog side is enough to need a single stream
+            testCase.verifyError(@() gearboxphy.sweep.makeScenarioConfig('beamformingArchRx', "analog"), ...
+                'gearboxphy:analogNeedsSingleStream');
         end
 
         function otherGearsRefuseMultiAntennaAnalog(testCase)

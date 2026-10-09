@@ -18,10 +18,15 @@ args = {'distance', d, 'RVec', CFG.rates, 'fcVec', CFG.fcGHz*1e9, 'dataDir', dat
 if isfield(v, 'lo') && v.lo ~= ""
     args = [args, {'loDistributionModel', v.lo, 'loDistPowerPerMixer', v.loPower}];
 end
+% Mischfaelle: Architektur je Seite (v.archTx / v.archRx), sonst folgt jede
+% Seite v.arch.
+if isfield(v, 'archTx') && v.archTx ~= "", args = [args, {'beamformingArchTx', v.archTx}]; end
+if isfield(v, 'archRx') && v.archRx ~= "", args = [args, {'beamformingArchRx', v.archRx}]; end
+anyAnalog = v.arch == "analog" || (isfield(v, 'archTx') && v.archTx == "analog") || (isfield(v, 'archRx') && v.archRx == "analog");
 if v.mode == "beamforming"
     args = [args, {'beamformingConfigs', configs}];
 else
-    args = [args, {'qamMimoConfigs', configs, 'analogCurvesCarryArrayGain', v.arch == "analog"}];
+    args = [args, {'qamMimoConfigs', configs, 'analogCurvesCarryArrayGain', anyAnalog}];
 end
 scen = gearboxphy.sweep.makeScenarioConfig(args{:});
 end

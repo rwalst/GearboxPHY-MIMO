@@ -13,6 +13,13 @@ function abf = analogBeamformingParams(cs, antennaConfig)
 %   A side with a single antenna has no phase shifter: N_t = N_r = 1 is
 %   exactly the digital SISO link.
 %
+%   MIXED CASES: cs.beamformingArchTx / cs.beamformingArchRx set the
+%   architecture per side. A digital side keeps N converter/mixer chains
+%   and has no phase shifters, no loss and no quantisation loss; only the
+%   analog side gets the single chain and the N phase shifters. With a
+%   digital receiver "passive_compensated" and "passive_penalty" coincide
+%   (their difference is on the receive side).
+%
 %   abf.enabled is false for cs.beamformingArch = "digital" (the default,
 %   also for a hand-built scenario without the field); the gear then
 %   takes its unchanged per-chain path and reads nothing else from abf.
@@ -48,11 +55,20 @@ function abf = analogBeamformingParams(cs, antennaConfig)
 %   The loss N/G enters once per side with more than one element. It is
 %   the loss of the mean SNR; cs.psBits = Inf switches it off.
 abf.enabled = false;
-if ~isfield(cs, 'beamformingArch') || string(cs.beamformingArch) == "digital"
+% Architecture per side: cs.beamformingArchTx/Rx override cs.beamformingArch
+% for that side ("" or missing = follow it). A scenario built by hand
+% without any of the fields is digital on both sides.
+arch = "digital";
+if isfield(cs, 'beamformingArch'), arch = string(cs.beamformingArch); end
+assert(any(arch == ["digital" "analog"]), 'gearboxphy:beamformingArch', ...
+    'Unknown beamformingArch "%s".', arch);
+archTx = arch; archRx = arch;
+if isfield(cs, 'beamformingArchTx') && string(cs.beamformingArchTx) ~= "", archTx = string(cs.beamformingArchTx); end
+if isfield(cs, 'beamformingArchRx') && string(cs.beamformingArchRx) ~= "", archRx = string(cs.beamformingArchRx); end
+txAnalog = archTx == "analog"; rxAnalog = archRx == "analog";
+if ~txAnalog && ~rxAnalog
     return
 end
-assert(string(cs.beamformingArch) == "analog", 'gearboxphy:beamformingArch', ...
-    'Unknown beamformingArch "%s".', string(cs.beamformingArch));
 
 mode = "multiplexing";
 if isfield(cs, 'antennaMode'), mode = string(cs.antennaMode); end
@@ -82,15 +98,18 @@ if isfield(cs, 'psGainLNA'),        G_LNA = cs.psGainLNA; end
 if isfield(cs, 'psNoiseFactorLNA'), F_LNA = cs.psNoiseFactorLNA; end
 
 abf.enabled   = true;
-abf.nChainsTx = 1;
-abf.nChainsRx = 1;
+abf.txAnalog  = txAnalog;
+abf.rxAnalog  = rxAnalog;
+% a digital side keeps one converter/mixer chain per antenna
+if txAnalog, abf.nChainsTx = 1; else, abf.nChainsTx = N_t; end
+if rxAnalog, abf.nChainsRx = 1; else, abf.nChainsRx = N_r; end
 abf.psType    = psType;
 abf.P_PS      = P_PS;
 abf.L_PS_dB   = 10*log10(L_PS);
 abf.b_PS      = cs.psBits;
 
-% --- transmit side
-if N_t > 1
+% --- transmit side (phase shifters only if this side is analog)
+if N_t > 1 && txAnalog
     abf.P_PS_Tx = N_t * P_PS;
     abf.kappa_Tx = gearboxphy.physics.phaseShifterPenalty(L_PS, G_PA, G_LNA, F_LNA);
 else
@@ -101,7 +120,7 @@ end
 % --- receive side
 abf.lnaFactor = 1;
 abf.deltaRx_dB = 0;
-if N_r > 1
+if N_r > 1 && rxAnalog
     abf.P_PS_Rx = N_r * P_PS;
     switch psType
         case "active"
@@ -119,7 +138,8 @@ else
 end
 
 % --- phase quantisation, both sides
-abf.quantLoss_dB = localQuantLossDb(N_t, cs.psBits) + localQuantLossDb(N_r, cs.psBits);
+% only an analog side has quantised phases; a digital side weights exactly
+abf.quantLoss_dB = txAnalog * localQuantLossDb(N_t, cs.psBits) + rxAnalog * localQuantLossDb(N_r, cs.psBits);
 abf.extra_L_dB = abf.deltaRx_dB + abf.quantLoss_dB;
 end
 

@@ -24,6 +24,8 @@ function validate_analog_bf()
 %   B9  EIN optimierter Punkt je Variante ueber denselben Aufrufweg wie der
 %       Treiber (das Einzige hier, das optimiert; einige Sekunden).
 %   B10 LO-Verteilung je Mischer trifft nur die digitale Referenz.
+%   B11 Mischformen: Hardware je Seite, Lage zwischen den reinen Faellen,
+%       LO-Verteilung nur auf der digitalen Seite, ein optimierter Punkt.
 %   B8  Fall 2, nur wenn SE_data_abf_fixedB existiert: sourceMode
 %       'bfanalog', sourceB nach fixedB, und die 1x1-Kurve stimmt mit der
 %       digitalen Rayleigh-1x1-Kurve ueberein (ein ADC, eine Antenne).
@@ -135,6 +137,41 @@ for pw = [4e-3 12.5e-3 17e-3]
 end
 vAlo = vAct; vAlo.lo = "per_mixer"; vAlo.loPower = 17e-3;
 nFail = nFail + report(isequal(bud(vAlo, "envelope"), bA), 'B10 LO-Verteilung: analog bitgleich unveraendert (ein Mischer je Seite)');
+
+% ---- B11 --------------------------------------------------------------
+% Mischformen (run_analog_bf_mixed_distance): jede Seite zaehlt fuer sich.
+mkm = @(name, tx, rx, ps) struct('name', name, 'data', dataName, 'mode', "beamforming", 'arch', "digital", ...
+    'archTx', tx, 'archRx', rx, 'ps', ps, 'lo', "", 'loPower', NaN);
+vAD = mkm("mix_txA_rxD_active", "analog", "digital", "active");
+vDA = mkm("mix_txD_rxA_active", "digital", "analog", "active");
+bAD = bud(vAD, "envelope"); bDA = bud(vDA, "envelope");
+ok = rel(bAD.DAC, bA.DAC) < 1e-12 && rel(bAD.Mix_Tx, bA.Mix_Tx) < 1e-12 && rel(bAD.PS_Tx, bA.PS_Tx) < 1e-12 && ...
+     rel(bAD.ADC, bD.ADC) < 1e-12 && rel(bAD.Mix_Rx, bD.Mix_Rx) < 1e-12 && bAD.PS_Rx == 0;
+nFail = nFail + report(ok, 'B11a Sender analog / Empfaenger digital: Tx wie analog, Rx wie digital, keine PS am Empfaenger');
+ok = rel(bDA.DAC, bD.DAC) < 1e-12 && rel(bDA.Mix_Tx, bD.Mix_Tx) < 1e-12 && bDA.PS_Tx == 0 && ...
+     rel(bDA.ADC, bA.ADC) < 1e-12 && rel(bDA.Mix_Rx, bA.Mix_Rx) < 1e-12 && rel(bDA.PS_Rx, bA.PS_Rx) < 1e-12;
+nFail = nFail + report(ok, 'B11b Sender digital / Empfaenger analog: Tx wie digital, Rx wie analog, keine PS am Sender');
+% zwischen den reinen Faellen: aktiv und mit 6 Bit unterscheidet nur die Hardware
+fAD = gear.makeObjective(gear.prepare(M, csOf(vAD, "envelope"), cfg), R);
+fDA = gear.makeObjective(gear.prepare(M, csOf(vDA, "envelope"), cfg), R);
+fDD = gear.makeObjective(gear.prepare(M, csOf(vDig, "envelope"), cfg), R);
+fAA = gear.makeObjective(gear.prepare(M, csOf(vAct, "envelope"), cfg), R);
+lo_ = min(fDD(x), fAA(x)); hi_ = max(fDD(x), fAA(x));
+ok = fAD(x) >= lo_*(1-1e-3) && fAD(x) <= hi_*(1+1e-3) && fDA(x) >= lo_*(1-1e-3) && fDA(x) <= hi_*(1+1e-3);
+nFail = nFail + report(ok, sprintf('B11c aktiv, fester Punkt: Mischfaelle %.4e / %.4e zwischen digital %.4e und analog %.4e J/bit', ...
+    fAD(x), fDA(x), fDD(x), fAA(x)));
+vADp = mkm("mix_txA_rxD_passive", "analog", "digital", "passive_penalty");
+vADc = mkm("x", "analog", "digital", "passive_compensated");
+ok = isequal(bud(vADp, "envelope"), bud(vADc, "envelope"));
+nFail = nFail + report(ok, 'B11d digitaler Empfaenger: passive_penalty und passive_compensated bitgleich');
+vADlo = vAD; vADlo.lo = "per_mixer"; vADlo.loPower = 12.5e-3;
+bL = bud(vADlo, "envelope");
+ok = isequal(bL.LO_Tx, bAD.LO_Tx) && rel(bL.LO_Rx - bAD.LO_Rx, (1/R) * (g + cs.epsilon_rec * (1 - g)) * (N - 1) * 12.5e-3) < 1e-9;
+nFail = nFail + report(ok, 'B11e LO-Verteilung trifft im Mischfall nur die digitale Seite');
+[e, ~, ~, pb] = gearboxphy.sweep.optimizeOnePoint(gear, gear.prepare(16, csOf(vAD, "envelope"), struct('N_t', 4, 'N_r', 4)), R, ...
+    gear.initialGuess(16, csOf(vAD, "envelope")), gear.optimizerBounds(16, csOf(vAD, "envelope")), ...
+    struct('tolerance', 1e-10, 'maxiters', 5e3, 'numtriesPerOpt', 20));
+nFail = nFail + report(isfinite(e) && isfield(pb, 'PS_Tx'), sprintf('B11f mix_txA_rxD_active optimiert, 4x4: E = %.4e J/bit', e));
 
 % ---- B8 ---------------------------------------------------------------
 abfDir = gearboxphy.paths.dataDir("SE_data_abf_fixedB");

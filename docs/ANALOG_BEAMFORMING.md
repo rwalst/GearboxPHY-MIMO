@@ -96,11 +96,37 @@ runs in `antennaMode = "multiplexing"` (one curve per antenna configuration) wit
 Phase quantisation is applied in the link budget in both cases, with the formula above. For
 case 2 that is an approximation (the formula assumes a fully coherent sum).
 
+## Mixed cases: one side analog, the other digital
+
+`beamformingArchTx` and `beamformingArchRx` override `beamformingArch` for one side
+(`""` = follow it). A digital side keeps N converter and mixer chains and has no phase
+shifters, no loss and no quantisation loss; the analog side gets one chain and N phase
+shifters. With `loDistributionModel = "per_mixer"` only the digital side pays for LO buffers.
+With a digital receiver, `"passive_compensated"` and `"passive_penalty"` are the same model,
+because they differ only on the receive side.
+
+Which spectral-efficiency curves a mixed case needs depends only on the effective channel and
+on where the receiver quantises; the transmitter architecture enters through its weights.
+
+| Channel | Tx analog, Rx digital | Tx digital, Rx analog |
+|---|---|---|
+| LOS (rank 1) | `SE_data_bfideal_fixedB`; phase-only transmit weights are optimal anyway, and the digital receiver uses the same slightly pessimistic approximation as the all-digital reference | `SE_data_bfideal_fixedB`, exact |
+| Rayleigh | new curves with one ADC per antenna and a phase-only precoder: `runQamSweepBfTxAnalog` (HPC), exported to `SE_data_abftx_fixedB` | new curves, cheap: gain with a free transmit weight and phase-only receive weights, then the SISO average: `runQamSweepBfAnalog` (SIDES "rx"), exported to `SE_data_abfrx_fixedB` |
+
+Driver: `studies/analog_bf/run_analog_bf_mixed_distance.m`.
+
 ## Study
 
 `studies/analog_bf/`, runbook `docs/HPC_RUNBOOK_ANALOG_BF.md`.
 
 ## Limits
+
+- **DAC resolution of a digital transmitter.** A digital beamformer sends rotated symbols, for
+  which the `1/2 log2 M` DAC bits the gear charges are not enough. An analog transmitter has
+  one DAC with an unrotated symbol and is not affected. The digital references of the study
+  are therefore too cheap at high rates (spot check: 20 to 25 % at 1 Gbit/s, nothing at
+  1 Mbit/s). To be fixed with spectral-efficiency curves that contain the DAC quantisation:
+  `DAC_QUANTISATION_SPEC.md`.
 
 - QAM only. ZXM and the pulse gears have no analog variant.
 - Splitter and combiner losses, phase-shifter amplitude errors and beam squint are not
