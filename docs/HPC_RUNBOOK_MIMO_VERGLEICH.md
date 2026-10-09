@@ -614,6 +614,56 @@ alle anderen Änderungen liegen in Dateien, die der Job nicht aufruft.
 
 ## Grenzen, die in die Auswertung gehören
 
+- **Der Kanal ist FREQUENZFLACH, und das ist eine eigene Annahme —
+  Entscheidung vom 2026-10-09: wir bleiben dabei, behalten ISI aber im
+  Hinterkopf.** `riceChannel` liefert eine N_r×N_t-Matrix *komplexer
+  Skalare*, also genau **einen** Tap ohne Verzögerungsachse; im ganzen
+  Kanalmodell gibt es keine Mehrwege-Maschinerie. Rayleigh/Rice ist eine
+  Aussage über die Amplitudenstatistik dieses einen Taps — K verschiebt
+  nur, wie viel davon deterministisch ist. Die Zahl der Taps ist eine
+  *andere* Achse, und sie ist hier 1. Ohne Kanal-ISI also, bei jedem K.
+
+  **Warum das nicht nur Kosmetik ist:** `qamGear` optimiert über
+  `(log10 B, γ)` — die Bandbreite ist eine Optimierungsvariable, und
+  nichts hält den Optimierer davon ab, in einen Bereich zu laufen, in dem
+  die eigene Kanalannahme nicht mehr gilt. Größenordnung bei 28 GHz:
+  τ_rms etwa 5–20 ns indoor, urban NLOS auch über 100 ns, also
+  Kohärenzbandbreiten von grob 2–40 MHz. Die Studie fährt Raten bis
+  10¹¹ bit/s. Am oberen Ratenende liegt B damit zwei bis drei
+  Größenordnungen über der Kohärenzbandbreite; für die Kleinraten-Gänge
+  (ZXM, IR) hält die Annahme bequem.
+
+  **Rice ist davon der selbstkonsistenteste Fall:** hoher K heißt ein
+  dominanter Pfad, also effektiv kürzere Verzögerungsstreuung. Dieselbe
+  Richtung wie die schon bekannte Verzerrung — Rayleigh begünstigt MUX
+  *und* ist der ISI-anfälligste Fall.
+
+  **Was es kosten würde, es zu modellieren:** H wird zu H[0..L], der
+  Empfänger sieht eine Summe über Taps, also ein Trellis über das
+  Kanalgedächtnis. Für QAM Tier 1/2 existiert diese Dimension nicht und
+  würde den Zustandsraum mit M^(N_t·L) multiplizieren. Bei ZXM/CPM/IR ist
+  die Fenstermaschinerie schon da, aber für die *Puls*-ISI verbraucht;
+  Kanal-Taps kämen oben drauf. Die Richtung des Effekts auf BF↔MUX ist
+  nicht vorhersagbar: Frequenzselektivität bringt Diversität und Rang
+  (hilft MUX), ISI schadet, und bei grober Quantisierung besonders, weil
+  nach dem Entscheider nicht mehr entzerrt werden kann.
+
+  **Offene Frage dahinter, nicht entschieden:** Tab. 1.1 der Gast-Diss
+  weist dem Bereich mittlerer/geringer spektraler Verfügbarkeit
+  **MIMO-OFDM** als Beispiel-Gang zu, und unser QAM-Gang ist der
+  Platzhalter dafür. Liest man ihn so, ist die flache Matrix der
+  *Unterträger*kanal und die Flachheit definitorisch erfüllt — dann
+  modelliert der Code OFDM aber als Einträger: `ctx.papr` kommt aus
+  `3*(√M−1)/(√M+1)` plus 6,17 dB, also einstellige dB statt der 8–12 dB
+  eines OFDM-Signals, und CP-Overhead sowie FFT-Energie fehlen. Liest man
+  ihn als Einträger-QAM, ist die Flachheit eine physikalische Behauptung.
+  Beide Lesarten haben einen Preis; welche gilt, ist offen.
+
+  **Billig prüfbar, wenn es konkret werden soll:** die Ergebnisse tragen
+  pro Arbeitspunkt die gewählte Bandbreite. Ein Vergleich „gewähltes B
+  gegen angenommene Kohärenzbandbreite" über Rate und Distanz zeigt ohne
+  neue Simulation, wo die Annahme hält.
+
 - **Das Kanalmodell entscheidet das Ergebnis mit — und begünstigt MUX.**
   Der Vergleich MUX↔BF ist methodisch sauber: beide laufen im
   i.i.d.-Rayleigh-Kanal, auf **denselben Realisierungen** (gleicher
