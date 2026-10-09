@@ -1,4 +1,4 @@
-function scen = analog_bf_scenario(d, CFG, v, dataDir, adcModel, configs)
+function scen = analog_bf_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel)
 %ANALOG_BF_SCENARIO  Szenario einer Variante der Analog-BF-Studie.
 %   Gemeinsam fuer run_analog_bf_distance und validate_analog_bf, damit
 %   beide garantiert dasselbe rechnen.
@@ -9,7 +9,11 @@ function scen = analog_bf_scenario(d, CFG, v, dataDir, adcModel, configs)
 %                          steckt in der Kurve (Fall 2); nur zusammen mit
 %                          Ein-Strom-Kurven, deshalb der Schalter
 %                          analogCurvesCarryArrayGain.
-args = {'distance', d, 'RVec', CFG.rates, 'fcVec', CFG.fcGHz*1e9, 'dataDir', dataDir, ...
+%
+%   dacModel (optional, Vorgabe "analytic"): DAC-Leistungsmodell, siehe
+%   +physics/dacConstants.m. Ohne das Argument bleibt alles wie bisher.
+if nargin < 7 || isempty(dacModel), dacModel = "analytic"; end
+args = {'dacPowerModel', dacModel, 'distance', d, 'RVec', CFG.rates, 'fcVec', CFG.fcGHz*1e9, 'dataDir', dataDir, ...
         'adcPowerModel', adcModel, 'antennaMode', v.mode, ...
         'beamformingArch', v.arch, 'psType', v.ps, 'psBits', CFG.psBits, ...
         'psPower', CFG.psPower, 'psLossDb', CFG.psLossDb};

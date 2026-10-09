@@ -60,10 +60,12 @@ if max(ctx.mui_vec) > capBits
 end
 
 % ADC und DAC werden GETRENNT aufgeloest:
-%   DAC: bleibt bei der Dissertations-Aufloesung 1/2*log2(M). DAC-
-%        Quantisierung steckt in keinem SE-Modell (weder Gasts SISO-Kurven
-%        noch QuantizedMimoMI) - mehr DAC-Bits kosteten nur Leistung und
-%        braechten im Modell nichts.
+%   DAC: 1/2*log2(M), die Dissertations-Aufloesung -- exakt fuer ein
+%        UNGEDREHTES QAM-Symbol (SISO, Multiplexing ohne Praekodierung,
+%        analoger Sender). Digitales Beamforming sendet je Antenne ein
+%        gedrehtes Symbol; Kurven, die die DAC-Quantisierung dafuer
+%        enthalten, tragen sourceBdac, und der DAC bezahlt dann genau
+%        diese Aufloesung (weiter unten, nach analogBeamformingParams).
 %   ADC: bezahlt GENAU die Aufloesung, mit der die SE-Kurve gerechnet wurde
 %        (sourceB aus der Kurvendatei, z.B. 1/2*log2(M)+log2(N)+3 fuer die
 %        HPC-Kurven). Ohne das Feld (Gasts SISO-Kurven) gilt ebenfalls
@@ -91,6 +93,16 @@ ctx.L_dB = gearboxphy.physics.linkBudgetDb(cs, antennaConfig);
 ctx.abf = gearboxphy.physics.analogBeamformingParams(cs, antennaConfig);
 if ctx.abf.enabled
     ctx.L_dB = ctx.L_dB + ctx.abf.extra_L_dB;
+end
+% DAC resolution of a DIGITAL transmitter (docs/DAC_QUANTISATION_SPEC.md):
+% a curve computed WITH DAC quantisation carries sourceBdac, and the DAC
+% then pays exactly that resolution - as the ADC pays sourceB. An ANALOG
+% transmitter never pays more than 1/2*log2(M): one DAC, an unrotated
+% symbol, the rotation is done by the phase shifters. Without the field
+% (every curve before the DAC extension) nothing changes.
+if isfinite(seData.sourceBdac) && ~(ctx.abf.enabled && ctx.abf.txAnalog)
+    ctx.b_DAC = seData.sourceBdac;
+    ctx.pow2_b_DAC = 2^ctx.b_DAC;
 end
 % LO power per side: P_LO, plus the distribution to every mixer beyond the
 % first if the scenario asks for it (loDistributionPower.m; 0 by default).

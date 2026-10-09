@@ -5,18 +5,13 @@ Phasenquantisierung nachgeprueft (beides in `docs/ANALOG_BEAMFORMING.md`).
 
 ## Vor der Auswertung zu entscheiden
 
-- [ ] **DAC-Aufloesung der digitalen Seite.** Die digitalen Referenzen (`dbf_ideal*`) und die
-      Mischform "Sender digital, Empfaenger analog" zahlen fuer den DAC `1/2*log2(M)` Bit;
-      ein digitaler Beamformer sendet aber gedrehte Symbole und braucht mehr. Die vorhandenen
-      Ergebnisse sind deshalb zu guenstig fuer digital: bei 1 Mbit/s ohne Wirkung, bei
-      1 Gbit/s in einer Stichprobe mit 20-dB-Fehlerbudget 20 bis 25 %
-      (`Groupmeetings/abf_results/dac_spotcheck.m`). Analoge Sender sind nicht betroffen.
-      Entschieden am 2026-10-09: MI-Kurven mit DAC-Quantisierung, eine je Stufe
-      `1/2*log2(M) + 0..3`, gebaut von der Sitzung des praekodierten Multiplexings --
-      `docs/DAC_QUANTISATION_SPEC.md`. Danach hier: Treiber um die Stufen erweitern (Minimum
-      ueber die Stufen), Kurven fuer "Sender digital, Empfaenger analog" mit demselben
-      Quantisierer rechnen, digitale Referenzen und betroffene Mischformen neu rechnen.
-
+- [ ] **DAC-Aufloesung der digitalen Seite.** Gebaut am 2026-10-09, NICHT gerechnet: Kurven mit
+      DAC-Quantisierung je Stufe (`dacQuantize`, `runQamSweepBfIdealDac`,
+      `runQamSweepBfRayleighDac`), `qamGear` bezahlt `sourceBdac`, Treiber
+      `run_dbf_dac_distance` mit drei DAC-Leistungsmodellen. Ablauf: `docs/HPC_RUNBOOK_DAC.md`,
+      Modell: `docs/DAC_QUANTISATION_SPEC.md`. Offen: die Laeufe selbst, eine Auswertung fuer
+      `dbfdac_distance_*`, die Mischform "Sender digital, Empfaenger analog" mit demselben
+      Quantisierer, und der Anschluss des BF/MUX-Vergleichs an `minOverDacLevels`.
 - [ ] **Verstaerkungsausgleich beim passiven Phasenschieber.** `passive_compensated`
       multipliziert die LNA-Leistung mit der Daempfung (x 5.6 bei 7.5 dB). Das folgt aus der
       LNA-Formel der Dissertation (Leistung proportional zum Gewinn). Unter dem Survey-Modell

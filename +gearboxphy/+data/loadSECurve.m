@@ -21,6 +21,10 @@ function seData = loadSECurve(gearName, order, antennaConfig, dataDir, antennaMo
 %                   Kurve GERECHNET wurde (NaN = unbekannt, z.B. Gasts
 %                   SISO-Kurven). qamGear/naQamGear bezahlen genau diese
 %                   Aufloesung, damit SE und ADC-Leistung zusammenpassen.
+%     sourceBdac    DAC-Aufloesung in Bit je I/Q-Zweig, mit der die Kurve
+%                   gerechnet wurde (NaN = idealer DAC, alle Kurven vor der
+%                   DAC-Erweiterung). qamGear bezahlt sie fuer einen
+%                   DIGITALEN Sender (docs/DAC_QUANTISATION_SPEC.md).
 %     snrReference  "total" = SNR bezogen auf die GESAMT-Sendeleistung.
 %
 %   SCHUTZ gegen unnormierte MIMO-Kurven: QuantizedMimoMI rechnet mit
@@ -41,6 +45,7 @@ end
 [filename, isSISO] = gearboxphy.data.seCurveFilename(gearName, order, antennaConfig, dataDir, antennaMode);
 
 seData.sourceB = NaN;
+seData.sourceBdac = NaN;
 seData.snrReference = "";
 
 switch gearName
@@ -49,6 +54,7 @@ switch gearName
         seData.SNR_vec = raw.SNR_vec;
         seData.SE_vec  = raw.SE_vec;
         if isfield(raw, 'sourceB'),      seData.sourceB = double(raw.sourceB); end
+        if isfield(raw, 'sourceBdac'),   seData.sourceBdac = double(raw.sourceBdac); end
         if isfield(raw, 'snrReference'), seData.snrReference = string(raw.snrReference); end
     case "ZXM"
         raw = gearboxphy.data.loadMatCached(filename);

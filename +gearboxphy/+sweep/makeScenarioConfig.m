@@ -86,6 +86,15 @@ arguments
     %       Gearbox uses. It REPLACES c_ADC, so do not combine it with a
     %       hand-set c_ADC.
     opts.adcPowerModel (1,1) string {mustBeMember(opts.adcPowerModel, ["envelope","quantile5"])} = "envelope"
+    % DAC power model (docs/DAC_POWER_MODEL.md, +physics/dacConstants.m).
+    %   "analytic" (default) - DAC_VDD, DAC_I0, DAC_Cp as given above (Cui's
+    %       example values for 0.5 um CMOS), byte-identical to every
+    %       existing result.
+    %   "analytic_1V" - the same with DAC_VDD = 1 V (dissertation ch. 5/6).
+    %   "survey" - 5 % quantile of the Caragiulo/Daigle/Murmann DAC survey
+    %       (1.2 uW per LSB, 0.25 pJ per bit and sample). It REPLACES the
+    %       three constants, so do not combine it with hand-set ones.
+    opts.dacPowerModel (1,1) string {mustBeMember(opts.dacPowerModel, ["analytic","analytic_1V","survey"])} = "analytic"
     % Beamforming architecture (docs/ANALOG_BEAMFORMING.md,
     % +physics/analogBeamformingParams.m). QAM gear only.
     %   "digital" (default) - one converter chain per antenna, as before;

@@ -15,6 +15,9 @@ function carrierScenario = resolveScenarioForCarrier(scenario, f_c)
 %
 %   scenario.adcPowerModel selects the ADC constant c_ADC, see
 %   +physics/adcConstant.m.
+%
+%   scenario.dacPowerModel selects the DAC constants, see
+%   +physics/dacConstants.m.
 [P_Mix, P_LO, etaOverride] = gearboxphy.physics.bandHardwareParams(f_c);
 carrierScenario = scenario;
 carrierScenario.f_c = f_c;
@@ -28,6 +31,13 @@ end
 % field (built by hand) keeps its c_ADC.
 if isfield(scenario, 'adcPowerModel')
     carrierScenario.c_ADC = gearboxphy.physics.adcConstant(scenario.adcPowerModel, scenario.c_ADC);
+end
+% DAC power model: only the three constants change, resolved here once so
+% that every gear keeps reading cs.DAC_VDD / DAC_I0 / DAC_Cp. A scenario
+% without the field (built by hand) keeps its constants.
+if isfield(scenario, 'dacPowerModel')
+    [carrierScenario.DAC_VDD, carrierScenario.DAC_I0, carrierScenario.DAC_Cp] = ...
+        gearboxphy.physics.dacConstants(scenario.dacPowerModel, scenario.DAC_VDD, scenario.DAC_I0, scenario.DAC_Cp);
 end
 if isfield(scenario, 'B_maxByCarrier') && ~isempty(scenario.B_maxByCarrier)
     row = find(abs(scenario.B_maxByCarrier(:,1) - f_c) <= 1e-9*f_c);
