@@ -110,6 +110,27 @@ for ch = CH
                 ch.name, ch.digBase);
         continue
     end
+    % common ist seit 2026-10-12 der Standardfall und damit die Pflichtachse.
+    if isempty(levCommon)
+        fprintf('\n%s: keine Ordner %s_dac<k>_common -- Kanal uebersprungen. Der Standardfall\n', ...
+                ch.name, ch.digBase);
+        fprintf('  ist die gemeinsame Aussteuerung; ohne sie gibt es nichts zu rechnen.\n');
+        continue
+    end
+    % LAUT MELDEN, WENN DER STANDARD WENIGER STUFEN HAT ALS DER VERGLEICH.
+    % Sonst sieht ein Ergebnis mit einer einzigen DAC-Stufe wie ein voller
+    % Sweep aus. Die fehlenden Ordner entstehen in QuantizedMimoMI mit
+    % DAC_OFFSETS_COMMON = [0 1 2 3] (runQamSweepBfRayleighDac,
+    % runQamSweepBfLosDigitalDac).
+    fehlt = setdiff(lev, levCommon);
+    if ~isempty(fehlt)
+        warning('run_dbf_dac_distance:commonIncomplete', ...
+            ['%s: der Standardfall (gemeinsame Aussteuerung) liegt nur fuer die Stufen %s vor, ' ...
+             'der Vergleich fuer %s. Es fehlen %s_dac{%s}_common -- erst in QuantizedMimoMI ' ...
+             'mit DAC_OFFSETS_COMMON = [0 1 2 3] rechnen, sonst ist dieses Ergebnis kein ' ...
+             'vollstaendiger Sweep.'], ch.name, mat2str(levCommon), mat2str(lev), ...
+            ch.digBase, strjoin(string(fehlt), ','));
+    end
     assert(isfolder(gearboxphy.paths.dataDir(ch.digBase)), 'run_dbf_dac_distance:noData', ...
         '%s fehlt - die Kurven mit idealem DAC gehoeren dazu (Export wiederholen).', ch.digBase);
 
@@ -131,17 +152,23 @@ for ch = CH
             R0 = localCase(CFG, v, P.ADC_MODEL, dacModel, nWorkers);
             Eideal = R0.E; EidealDac = R0.Edac; EidealPa = R0.Epa;
 
-            [E, Etx, Erx, Epa, Edac] = localLevels(CFG, v, ch.digBase, lev, "", P.ADC_MODEL, dacModel, nWorkers);
+            % STANDARD IST DIE GEMEINSAME AUSSTEUERUNG (2026-10-12): E,
+            % Ebest und kBest kommen aus den _common-Ordnern. Die
+            % Aussteuerung je Antenne setzt hinter jedem DAC eine stufenlos
+            % einstellbare Verstaerkung voraus, die im Energiebudget
+            % niemand bezahlt -- sie bleibt als Eper daneben stehen und
+            % zeigt, was sie wert waere. Bis 2026-10-12 war es umgekehrt;
+            % Dateien ohne das Feld dacScaleStandard stammen von davor.
+            [E, Etx, Erx, Epa, Edac] = localLevels(CFG, v, ch.digBase, levCommon, "_common", P.ADC_MODEL, dacModel, nWorkers);
             [Ebest, kBest, EbestDac, EbestPa] = gearboxphy.sweep.minOverDacLevels(E, Edac, Epa);
             S = struct('E', E, 'Etx', Etx, 'Erx', Erx, 'Epa', Epa, 'Edac', Edac, ...
                        'Eideal', Eideal, 'EidealDac', EidealDac, 'EidealPa', EidealPa, ...
                        'Ebest', Ebest, 'kBest', kBest, 'EbestDac', EbestDac, 'EbestPa', EbestPa, ...
-                       'dacLevels', lev, 'dacLevelsCommon', levCommon, 'CFG', CFG, ...
+                       'dacLevels', levCommon, 'dacLevelsPer', lev, 'dacScaleStandard', "common", ...
+                       'CFG', CFG, ...
                        'channel', ch.name, 'lo', P.LO_NAMES(li), 'dacModel', dacModel, 'v', v);
-            if ~isempty(levCommon)
-                [S.Ecommon, ~, ~, S.EcommonPa, S.EcommonDac] = ...
-                    localLevels(CFG, v, ch.digBase, levCommon, "_common", P.ADC_MODEL, dacModel, nWorkers);
-            end
+            [S.Eper, ~, ~, S.EperPa, S.EperDac] = ...
+                localLevels(CFG, v, ch.digBase, lev, "", P.ADC_MODEL, dacModel, nWorkers);
             save(outFile, '-struct', 'S');
             fprintf('fertig nach %.1f min -> %s\n', toc(t0)/60, outFile);
         end
@@ -269,16 +296,26 @@ fprintf('Pool mit %d Workern, genutzt werden %d.\n', pool.NumWorkers, nWorkers);
 end
 
 function tf = localDone(outFile, CFG, lev, levCommon)
-%LOCALDONE  Datei vorhanden UND mit demselben Raster und denselben Stufen
-%   gerechnet. Kommen spaeter Stufen dazu (z.B. die Rayleigh-Kurven oder
-%   der Vergleichsfall), wird neu gerechnet.
+%LOCALDONE  Datei vorhanden UND mit demselben Raster, denselben Stufen und
+%   demselben Standardfall gerechnet. Kommen spaeter Stufen dazu, wird neu
+%   gerechnet.
+%
+%   dacScaleStandard IST PFLICHT, und zwar nicht aus Ordnungsliebe: seit
+%   2026-10-12 ist E die gemeinsame Aussteuerung, vorher war es die je
+%   Antenne. Die aelteren Dateien tragen dasselbe CFG und -- sobald die
+%   fehlenden _common-Ordner gerechnet sind -- auch dasselbe Stufenraster,
+%   wuerden also uebersprungen und als neue Rechnung gelesen, obwohl in E
+%   der andere Fall steht. Das Feld fehlt ihnen, und daran scheitert der
+%   Vergleich hier absichtlich.
 tf = false;
 if ~isfile(outFile), return; end
 try
-    T = load(outFile, 'CFG', 'dacLevels', 'dacLevelsCommon');
+    T = load(outFile, 'CFG', 'dacLevels', 'dacLevelsPer', 'dacScaleStandard');
 catch
     return
 end
-if ~isfield(T, 'CFG') || ~isfield(T, 'dacLevels') || ~isfield(T, 'dacLevelsCommon'), return; end
-tf = isequaln(T.CFG, CFG) && isequal(T.dacLevels(:), lev(:)) && isequal(T.dacLevelsCommon(:), levCommon(:));
+if ~isfield(T, 'CFG') || ~isfield(T, 'dacLevels') || ~isfield(T, 'dacLevelsPer') ...
+        || ~isfield(T, 'dacScaleStandard'), return; end
+tf = isequaln(T.CFG, CFG) && string(T.dacScaleStandard) == "common" ...
+     && isequal(T.dacLevels(:), levCommon(:)) && isequal(T.dacLevelsPer(:), lev(:));
 end

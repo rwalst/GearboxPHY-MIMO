@@ -25,7 +25,8 @@ bezahlt genau die Aufloesung, mit der die Kurve gerechnet wurde, und waehlt die 
 | DAC-Stufen | `1/2*log2(M) + k`, k = 0, 1, 2, 3 Bit je I/Q-Zweig |
 | Verfahren | fertig gewichtetes Signal runden (Eigenvektor-Gewichte wie bisher, danach quantisieren). Eine Praekodierung, die die quantisierten Ausgaenge direkt waehlt, ist Ausblick |
 | Aussteuerung | je Antenne (und je Kanalrealisierung) WAEHLBAR aus wenigen Werten, kein Abschneiden; siehe "Modell" |
-| Vergleichsfall | EINE gemeinsame Aussteuerung fuer alle Antennen (`common`): Rayleigh fuer Stufe +0, LOS fuer alle Stufen |
+| **Standardfall** | EINE gemeinsame Aussteuerung fuer alle Antennen (`common`), Default von `dacQuantize` seit 2026-10-12 |
+| Vergleichsfall | Aussteuerung je Antenne (`perAntenna`) -- der optimistische Fall, siehe unten |
 | Sendeleistung | nach dem Runden auf die Gesamtleistung normiert |
 | Gemeinsame Phase | Konvention behalten: erstes Element des Gewichtsvektors reell und positiv, nicht optimiert |
 | LOS-Referenz | wird mitgerechnet, ueber die Strahlrichtung gemittelt; sie laeuft ZUERST |
@@ -65,8 +66,9 @@ Was die waehlbare Aussteuerung bewirkt:
 
 Das Kriterium ist der Fehler je Antenne, nicht die MI.
 
-`common`: ein Spitzenwert (der groesste aller Antennen) und ein `Lc` fuer alle, gewaehlt nach dem
-Gesamtfehler. Die Aussteuerung je Antenne setzt eine stufenlose Verstaerkung je Antenne hinter
+`common` IST SEIT 2026-10-12 DER STANDARD -- vorher war es der Vergleichsfall. Ein Spitzenwert
+(der groesste aller Antennen) und ein `Lc` fuer alle, gewaehlt nach dem Gesamtfehler. Die
+Aussteuerung je Antenne setzt eine stufenlose Verstaerkung je Antenne hinter
 dem DAC voraus, die niemand bezahlt; der Vergleichsfall zeigt, was sie wert ist. Auch im LOS
 sind die beiden Faelle verschieden: die Betraege sind dort gleich, der Spitzenwert haengt aber
 von der Drehung ab.

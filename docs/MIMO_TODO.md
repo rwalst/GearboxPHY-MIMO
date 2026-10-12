@@ -226,6 +226,7 @@ Dann AP2 für die Rice-Varianten auf dem vollen Raster, dann AP6.
 | E5 | ZXM / IR / CPM in die MIMO-Matrix? | **NEIN** (2026-10-12). ZXM-MIMO ist bei N_t >= 2 blockiert (der komplexe Kanal braucht den Gruppenpfad über 2·N_t Ströme); die SISO-Gänge decken den Kleinratenbereich ab. |
 | E2 | Rice auch für `fixedB` und `alphabetB`? | offen. Empfehlung: nein, nur `scaledB` — die Regel kostet nachweislich nichts (Median 0,00 %), ein zweites Rice-Raster bringt keine neue Aussage. |
 | E4 | DAC-Kurven am Ideal-DAC deckeln? | **JA** (2026-10-12), umgesetzt und getestet — siehe AP4. Quantisierung darf nicht helfen, sonst bevorzugt `minOverDacLevels` genau die Stufe, die am meisten rundet. |
+| E9 | Gemeinsame Aussteuerung als Standard? | **JA** (2026-10-12). `perAntenna` setzt hinter jedem DAC eine stufenlos einstellbare Verstärkung je Antenne voraus, die im Energiebudget niemand bezahlt — der optimistische Fall, nicht der normale. Umgestellt: Default von `dacQuantize` und `ergodicMiBeamforming`, die Herkunftsvorgabe in `runRuleSweep`, `DAC_OFFSETS_COMMON = [0 1 2 3]` in beiden Treibern, und in `run_dbf_dac_distance` speisen die `_common`-Ordner jetzt `E`/`Ebest` (Vergleich als `Eper`). Der Unterschied ist bei +0 bit gemessen bis 0,285 bit (Rayleigh) bzw. 0,192 bit (LOS je Antenne) — und er kommt nicht nur aus der Amplitudenspreizung, sondern auch aus der Drehung, die den I/Q-Spitzenwert je Antenne verschiebt (`validateBfDac` D9). `validateBfDac` bleibt mit dem neuen Default 12/12 grün. **Die 18 vorhandenen `dbfdac_distance_*`-Dateien tragen in `E` den alten Fall und sind überholt**; `localDone` verlangt jetzt das Feld `dacScaleStandard` und rechnet sie deshalb neu. |
 | E8 | ADC-Regel je Modus statt einheitlich? | **JA** (2026-10-12). `scaledB`s `log₂Nt` stammt laut `adcBitsRule` aus der Überlagerung von N_t Strömen an jeder Empfangsantenne. Digitales BF sendet **einen** Strom — die Aussteuerung je Antenne bleibt eine M-QAM-Konstellation, und die kohärente Summe entsteht nach dem ADC, wo Wortbreite nichts kostet. BF trägt deshalb `fixedB`, MUX weiter `scaledB`. Das Repo argumentierte so schon zweimal: analoges BF ist durchweg `fixedB` (alle vier K), und `analyze_bf_vs_mux_qam` paart `mux_alphabetB` gegen `bf_fixedB`. Richtung: BF wird günstiger, bis 2,65 % im Verhältnis BF/MUX — die bisherigen BF-Zahlen waren benachteiligt, nicht geschönt. |
 | E7 | Wie wird der `isfile`-Aussetzer auf dem UNC-Share abgestellt? | offen, und er verfälscht Ergebnisse still. Empfehlung: die Kandidatenprüfung EINMAL im Client machen und das Ergebnis in den parfor broadcasten, statt sie je Worker und je Distanz zu wiederholen -- das ist auch 25× weniger Dateizugriffe. Zusätzlich die fünf betroffenen Läufe neu rechnen. |
 | E6 | N > 16? | offen. Empfehlung: nein — `alphabetB` ist dort nicht rechenbar, und die Phasenquantisierung verliert bei großen Arrays ohnehin. |
@@ -300,6 +301,13 @@ einem ADC hinter dem Kombinierer gibt es ihn über alle Stufen.
 |---|---|---|---|---|
 | digitales Beamforming | Rayleigh | +1, +2, +3 bit | 60 | 0,72 h |
 | digitales Beamforming | LOS, ein ADC je Antenne | +1, +2, +3 bit | 60 | 0,24 h |
+
+**Seit E9 ist das keine Ergänzung mehr, sondern der Standardfall selbst.**
+Die gemeinsame Aussteuerung liegt bei diesen beiden Kanälen nur bei +0 bit
+vor; ohne diese 120 Kurven hat der Standard ein Stufenraster von einem
+Punkt, während der Vergleich vier hat. `run_dbf_dac_distance` warnt
+deshalb mit `run_dbf_dac_distance:commonIncomplete`, statt das Ergebnis
+als vollen Sweep auszugeben.
 
 Jede der sechs fehlenden Kombinationen deckt das volle Gitter ab: alle
 fünf Arraygrößen (SISO bis 16×16) × alle vier Modulationsordnungen, ADC
