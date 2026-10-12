@@ -103,6 +103,7 @@ if USE_PARALLEL
         parpool("HPCServer", numel(CFG.distances));
     end
     wait(parfevalOnAll(@addpath, 0, gearboxphy.paths.root()));
+    wait(parfevalOnAll(@setupGearboxPath, 0));    % Studienordner, u.a. studies/common
     nWorkers = numel(CFG.distances);
 else
     fprintf('Keine Parallel Computing Toolbox -- parfor laeuft seriell.\n');
@@ -113,7 +114,7 @@ nD = numel(CFG.distances); nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel
 for lc = LO_CASES
     for k = 1:numel(V)
         v = V(k);
-        v.lo = lc.model; v.loPower = lc.power;       % analog_bf_scenario liest beides
+        v.lo = lc.model; v.loPower = lc.power;       % bf_arch_scenario liest beides
         dataDir = gearboxphy.paths.dataDir(v.data);
         outFile = gearboxphy.paths.resultsDir(sprintf('abfmix_distance_%s_%s.mat', v.name, lc.tag));
         if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) && localUpToDate(outFile, dataDir)
@@ -147,7 +148,7 @@ nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
 E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E; Eps = E;
 fc = CFG.fcGHz * 1e9;
 configs = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
-scen = analog_bf_scenario(d, CFG, v, dataDir, adcModel, configs);
+scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs);
 cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, fc);
 op = struct('tolerance', scen.tolerance, 'maxiters', scen.maxiters, 'numtriesPerOpt', scen.numtriesPerOpt);
 gear = gearboxphy.gears.qamGear();

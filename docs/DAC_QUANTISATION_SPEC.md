@@ -1,7 +1,11 @@
 # MI-Kurven mit DAC-Quantisierung fuer digitales Beamforming
 
-Stand 2026-10-09. Entscheidungen des Nutzers vom selben Tag (zwei Runden), gebaut in der
-Analog-BF-Sitzung. Ablauf auf dem HPC: `docs/HPC_RUNBOOK_DAC.md`.
+Stand 2026-10-12. Entscheidungen des Nutzers vom 2026-10-09 (zwei Runden) und 2026-10-12
+(ADC je Empfangsantenne auch im LOS). Studie: `studies/digital_bf_dac/` (Uebersicht und offene
+Punkte in deren `README.md`). Ablauf auf dem HPC: `docs/HPC_RUNBOOK_DAC.md`. Herleitung Schritt
+fuer Schritt: `docs/dac_quantisation_math/dac_quantisation_math.pdf`.
+
+Alle MI-Kurven liegen vor und sind geprueft; der Distanz-Sweep im Gearbox ist nicht gelaufen.
 
 ## Warum
 
@@ -81,8 +85,9 @@ Rayleigh-Kurven rechnen schon immer mit einem ADC je Antenne.
   bestimmt, wie die Antennensignale auf den ADC-Rastern liegen.
 - Im Gearbox der Kanal `losd` (`SE_data_bflosd_fixedB[_dac<k>]`). Die Kurven mit EINEM ADC
   bleiben als Kanal `los`; sie beschreiben "Sender digital, Empfaenger analog".
-- Erwartung: mit `1/2*log2(M) + 3` ADC-Bit liegt die Kurve mit N ADCs wenig UEBER der mit einem
-  ADC (am 2026-10-01 fuer 16-QAM, drei Empfangsantennen, 5 Bit: +0.018 bit).
+- Ergebnis: die Kurve mit N ADCs liegt wenig UEBER der mit einem ADC, bei 75 % von `log2(M)`
+  um 0.03-0.06 dB (2x2) bis 0.12-0.17 dB (16x16). Der Mehrbedarf durch den DAC ist in beiden
+  Empfaengermodellen bis auf 0.02 dB derselbe.
 
 ## LOS-Referenz mit einem ADC hinter dem Kombinierer (`runQamSweepBfIdealDac`)
 
@@ -116,32 +121,41 @@ Zweig wirkt wie ein 2-Bit-Phasenschieber (`validateBfDac` D5). Die 48 % EVM aus 
 Praekodier-Plans sind ein Mass je Antenne, kein Mass fuer die MI. Mit gemeinsamer Aussteuerung
 ist der Verlust bei 4-QAM und +0 Bit 1.2 dB (N_t = 4) bzw. 1.8 dB (N_t = 16).
 
-Erster MI-Stichpunkt fuer die LOS-Referenz (lokal, kleines Raster: 8 Richtungen, ADC `fixedB`;
-SNR-Mehrbedarf gegen den idealen DAC bei 75 % von `log2(M)`, in dB):
+## Ergebnis der MI-Kurven (Stand 2026-10-12)
 
-| M | N | Aussteuerung | +0 Bit | +1 Bit | +2 Bit | +3 Bit |
-|---|---|---|---|---|---|---|
-| 4 | 4 | je Antenne | 0.47 | 0.06 | 0.00 | 0.00 |
-| 4 | 4 | gemeinsam | 0.38 | 0.17 | 0.04 | 0.01 |
-| 4 | 16 | je Antenne | 1.03 | 0.14 | 0.01 | 0.00 |
-| 4 | 16 | gemeinsam | 0.91 | 0.20 | 0.06 | 0.01 |
-| 16 | 4 | je Antenne | 0.23 | 0.14 | 0.00 | 0.00 |
-| 16 | 4 | gemeinsam | 0.55 | 0.04 | -0.02 | 0.01 |
-| 16 | 16 | je Antenne | 0.39 | 0.16 | 0.00 | 0.00 |
-| 16 | 16 | gemeinsam | 0.61 | 0.15 | 0.00 | 0.01 |
+SNR-Mehrbedarf gegen den idealen DAC bei 75 % von `log2(M)`, in dB, Aussteuerung je Antenne:
 
-Der Mehrbedarf ist ab +2 Bit null und bei +0 Bit hoechstens rund 1 dB. Im LOS ist die
-gemeinsame Aussteuerung nicht durchweg schlechter (4-QAM, +0 Bit: sogar besser): dort sind alle
-Betraege gleich, und die Aussteuerung je Antenne auf den Spitzenwert macht sie ungleich. Das
-Kriterium von `dacQuantize` ist der Fehler je Antenne, nicht die MI. Im Rayleigh-Kanal, wo die
-Betraege wirklich verschieden sind, ist das Bild nach der Quantisierer-Rechnung umgekehrt.
+| Kanal | M | N | +0 Bit | +1 Bit | +2 Bit | +3 Bit | +0 gemeinsam |
+|---|---|---|---|---|---|---|---|
+| LOS, ADC je Antenne | 4 | 4 | 0.59 | 0.08 | 0.01 | 0.00 | 0.50 |
+| LOS, ADC je Antenne | 4 | 16 | 0.82 | 0.10 | 0.01 | 0.00 | 0.72 |
+| LOS, ADC je Antenne | 16 | 16 | 0.34 | 0.17 | 0.02 | 0.00 | 0.59 |
+| LOS, ADC je Antenne | 256 | 16 | 0.02 | 0.01 | 0.02 | 0.00 | 0.03 |
+| Rayleigh | 4 | 4 | 0.39 | 0.05 | 0.00 | 0.00 | 0.99 |
+| Rayleigh | 4 | 16 | 0.61 | 0.08 | 0.01 | 0.00 | 1.26 |
+| Rayleigh | 16 | 16 | -0.06 | 0.13 | 0.01 | 0.00 | 1.13 |
+| Rayleigh | 64 | 16 | -0.27 | 0.00 | 0.02 | 0.00 | -0.50 |
+| Rayleigh | 256 | 16 | -0.29 | -0.05 | -0.01 | 0.00 | -0.81 |
+
+- Ab +2 Bit kostet der DAC nichts mehr; bei +0 Bit hoechstens rund 0.8 dB.
+- LOS mit einem ADC hinter dem Kombinierer: dieselben Werte bis auf 0.02 dB.
+- Im LOS ist die gemeinsame Aussteuerung nicht durchweg schlechter (4-QAM: besser): dort sind
+  alle Betraege gleich, und die Aussteuerung je Antenne auf den Spitzenwert macht sie ungleich.
+  Im Rayleigh-Kanal, wo die Betraege wirklich verschieden sind, ist sie bei 4-QAM deutlich
+  schlechter.
+- NEGATIVE Werte im Rayleigh-Kanal (M >= 64, N >= 4, schwach M = 16): die Kurve mit DAC liegt
+  UEBER der mit idealem DAC, bis 0.10 bit. Kein Rechenfehler (unabhaengig nachgerechnet): der
+  Rundungsfehler liegt auch in den uebrigen Eigenmoden und haengt vom Symbol ab; der Empfaenger
+  im Modell kennt alle Sendevektoren und wertet alle Antennen gemeinsam aus. Ein Empfaenger, der
+  nur auf den Hauptstrahl kombiniert, haette davon nichts. Im LOS (Rang 1) tritt es nicht auf.
+  OFFEN: die exportierten Kurven am idealen DAC deckeln oder so lassen.
 
 ## Ablage und Schnittstelle zum Gearbox
 
 - MI-Ergebnisse je Stufe in eigenen Ordnern: `qam/results/bf_ideal_dac<k>[_common]`,
   `qam/results/bf_rayleigh_dac<k>[_common]`, mit `results.Bdac`, `results.dacOffset`,
   `results.dacScale`. Der Dateiname traegt die Stufe nicht.
-- Export (`studies/analog_bf/export_dbf_dac_curves`) nach `data/SE_data_bfideal_fixedB_dac<k>`
+- Export (`studies/digital_bf_dac/export_dbf_dac_curves`) nach `data/SE_data_bfideal_fixedB_dac<k>`
   und `data/SE_data_bf_fixedB_dac<k>` (jeweils auch `_common`). Die Kurvendatei traegt
   `sourceBdac`; bei `N_t = 1` ist das `1/2*log2(M)`.
 - `loadSECurve` reicht `sourceBdac` durch; `qamGear` setzt `b_DAC = sourceBdac`, wenn das Feld
@@ -153,7 +167,7 @@ Betraege wirklich verschieden sind, ist das Bild nach der Quantisierer-Rechnung 
 | beide Seiten analog | keine |
 | Sender analog, Empfaenger digital | keine wegen des DAC |
 | beide Seiten digital (Referenz) | `SE_data_bf_fixedB_dac<k>`, `SE_data_bfideal_fixedB_dac<k>` |
-| Sender digital, Empfaenger analog | eigene Kurven mit demselben Quantisierer und einem ADC hinter dem Kombinierer -- NOCH NICHT GEBAUT |
+| Sender digital, Empfaenger analog | LOS: `SE_data_bfideal_fixedB_dac<k>` (ein ADC hinter dem Kombinierer). Rayleigh: eigene Kurven mit demselben Quantisierer -- NOCH NICHT GEBAUT |
 
 ## Kontrollen (`QuantizedMimoMI/qam/validate/validateBfDac`)
 

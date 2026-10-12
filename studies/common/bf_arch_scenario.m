@@ -1,7 +1,10 @@
-function scen = analog_bf_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel)
-%ANALOG_BF_SCENARIO  Szenario einer Variante der Analog-BF-Studie.
-%   Gemeinsam fuer run_analog_bf_distance und validate_analog_bf, damit
-%   beide garantiert dasselbe rechnen.
+function scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel)
+%BF_ARCH_SCENARIO  Szenario einer Beamforming-Variante (analog, digital oder
+%   gemischt) aus der Variantenbeschreibung v.
+%   Gemeinsam fuer die Studien analog_bf (run_analog_bf_distance,
+%   run_analog_bf_mixed_distance, validate_analog_bf) und digital_bf_dac
+%   (run_dbf_dac_distance), damit alle garantiert dasselbe rechnen.
+%   Hiess bis 2026-10-12 analog_bf_scenario und lag in studies/analog_bf/.
 %
 %   v.mode "beamforming":  SISO-Kurve des Datenordners, Gewinn N_t*N_r im
 %                          Linkbudget (Fall 1, LOS).

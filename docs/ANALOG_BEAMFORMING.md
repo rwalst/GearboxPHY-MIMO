@@ -171,4 +171,5 @@ paper assumes 10 mW, and a per-element synthesizer reaches about 4 mW. The defau
 measured designs is a fully digital array: Pang shifts the phase in the LO path, Khanna
 combines four elements at RF before each downconverter.
 
-Open points are collected in `studies/analog_bf/TODO.md`.
+Open points are collected in `studies/analog_bf/TODO.md`. The DAC resolution of the digital
+side is a study of its own: `studies/digital_bf_dac/` (see its `README.md`).

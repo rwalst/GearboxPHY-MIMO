@@ -14,7 +14,7 @@ function [best, kIdx, varargout] = minOverDacLevels(E, varargin)
 %     A*     further arrays of the same size as E, reduced with the SAME
 %            choice (e.g. the DAC share, the transmit energy).
 %
-%   Used by studies/analog_bf/run_dbf_dac_distance.m; the BF vs. MUX study
+%   Used by studies/digital_bf_dac/run_dbf_dac_distance.m; the BF vs. MUX study
 %   is meant to call it too, so that both treat the levels alike.
 sz = size(E);
 nK = sz(end);

@@ -21,12 +21,16 @@ not a framework design choice).
 └── +paths/     root/, data/, results/ - the ONE place a repo path is built
 data/           frozen SE-curve lookup tables (unchanged inputs)
 ├── SE_data/        Gast's original curves
-└── SE_data_<v>/    exported per comparison variant (mux/bf/bfideal x fixedB/scaledB)
+└── SE_data_<v>/    exported per variant (mux/bf/bfideal/abf/bflosd x fixedB/scaledB,
+                    optional _K<k> for Rice and _dac<k> for DAC resolution)
 results/        one folder per sweep, plus the loose per-study .mat files
 docs/           architecture, extension and power-model notes, HPC runbooks
 studies/        one folder per study, each with its run/analyze/validate scripts
 ├── mimo_comparison/     beamforming vs. multiplexing + the ADC bit rule
 ├── beamforming/         the beamforming sweeps
+├── analog_bf/           analog vs. digital beamforming (phase shifters, LO distribution)
+├── digital_bf_dac/      digital beamforming with finite DAC resolution, three DAC power models
+├── common/              helpers shared by several studies (bf_arch_scenario.m)
 ├── lna/                 the LNA power-model comparison
 ├── downlink_multiuser/  one user at rate x vs. n users at x/n
 └── zxm_vs_qam/          one QAM link vs. n parallel ZXM links

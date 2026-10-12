@@ -19,6 +19,12 @@
 # Alle uebrigen Abbildungen bleiben ausgeschlossen: sie entstehen bei
 # jedem Lauf neu und aendern sich bei jeder Layoutkorrektur.
 !results/cmp_figures/*.png
+# Dokumente unter docs/ sind Ergebnisse von Hand, keine Laufartefakte: ihre
+# PDFs gehoeren ins Repository (die LaTeX-Hilfsdateien nicht).
+!docs/**/*.pdf
+docs/**/*.aux
+docs/**/*.log
+docs/**/*.out
 
 # Rauchtests legen Wegwerf-Ergebnisse an (tests/smoke_test.m,
 # tests/mimo_smoke_test.m). Sie entstehen bei jedem Lauf neu.

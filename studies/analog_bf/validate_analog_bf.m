@@ -47,7 +47,7 @@ vAct  = mk("abf_active", "beamforming", "analog", "active");
 vComp = mk("abf_passive_comp", "beamforming", "analog", "passive_compensated");
 vPen  = mk("abf_passive_pen", "beamforming", "analog", "passive_penalty");
 csOf = @(v, adc) gearboxphy.sweep.resolveScenarioForCarrier( ...
-    analog_bf_scenario(d, CFG, v, dataDir, adc, configs), fc);
+    bf_arch_scenario(d, CFG, v, dataDir, adc, configs), fc);
 
 % ---- B1 ---------------------------------------------------------------
 r = runtests({fullfile(gearboxphy.paths.root(), 'tests', '+unit', 'AnalogBeamformingTest.m'), ...

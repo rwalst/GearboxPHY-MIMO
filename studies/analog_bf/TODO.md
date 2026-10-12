@@ -5,13 +5,10 @@ Phasenquantisierung nachgeprueft (beides in `docs/ANALOG_BEAMFORMING.md`).
 
 ## Vor der Auswertung zu entscheiden
 
-- [ ] **DAC-Aufloesung der digitalen Seite.** Gebaut am 2026-10-09, NICHT gerechnet: Kurven mit
-      DAC-Quantisierung je Stufe (`dacQuantize`, `runQamSweepBfIdealDac`,
-      `runQamSweepBfRayleighDac`), `qamGear` bezahlt `sourceBdac`, Treiber
-      `run_dbf_dac_distance` mit drei DAC-Leistungsmodellen. Ablauf: `docs/HPC_RUNBOOK_DAC.md`,
-      Modell: `docs/DAC_QUANTISATION_SPEC.md`. Offen: die Laeufe selbst, eine Auswertung fuer
-      `dbfdac_distance_*`, die Mischform "Sender digital, Empfaenger analog" mit demselben
-      Quantisierer, und der Anschluss des BF/MUX-Vergleichs an `minOverDacLevels`.
+- [ ] **DAC-Aufloesung der digitalen Seite.** Ausgelagert in die eigene Studie
+      `studies/digital_bf_dac/` (Stand und offene Punkte in deren `README.md`). Fuer diese
+      Studie bleibt: nach dem Distanz-Sweep dort die digitalen Referenzen (`dbf_ideal*`) durch
+      die Ergebnisse mit DAC-Quantisierung ersetzen bzw. daneben auswerten.
 - [ ] **Verstaerkungsausgleich beim passiven Phasenschieber.** `passive_compensated`
       multipliziert die LNA-Leistung mit der Daempfung (x 5.6 bei 7.5 dB). Das folgt aus der
       LNA-Formel der Dissertation (Leistung proportional zum Gewinn). Unter dem Survey-Modell

@@ -1,7 +1,14 @@
 # Runbook: digitales Beamforming mit DAC-Quantisierung
 
-Stand 2026-10-09. Modell: `DAC_QUANTISATION_SPEC.md`, DAC-Leistung: `DAC_POWER_MODEL.md`.
-Reihenfolge wie entschieden: erst die billige LOS-Referenz, Ergebnis ansehen, dann Rayleigh.
+Stand 2026-10-12. Studie: `studies/digital_bf_dac/`. Modell: `DAC_QUANTISATION_SPEC.md`,
+DAC-Leistung: `DAC_POWER_MODEL.md`.
+
+**Erledigt:** alle MI-Kurven (Schritte 1, 4 und 7) liegen vor und sind geprueft.
+**Offen:** Export und Distanz-Sweep -- Schritte 2/3 genuegen, ein Aufruf nimmt alle drei
+Kanaele (`losd`, `los`, `ray`) mit. Vor dem Export ist die Frage "deckeln oder nicht" zu
+entscheiden (`studies/digital_bf_dac/README.md`).
+
+Die Teile unten stehen in der Reihenfolge, in der sie entstanden sind.
 
 Lokal gelaufen sind nur die Pruefungen (`validateBfDac`, Unit-Tests, Golden Master, ein
 Probelauf des Studientreibers auf einem Mini-Raster). Kein Kurven- und kein Distanz-Sweep.

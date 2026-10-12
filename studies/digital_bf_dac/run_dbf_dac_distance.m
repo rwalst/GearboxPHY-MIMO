@@ -13,6 +13,11 @@ function run_dbf_dac_distance(over)
 %   Zeitbedarf NICHT GEMESSEN. Fertige Dateien werden uebersprungen
 %   (SKIP_EXISTING): nach einem Abbruch einfach noch einmal starten.
 %
+%   STUDIE studies/digital_bf_dac: was kostet die endliche DAC-Aufloesung das
+%   digitale Beamforming. Die analogen Varianten laufen nur als Vergleich
+%   mit (studies/analog_bf ist die Studie dazu). Uebersicht: README.md in
+%   diesem Ordner.
+%
 %   WAS GERECHNET WIRD (alles QAM, 28 GHz, ADC-Modell "envelope", ADC-Regel
 %   fixedB; Raster wie run_analog_bf_distance):
 %     Kanal    "losd" (Rang 1, ein ADC je Empfangsantenne), "los" (Rang 1,
@@ -202,7 +207,7 @@ nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
 E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E;
 fc = CFG.fcGHz * 1e9;
 configs = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
-scen = analog_bf_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel);
+scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel);
 cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, fc);
 op = struct('tolerance', scen.tolerance, 'maxiters', scen.maxiters, 'numtriesPerOpt', scen.numtriesPerOpt);
 gear = gearboxphy.gears.qamGear();
@@ -250,9 +255,11 @@ if isempty(pool)
         return
     end
 end
-% Worker erben das Arbeitsverzeichnis des Clients NICHT (siehe runSweep.m)
+% Worker erben das Arbeitsverzeichnis des Clients NICHT (siehe runSweep.m).
+% setupGearboxPath legt auch die Studienordner auf den Pfad, darunter
+% studies/common mit bf_arch_scenario.
 wait(parfevalOnAll(@addpath, 0, gearboxphy.paths.root()));
-wait(parfevalOnAll(@addpath, 0, fileparts(mfilename('fullpath'))));
+wait(parfevalOnAll(@setupGearboxPath, 0));
 nWorkers = min(pool.NumWorkers, nWanted);
 fprintf('Pool mit %d Workern, genutzt werden %d.\n', pool.NumWorkers, nWorkers);
 end

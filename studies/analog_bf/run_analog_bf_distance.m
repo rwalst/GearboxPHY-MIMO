@@ -96,6 +96,7 @@ if USE_PARALLEL
     end
     % Worker erben das Arbeitsverzeichnis des Clients NICHT (siehe runSweep.m)
     wait(parfevalOnAll(@addpath, 0, gearboxphy.paths.root()));
+    wait(parfevalOnAll(@setupGearboxPath, 0));    % Studienordner, u.a. studies/common
     nWorkers = numel(CFG.distances);
 else
     fprintf('Keine Parallel Computing Toolbox -- parfor laeuft seriell.\n');
@@ -175,8 +176,8 @@ end
 function scen = localScenario(d, CFG, v, dataDir, adcModel, configs)
 %LOCALSCENARIO  Die EINE Stelle, an der aus einer Variante ein Szenario
 %   wird -- validate_analog_bf ruft dieselbe Logik ueber
-%   analog_bf_scenario.m auf.
-scen = analog_bf_scenario(d, CFG, v, dataDir, adcModel, configs);
+%   studies/common/bf_arch_scenario.m auf.
+scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs);
 end
 
 function tf = localUpToDate(outFile, dataDir)
