@@ -6,7 +6,9 @@ entscheiden: Multiplexing, digitales Beamforming oder analoges Beamforming —
 und zwar so, dass die Wahl für jeden Kanal und jede Wandler­annahme
 nachvollziehbar ist.
 
-Stand: 2026-10-12, Entscheidungen E1/E3/E4/E5 getroffen (siehe Abschnitt 5).
+Stand: 2026-10-12, Entscheidungen E1/E3/E4/E5/E8/E9 getroffen (Abschnitt 5).
+Code-Snapshot für den HPC-Abgleich: **`a438306f0032`** (394 Dateien, beide
+Repos; `codeManifest('diff','a438306f0032')` sagt, was fehlt).
 Dieses Dokument ist der gemeinsame Plan, nicht die
 Dokumentation der Ergebnisse — die steht in `HPC_RUNBOOK_MIMO_VERGLEICH.md`,
 `HPC_RUNBOOK_ANALOG_BF.md` und `HPC_RUNBOOK_DAC.md`.
@@ -111,7 +113,9 @@ liegen vollständig (je 20 Dateien in `bf_rayleigh_dac0..3`,
 **Beide Schritte sind am 2026-10-12 gelaufen** (Protokoll
 `../nachtraegliches_protokoll.txt`): der Export schrieb 19 Ordner, der
 Distanz-Sweep alle drei DAC-Modelle × zwei LO-Fälle × drei Kanäle plus die
-analogen Varianten. Dabei sind zwei Dinge aufgefallen:
+analogen Varianten. **Beide müssen wiederholt werden** — der Export, weil
+er jetzt deckelt (E4) und die `_common`-Stufen dazukommen; der Sweep, weil
+`E` seit E9 den anderen Fall trägt. Dabei sind zwei Dinge aufgefallen:
 
 **(a) Sechs Ordner fehlen wirklich — die `_common`-Stufen +1..+3.** Erwartet
 waren 25 Ordner, geschrieben 19. Es fehlen
@@ -188,11 +192,19 @@ Architekturen über Kanal und Distanz zusammenführt.
 
 ## 4. Was jetzt in welcher Reihenfolge läuft
 
-**Ohne neuen MI-Lauf** (Gearbox-Seite, Stunden):
+**Zuerst, weil billig und weil der Standardfall daran hängt** (MI-Seite,
+unter einer Stunde): `runQamSweepBfRayleighDac` und
+`runQamSweepBfLosDigitalDac` → die 120 `_common`-Kurven (Block C).
+Startklar, siehe Abschnitt 6.
 
-1. `export_dbf_dac_curves` → die fehlenden `SE_data_*_dac*`-Ordner (AP4.1).
+**Dann ohne weiteren MI-Lauf** (Gearbox-Seite, Stunden):
+
+1. `export_dbf_dac_curves` → die `SE_data_*_dac*`-Ordner neu, jetzt
+   inklusive der `_common`-Stufen und an der Ideal-DAC-Kurve gedeckelt
+   (AP4.1, E4). Lief am 2026-10-12 schon einmal für 19 Ordner.
 2. `run_dbf_dac_distance` → DAC-Quantisierung × drei Leistungsmodelle
-   (AP4.2 + AP5), 25 Worker.
+   (AP4.2 + AP5), 25 Worker. Rechnet die 18 vorhandenen Dateien neu, weil
+   sie in `E` den alten Standardfall tragen (E9).
 3. `run_analog_bf_distance` um die Rice-Datenordner erweitern (AP3) — die
    Kurven liegen als `SE_data_abf_fixedB_K3/_K30/_KInf` längst da.
 4. `run_mimo_comparison_rate` für `mux_alphabetB` und die fünf
@@ -239,16 +251,45 @@ alphabetB 15/15 · `bf_rayleigh` K=0 (fixedB+scaledB) 40/40 · `bf_ideal`
 40/40 · `bf_analog` **80/80** über alle vier K · `bf_los_digital_ideal`
 20/20 · alle 19 vorhandenen DAC-Ordner je 20/20.
 
-**Es fehlen genau 144 Kurven in drei Blöcken:**
+**Es fehlen genau 160 Kurven in drei Blöcken:**
 
 | Block | Ordner | fehlend | Kosten | Treiber |
 |---|---|---|---|---|
 | A | `rule_mux` (MUX, scaledB) | 8: N = 8, 16 × M = 64, 256 × K = 3, 30 | 35,6 h je K | `runQamSweepRiceMux` |
-| B | `bf_rayleigh` (dig. BF, scaledB) | 16: N = 8, 16 × alle M × K = 3, 30 | < 1 h je K | `runQamSweepRiceBf` |
-| C | `bf_rayleigh_dac{1,2,3}_common`, `bf_los_digital_dac{1,2,3}_common` | 120: 6 Ordner × 20 | **0,96 h zusammen** | s. u. |
+| B | `bf_rayleigh` (dig. BF, **fixedB**) | 32: N = 2…16 × alle M × K = 3, 30 | < 1 h je K | `runQamSweepRiceBf` |
+| C | `bf_rayleigh_dac{1,2,3}_common`, `bf_los_digital_dac{1,2,3}_common` | 120: 6 Ordner × 20 | **0,96 h zusammen** | `runQamSweepBfRayleighDac`, `runQamSweepBfLosDigitalDac` |
 
-A und B sind AP1 (Entscheidung E1), die Treiber stehen schon auf dem vollen
-Gitter.
+A und B sind AP1 (Entscheidung E1); Block B ist durch E8 von 16 auf 32
+Kurven gewachsen, weil die BF-Seite unter der neuen Regel bei allen N ≥ 2
+neu gerechnet wird. **Alle drei Treiber sind umgestellt, committet und
+gepusht** (QuantizedMimoMI bis `6c4e8e5`, GearboxPHY-MIMO bis `bcdc949`).
+
+**Block C ist startklar und wartet nur auf den HPC-Lauf:**
+
+```
+git pull                                  # bis 6c4e8e5
+salloc --nodes=1 --cpus-per-task=200 --mem=64G --time=02:00:00
+matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepBfRayleighDac"
+matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepBfLosDigitalDac"
+```
+
+Die `time`-Angaben in den Treiberköpfen (48 h bzw. 24 h) gelten für einen
+Lauf von Null; hier werden nur die sechs fehlenden Ordner gerechnet.
+
+**Nichts muss vorher gelöscht werden.** Jede Übersprunglogik im Ablauf ist
+entweder dateinamenbasiert (und damit kollisionsfrei, weil `fixedB` andere
+B-Werte liefert als `scaledB` und neue (N,M) neue Namen ergeben) oder sie
+prüft Signatur und Alter: 3b verlangt passendes `CFG` **und**
+Quellkurven, die älter sind als das Ergebnis (`localCfgMatches` +
+`localUpToDate`), `run_dbf_dac_distance` verlangt `dacScaleStandard`, 3a
+überspringt gar nichts, und der Export schreibt immer. Wer es erzwingen
+will: `SKIP_EXISTING = false` in `run_mimo_comparison_distance.m:86`.
+
+**Zwei verwaiste Artefakte** entstehen durch E8 und werden von keinem
+Skript mehr gelesen: `data/SE_data_bf_scaledB_K3`/`_K30` und
+`results/cmp_distance_bf_scaledB_K3`/`_K30.mat`. Sie bleiben liegen, weil
+sie die Datenbasis der 2,65-%-Aussage sind; löschen wäre reine
+Aufräumarbeit (die Git-Historie trägt sie ohnehin).
 
 **Block C ist eine Zeile je Treiber.** `runQamSweepBfIdealDac` hat
 `DAC_OFFSETS_COMMON = [0 1 2 3]`, die beiden anderen haben dort `0`:
