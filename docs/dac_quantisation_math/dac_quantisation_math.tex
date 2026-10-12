@@ -1,0 +1,317 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{mathpazo}
+\usepackage{courier}
+\usepackage{babel}
+\babelprovide[import,main]{ngerman}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\setlength{\emergencystretch}{3em}
+\renewcommand{\contentsname}{Inhalt}
+\renewcommand{\tablename}{Tabelle}
+\newcommand{\re}{\operatorname{Re}}
+\newcommand{\im}{\operatorname{Im}}
+\newcommand{\E}{\operatorname{E}}
+\newcommand{\Qd}{Q^{\mathrm{DAC}}}
+\newcommand{\Qa}{Q^{\mathrm{ADC}}}
+\newcommand{\file}[1]{\texttt{#1}}
+\newcommand{\schritt}[1]{\subsection*{Schritt #1}}
+\definecolor{note}{gray}{0.35}
+
+\title{\textbf{Digitales Beamforming mit DAC-Quantisierung}\\[0.3em]
+\large Berechnung der MI-Kurven, Schritt für Schritt}
+\author{Gearbox-PHY, Studie analoges gegen digitales Beamforming}
+\date{12. Oktober 2026}
+
+\begin{document}
+\maketitle
+
+\noindent Dieses Dokument beschreibt, wie die Kurven der Transinformation (MI) für digitales
+Eigen-Beamforming mit endlicher DAC-Auflösung entstehen. Es folgt dem Code in
+\file{QuantizedMimoMI} (\file{dacQuantize.m}, \file{ergodicMiBeamforming.m},
+\file{runQamSweepBfRayleighDac.m}, \file{runQamSweepBfIdealDac.m}). Abschnitt~\ref{sec:ray}
+behandelt den Rayleigh-Kanal, Abschnitt~\ref{sec:los} die LOS-Referenz, Abschnitt~\ref{sec:gb}
+die Übergabe an das Gearbox, Abschnitt~\ref{sec:annahmen} die Annahmen.
+
+\section{Größen und Bezeichnungen}
+
+\begin{tabular}{@{}ll@{}}
+$N_t,\,N_r$ & Zahl der Sende- und Empfangsantennen (hier $N_t=N_r=N$)\\
+$\mathcal X$ & quadratisches $M$-QAM-Alphabet, gleich wahrscheinlich, $\E|x|^2=1$\\
+$H\in\mathbb C^{N_r\times N_t}$ & Kanalmatrix, dem Sender und dem Empfänger bekannt\\
+$\rho$ & SNR bezogen auf die \emph{gesamte} Sendeleistung; Rauschvarianz $\sigma^2=1/\rho$\\
+$b_{\mathrm{DAC}}=\tfrac12\log_2M+k$ & DAC-Bit je I/Q-Zweig und Antenne, Stufe $k\in\{0,1,2,3\}$\\
+$L=2^{b_{\mathrm{DAC}}}$ & Stufenzahl des DAC je Zweig\\
+$B=\tfrac12\log_2M+3$ & ADC-Bit je I/Q-Zweig und Antenne (Regel \file{fixedB}); $L_A=2^B$\\
+\end{tabular}
+
+Ohne DAC-Quantisierung ($k$ beliebig groß) ist das Verfahren das bisherige: der Sender strahlt
+$t(x)=v\,x$ ab. Mit $b_{\mathrm{DAC}}=\tfrac12\log_2M$ Bit lässt sich ein \emph{ungedrehtes}
+QAM-Symbol exakt darstellen, das Produkt $v_i\,x$ mit komplexem Gewicht $v_i$ im Allgemeinen nicht.
+
+\section{Rayleigh-Kanal}\label{sec:ray}
+
+Für jede Kurve $(N,M,k)$ und jeden SNR-Punkt $\rho$ werden $K=400$ Kanäle $H_1,\dots,H_K$ mit
+unabhängigen Einträgen $\mathcal{CN}(0,1)$ gezogen (Threefry-Strom $\kappa$ für $H_\kappa$, Seed 42 -- dieselben
+Kanäle wie in den Kurven ohne DAC). Die Schritte 1 bis 7 gelten je Kanal.
+
+\schritt{1: Gewichte}
+Singulärwertzerlegung $H=U\Sigma V^{\mathsf H}$ mit $\sigma_1\ge\sigma_2\ge\dots$, dominanter rechter
+Singulärvektor $v_1$. Die freie gemeinsame Phase wird durch eine feste Konvention entfernt:
+\begin{equation}
+v \;=\; v_1\,e^{-\mathrm j\arg([v_1]_1)},\qquad \|v\|=1,\qquad [v]_1\in\mathbb R_{>0}.
+\end{equation}
+Antenne~1 sendet damit immer ein ungedrehtes Symbol. Die Phase ist nicht optimiert.
+
+\schritt{2: Sollsignal je Antenne}
+\begin{equation}
+u_i(x)\;=\;v_i\,x,\qquad i=1,\dots,N_t,\quad x\in\mathcal X .
+\end{equation}
+Je Antenne sind das $M$ komplexe Sollwerte: die um $\arg v_i$ gedrehte und mit $|v_i|$ skalierte
+Konstellation.
+
+\schritt{3: Spitzenwert}
+\begin{equation}
+A_i\;=\;\max_{x\in\mathcal X}\,\max\bigl(|\re u_i(x)|,\;|\im u_i(x)|\bigr).
+\end{equation}
+
+\schritt{4: Runden auf das DAC-Raster}
+Für eine Stufenzahl $L_c$ und einen Spitzenwert $A$ ist das Raster
+\begin{equation}
+\mathcal G(A,L_c)=\Bigl\{\,A\,\frac{2m-(L_c-1)}{L_c-1}\;:\;m=0,\dots,L_c-1\Bigr\},
+\end{equation}
+also $L_c$ gleichabständige Stufen, die äußersten bei $\pm A$. Gerundet wird auf die nächste Stufe,
+Real- und Imaginärteil getrennt:
+\begin{align}
+m^\ast(r)&=\min\Bigl\{L_c-1,\;\max\Bigl\{0,\;\operatorname{round}\Bigl(\frac{r\,(L_c-1)/A+(L_c-1)}{2}\Bigr)\Bigr\}\Bigr\},\\
+q_{A,L_c}(r)&=A\,\frac{2m^\ast(r)-(L_c-1)}{L_c-1},\qquad
+\Qd_{A,L_c}(z)=q_{A,L_c}(\re z)+\mathrm j\,q_{A,L_c}(\im z).
+\end{align}
+Wegen $|r|\le A$ wird nie abgeschnitten.
+
+\textbf{Wählbare Aussteuerung.} Zugelassen sind alle geraden Stufenzahlen
+$L_c\in\{2,4,\dots,L\}$. Je Antenne wird diejenige mit dem kleinsten quadratischen Fehler genommen,
+bei Gleichstand die größte:
+\begin{equation}
+e_i(L_c)=\sum_{x\in\mathcal X}\bigl|\Qd_{A_i,L_c}(u_i(x))-u_i(x)\bigr|^2,\qquad
+L_i^\ast=\arg\min_{L_c\in\{2,4,\dots,L\}}e_i(L_c),\qquad
+\tilde t_i(x)=\Qd_{A_i,L_i^\ast}\bigl(u_i(x)\bigr).
+\end{equation}
+
+\emph{Warum das ein $L$-Stufen-DAC kann.} Ein DAC mit $L$ Stufen und Vollausschlag
+$F=A\,(L-1)/(L_c-1)$ hat die Stufen
+\[
+F\,\frac{2n-(L-1)}{L-1}=A\,\frac{2n-(L-1)}{L_c-1},\qquad n=0,\dots,L-1 .
+\]
+Der Zähler $2n-(L-1)$ durchläuft alle ungeraden Zahlen von $-(L-1)$ bis $L-1$ ($L$ ist gerade). Für
+gerades $L_c\le L$ ist $2m-(L_c-1)$ ebenfalls ungerade und betragsmäßig höchstens $L_c-1\le L-1$.
+Die Menge $\mathcal G(A,L_c)$ besteht also genau aus den inneren $L_c$ Stufen dieses DAC: ein
+feinerer DAC bildet jeden gröberen mit gerader Stufenzahl exakt nach, indem er seinen
+Vollausschlag vergrößert.
+
+\emph{Folgen.}
+\begin{itemize}[leftmargin=1.4em,itemsep=0.15em,topsep=0.2em]
+\item Der Fehler je Antenne wächst nie mit der Stufe $k$, denn die Kandidatenmenge wird nur größer.
+\item Ein ungedrehtes QAM-Symbol ($v_i$ reell) ist für jedes $k\ge0$ exakt: $L_c=\sqrt M$ ergibt
+$e_i=0$. Mit festem $L_c=L$ wäre das nicht so (16-QAM ungedreht, 3~Bit: 8{,}3\,\% EVM).
+\item Für $N_t=1$ ist $v=1$, nichts ist gedreht; der Code überspringt den Quantisierer, die Kurve
+ist bitgleich zur bisherigen, und der DAC kostet $\tfrac12\log_2M$ Bit.
+\end{itemize}
+
+\emph{Vergleichsfall \quotedblbase gemeinsame Aussteuerung\textquotedblleft.} Ein Spitzenwert $A=\max_iA_i$ und eine
+Stufenzahl für alle Antennen, gewählt nach dem Gesamtfehler $\sum_ie_i(L_c)$. Er kommt ohne
+Verstärkungseinstellung je Antenne hinter dem DAC aus.
+
+\schritt{5: Normierung der Sendeleistung}
+Mit $\tilde t(x)=[\tilde t_1(x),\dots,\tilde t_{N_t}(x)]^{\mathsf T}$:
+\begin{equation}
+\alpha=\Bigl(\frac1M\sum_{x\in\mathcal X}\|\tilde t(x)\|^2\Bigr)^{-1/2},\qquad
+t(x)=\alpha\,\tilde t(x),\qquad \frac1M\sum_{x\in\mathcal X}\|t(x)\|^2=1 .
+\end{equation}
+Die mittlere Gesamtleistung ist damit dieselbe wie ohne DAC, und $\rho$ bleibt die Gesamt-SNR.
+Zu jedem der $M$ Symbole gehört jetzt ein fester Sendevektor $t(x)$.
+
+\schritt{6: Kanal und ADC}
+\begin{equation}
+y=H\,t(x)+n,\qquad n\sim\mathcal{CN}(0,\sigma^2I_{N_r}),\qquad \mu(x)=H\,t(x).
+\end{equation}
+Jede Empfangsantenne hat einen gleichförmigen $B$-Bit-ADC je I/Q-Zweig. Sein Bereich folgt der
+Empfangsleistung bei gegebenem $H$:
+\begin{equation}
+\sigma_y^2=\frac{1}{2MN_r}\sum_{x\in\mathcal X}\|\mu(x)\|^2+\frac{\sigma^2}{2},\qquad V=3\,\sigma_y ,
+\end{equation}
+mit den Schwellen $\tau_0=-\infty$, $\tau_\ell=-V+2V\ell/L_A$ für $\ell=1,\dots,L_A-1$ und
+$\tau_{L_A}=+\infty$. Beobachtet wird $y_q$: für jede Antenne und jeden Zweig der Index der Zelle
+$[\tau_\ell,\tau_{\ell+1})$, in der der Wert liegt. Die ADC-Seite ist gegenüber den Kurven ohne DAC
+unverändert.
+
+\schritt{7: Transinformation bei gegebenem Kanal}
+\begin{equation}
+I(x;y_q\mid H)=\mathsf H(y_q\mid H)-\mathsf H(y_q\mid x,H).
+\end{equation}
+Für eine reelle Komponente mit Mittelwert $m$ und Rausch-Standardabweichung
+$\sigma_r=\sigma/\sqrt2$ ist die Wahrscheinlichkeit der Zelle $\ell$
+\begin{equation}
+p_\ell(m)=\Phi\Bigl(\frac{\tau_{\ell+1}-m}{\sigma_r}\Bigr)-\Phi\Bigl(\frac{\tau_\ell-m}{\sigma_r}\Bigr),
+\end{equation}
+mit der Verteilungsfunktion $\Phi$ der Standardnormalverteilung. Gegeben $x$ sind die $2N_r$
+reellen Komponenten unabhängig:
+\begin{equation}
+P(y_q\mid x)=\prod_{i=1}^{N_r}p_{\ell_i^{\mathrm R}}\bigl(\re\mu_i(x)\bigr)\,p_{\ell_i^{\mathrm I}}\bigl(\im\mu_i(x)\bigr),\qquad
+P(y_q)=\frac1M\sum_{x\in\mathcal X}P(y_q\mid x).
+\end{equation}
+Die bedingte Entropie ist damit geschlossen berechenbar,
+\begin{equation}
+\mathsf H(y_q\mid x,H)=\frac1M\sum_{x\in\mathcal X}\sum_{i=1}^{N_r}\Bigl[h\bigl(p(\re\mu_i(x))\bigr)+h\bigl(p(\im\mu_i(x))\bigr)\Bigr],\qquad
+h(p)=-\sum_\ell p_\ell\log_2p_\ell .
+\end{equation}
+Für $\mathsf H(y_q\mid H)$ gibt es zwei Wege, je nach Größe des Ausgaberaums:
+\begin{itemize}[leftmargin=1.4em,itemsep=0.15em,topsep=0.2em]
+\item \textbf{exakt}, falls $M\cdot L_A^{2N_r}\le5\cdot10^7$: Summe
+$-\sum_{y_q}P(y_q)\log_2P(y_q)$ über alle Ausgaben;
+\item \textbf{quasi-exakt} sonst: $S=2000$ Beobachtungen $y_q^{(s)}$ werden gezogen
+($x$ gleichverteilt, $n$ wie oben), und
+$\mathsf H(y_q\mid H)\approx-\frac1S\sum_{s=1}^S\log_2P\bigl(y_q^{(s)}\bigr)$, wobei $P(\cdot)$ als
+Summe über \emph{alle} $M$ Kandidaten exakt ausgewertet wird.
+\end{itemize}
+Der einzige Unterschied zum Fall ohne DAC ist die Kandidatenmenge: $\{H\,t(x)\}$ statt
+$\{H v\,x\}$. Die Rundung zählt als verändertes Alphabet, nicht als Rauschen.
+
+\schritt{8: Mittelung über den Kanal}
+\begin{equation}
+I(\rho)=\frac1K\sum_{\kappa=1}^K I(x;y_q\mid H_\kappa),\qquad K=400 ,
+\end{equation}
+mit dem 95-\%-Intervall $1{,}96\,s/\sqrt K$ aus der Streuung $s$ über die Kanäle. Das Raster ist
+$\rho\in\{-15,-14,\dots,25\}$~dB.
+
+\section{LOS-Referenz}\label{sec:los}
+
+Der Kanal hat Rang~1,
+\begin{equation}
+H=a_r\,a_t^{\mathsf H},\qquad a(u)_n=e^{\mathrm j\pi nu},\quad n=0,\dots,N-1,\quad u=\sin\theta ,
+\end{equation}
+für eine gleichförmige Antennenzeile mit halber Wellenlänge Abstand. Die Gewichte sind reine
+Phasen, $v=a_t/\sqrt{N_t}$; das erste Element ist reell. Die Schritte 2 bis 5 laufen wie oben und
+liefern $t(x)$.
+
+Die Empfangsseite ist idealisiert wie in der bisherigen LOS-Referenz: die $N_r$ Signale werden
+kohärent kombiniert, \emph{bevor} ein einziger ADC quantisiert. Übrig bleibt der skalare Kanal
+\begin{equation}
+r=c(x)+n,\qquad c(x)=\sqrt{N_r}\;a_t^{\mathsf H}\,t(x),\qquad n\sim\mathcal{CN}(0,\sigma^2).
+\end{equation}
+Ohne DAC-Quantisierung ist $c(x)=\sqrt{N_tN_r}\,x$: die SISO-Kurve mit Gewinn $N_tN_r$. Mit
+Quantisierung ist $\{c(x)\}$ ein verzerrtes Alphabet, dessen I- und Q-Komponente nicht mehr
+unabhängig sind. Die MI ist trotzdem exakt berechenbar: mit den Zeilenvektoren
+$p^{\mathrm R}(x)=p(\re c(x))$ und $p^{\mathrm I}(x)=p(\im c(x))$ der Länge $L_A$ gilt
+\begin{equation}
+P(\ell^{\mathrm R},\ell^{\mathrm I})=\frac1M\sum_{x\in\mathcal X}p^{\mathrm R}_{\ell^{\mathrm R}}(x)\,p^{\mathrm I}_{\ell^{\mathrm I}}(x),\qquad
+I(u)=\mathsf H(P)-\frac1M\sum_{x\in\mathcal X}\bigl[h(p^{\mathrm R}(x))+h(p^{\mathrm I}(x))\bigr].
+\end{equation}
+Die Schwellen folgen aus $\sigma_y^2=\tfrac{1}{2M}\sum_x|c(x)|^2+\tfrac{\sigma^2}{2}$ wie in Schritt~6.
+
+Gemittelt wird über die Senderichtung, gleichverteilt in $u$. Die MI ist in $u$ gerade (der
+Übergang $u\to-u$ konjugiert alle Größen), deshalb genügen Mittelpunkte auf $(0,1)$:
+\begin{equation}
+I(\rho)=\frac1{32}\sum_{j=1}^{32}I(u_j),\qquad u_j=\frac{j-\tfrac12}{32}.
+\end{equation}
+Für $u=0$ sind alle Gewichte gleich und reell; nichts ist gedreht, und die Kurve ist die bisherige.
+Das SNR-Raster ist das der bisherigen LOS-Referenz: Element-SNR $-20$ bis $45$~dB in Schritten
+von $0{,}5$~dB, Gesamt-SNR $=$ Element-SNR $-10\log_{10}(N_tN_r)$.
+
+\section{Zwei Sonderfälle zum Nachrechnen}
+
+\textbf{4-QAM mit $k=0$.} Hier ist $L=2$; je Zweig bleibt nur das Vorzeichen. Mit
+$v_i=|v_i|e^{\mathrm j\varphi_i}$ und $x=e^{\mathrm j(\pi/4+n\pi/2)}$ ist
+\begin{equation}
+\tilde t_i(x)=A_i\bigl(\operatorname{sgn}\re u_i(x)+\mathrm j\operatorname{sgn}\im u_i(x)\bigr)
+=\sqrt2\,A_i\;e^{\mathrm j\frac\pi2\operatorname{round}(2\varphi_i/\pi)}\;x .
+\end{equation}
+Der DAC wirkt wie ein Phasenschieber mit 2~Bit: jede Antenne sendet weiter ein 4-QAM-Symbol, nur
+mit einer auf Vielfache von $90^\circ$ gerundeten Phase. Das Empfangsalphabet bleibt exakt 4-QAM;
+verloren geht Arraygewinn, nicht die Form der Konstellation.
+
+\textbf{Viele Bit.} Für $k\to\infty$ geht $\tilde t_i(x)\to u_i(x)$, $\alpha\to1$ und $t(x)\to v\,x$:
+die Kurve ohne DAC.
+
+\section{Übergabe an das Gearbox}\label{sec:gb}
+
+Jede Kurve wird mit ihrer DAC-Auflösung abgelegt (\file{sourceBdac}$\,=b_{\mathrm{DAC}}$, für
+$N_t=1$ gleich $\tfrac12\log_2M$). Ein digitaler Sender bezahlt genau diese Auflösung,
+\begin{equation}
+P_{\mathrm{DAC}}=N_t\cdot2\Bigl[P_s\,(2^{b_{\mathrm{DAC}}}-1)+E_d\,b_{\mathrm{DAC}}\,B_{\mathrm w}\Bigr],
+\end{equation}
+mit der Bandbreite $B_{\mathrm w}$ und den Konstanten des gewählten DAC-Leistungsmodells
+($P_s=15$, $5$ oder $1{,}2~\mu$W und $E_d=4{,}5$, $0{,}5$ oder $0{,}25$~pJ). Ein feinerer DAC
+braucht weniger Sendeleistung und mehr DAC-Leistung. Für jeden Arbeitspunkt wird die günstigste
+Stufe genommen:
+\begin{equation}
+E_{\mathrm{bit}}^\ast=\min_{k\in\{0,1,2,3\}}E_{\mathrm{bit}}^{(k)} .
+\end{equation}
+Ein analoger Sender hat einen einzigen DAC mit ungedrehtem Symbol; er bezahlt immer
+$\tfrac12\log_2M$ Bit, die Drehung übernehmen die Phasenschieber.
+
+\section{Annahmen}\label{sec:annahmen}
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=0.25em]
+\item \textbf{Der Empfänger kennt $H$ und alle $M$ Sendevektoren $t(x)$.} Im Rayleigh-Fall wertet er
+alle $N_r$ quantisierten Signale gemeinsam aus; $I(x;y_q\mid H)$ ist die Rate des besten
+digitalen Empfängers.
+\item \textbf{Die Aussteuerung wird nach dem Fehler je Antenne gewählt}, nicht nach der MI.
+\item \textbf{Kein Abschneiden.} Für ein gedrehtes QAM-Symbol brächte Abschneiden höchstens etwa
+$0{,}1$~dB; bei mehreren präkodierten Strömen wäre es wichtig.
+\item \textbf{Die gemeinsame Phase ist eine Konvention} (erstes Gewicht reell), nicht optimiert.
+\item \textbf{Schlichtes Runden.} Eine Präkodierung, die die quantisierten Ausgänge direkt wählt,
+wäre besser.
+\end{enumerate}
+
+\textbf{Eine Folge von Annahme 1.} Mit $H=\sum_j\sigma_ju_jv_j^{\mathsf H}$ ist
+\begin{equation}
+H\,t(x)=\sigma_1u_1\,\bigl(v_1^{\mathsf H}t(x)\bigr)+\sum_{j\ge2}\sigma_ju_j\,\bigl(v_j^{\mathsf H}t(x)\bigr).
+\end{equation}
+Ohne DAC ist $t(x)=v\,x$ und die Summe verschwindet. Mit DAC liegt der Rundungsfehler auch in den
+übrigen Eigenmoden und hängt von $x$ ab; ein Empfänger nach Annahme~1 gewinnt daraus Information.
+In den Ergebnissen liegt deshalb im Rayleigh-Kanal die Kurve mit $k=0$ für $M\ge64$ und $N\ge4$
+\emph{über} der Kurve ohne DAC (bis $0{,}10$~bit). Im LOS-Fall ist $\sigma_j=0$ für $j\ge2$, dort
+tritt der Effekt nicht auf. Ein Empfänger, der nur auf $u_1$ kombiniert, hätte davon nichts.
+
+\section{Ergebnis im Überblick}
+
+Mehrbedarf an SNR gegenüber der Kurve ohne DAC-Quantisierung bei $I=0{,}75\log_2M$, in dB,
+Aussteuerung je Antenne (aus den gerechneten Kurven, Stand 9.~Oktober 2026):
+
+\begin{center}
+\begin{tabular}{llrrrrr}
+\toprule
+Kanal & $M$ & $N$ & $k=0$ & $k=1$ & $k=2$ & $k=3$\\
+\midrule
+LOS & 4 & 4 & 0{,}58 & 0{,}08 & 0{,}01 & 0{,}00\\
+LOS & 4 & 16 & 0{,}83 & 0{,}11 & 0{,}01 & 0{,}00\\
+LOS & 16 & 16 & 0{,}35 & 0{,}18 & 0{,}02 & 0{,}00\\
+LOS & 256 & 16 & 0{,}02 & 0{,}01 & 0{,}02 & 0{,}00\\
+\midrule
+Rayleigh & 4 & 4 & 0{,}39 & 0{,}05 & 0{,}00 & 0{,}00\\
+Rayleigh & 4 & 16 & 0{,}61 & 0{,}08 & 0{,}01 & 0{,}00\\
+Rayleigh & 16 & 16 & $-0{,}06$ & 0{,}13 & 0{,}01 & 0{,}00\\
+Rayleigh & 64 & 16 & $-0{,}27$ & 0{,}00 & 0{,}02 & 0{,}00\\
+Rayleigh & 256 & 16 & $-0{,}29$ & $-0{,}05$ & $-0{,}01$ & 0{,}00\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Negative Werte sind die im vorigen Abschnitt beschriebene Folge von Annahme~1. Mit gemeinsamer
+Aussteuerung beträgt der Mehrbedarf im Rayleigh-Kanal bei 4-QAM und $k=0$ zwischen $0{,}58$ und
+$1{,}26$~dB.
+
+{\color{note}\small Kontrollen im Code: \file{QuantizedMimoMI/qam/validate/validateBfDac.m} (elf
+Tests, u.\,a. exakte Darstellung ungedrehter QAM, Normierung, $N_t=1$ bitgleich, 4-QAM mit $k=0$
+bleibt 4-QAM, LOS bei $u=0$ gleich der bisherigen Kurve).}
+
+\end{document}
