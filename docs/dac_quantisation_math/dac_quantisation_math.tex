@@ -29,7 +29,7 @@
 \title{\textbf{Digitales Beamforming mit DAC-Quantisierung}\\[0.3em]
 \large Berechnung der MI-Kurven, Schritt für Schritt}
 \author{Gearbox-PHY, Studie analoges gegen digitales Beamforming}
-\date{12. Oktober 2026}
+\date{12. Oktober 2026, ergänzt um den digitalen LOS-Empfänger}
 
 \begin{document}
 \maketitle
@@ -37,8 +37,9 @@
 \noindent Dieses Dokument beschreibt, wie die Kurven der Transinformation (MI) für digitales
 Eigen-Beamforming mit endlicher DAC-Auflösung entstehen. Es folgt dem Code in
 \file{QuantizedMimoMI} (\file{dacQuantize.m}, \file{ergodicMiBeamforming.m},
-\file{runQamSweepBfRayleighDac.m}, \file{runQamSweepBfIdealDac.m}). Abschnitt~\ref{sec:ray}
-behandelt den Rayleigh-Kanal, Abschnitt~\ref{sec:los} die LOS-Referenz, Abschnitt~\ref{sec:gb}
+\file{runQamSweepBfRayleighDac.m}, \file{runQamSweepBfLosDigitalDac.m},
+\file{runQamSweepBfIdealDac.m}). Abschnitt~\ref{sec:ray}
+behandelt den Rayleigh-Kanal, Abschnitt~\ref{sec:los} die LOS-Referenz mit beiden Empfängermodellen, Abschnitt~\ref{sec:gb}
 die Übergabe an das Gearbox, Abschnitt~\ref{sec:annahmen} die Annahmen.
 
 \section{Größen und Bezeichnungen}
@@ -198,12 +199,43 @@ Der Kanal hat Rang~1,
 \begin{equation}
 H=a_r\,a_t^{\mathsf H},\qquad a(u)_n=e^{\mathrm j\pi nu},\quad n=0,\dots,N-1,\quad u=\sin\theta ,
 \end{equation}
-für eine gleichförmige Antennenzeile mit halber Wellenlänge Abstand. Die Gewichte sind reine
-Phasen, $v=a_t/\sqrt{N_t}$; das erste Element ist reell. Die Schritte 2 bis 5 laufen wie oben und
-liefern $t(x)$.
+für eine gleichförmige Antennenzeile mit halber Wellenlänge Abstand, mit der Senderichtung $u_t$
+in $a_t$ und der Empfangsrichtung $u_r$ in $a_r$. Die Gewichte sind reine Phasen,
+$v=a_t/\sqrt{N_t}$; das erste Element ist reell. Die Schritte 2 bis 5 laufen wie im
+Rayleigh-Fall und liefern $t(x)$. Für den Empfänger gibt es zwei Modelle.
 
-Die Empfangsseite ist idealisiert wie in der bisherigen LOS-Referenz: die $N_r$ Signale werden
-kohärent kombiniert, \emph{bevor} ein einziger ADC quantisiert. Übrig bleibt der skalare Kanal
+\subsection{Digitaler Empfänger: ein ADC je Antenne}\label{sec:losd}
+
+Rein digitales Beamforming hat $N_r$ Empfangsketten und damit $N_r$ ADCs; kombiniert wird
+\emph{nach} der Quantisierung. Das ist derselbe Empfänger wie im Rayleigh-Fall, und gerechnet wird
+mit denselben Schritten 6 und 7, nur mit dem deterministischen Kanal oben:
+\begin{equation}
+y=a_r\,s(x)+n,\qquad s(x)=a_t^{\mathsf H}\,t(x),\qquad \mu_i(x)=e^{\mathrm j\pi(i-1)u_r}\,s(x),
+\end{equation}
+mit einem $B$-Bit-ADC je Antenne und $I(x;y_q\mid H)$ wie in Schritt~7. Alle Antennen sehen
+dasselbe skalare Signal $s(x)$, jede um ihre Phase gedreht und mit eigenem Rauschen. Die
+Empfangsrichtung zählt hier, weil sie bestimmt, wie die Signale der Antennen auf den ADC-Rastern
+liegen. Ohne DAC-Quantisierung ist $s(x)=\sqrt{N_t}\,x$.
+
+Gemittelt wird über $32$ Richtungspaare,
+\begin{equation}
+I(\rho)=\frac1{32}\sum_{j=1}^{32}I\bigl(u_{t,j},u_{r,j}\bigr),\qquad
+u_{t,j}=\frac{j-\tfrac12}{32},\qquad u_{r,j}=u_{t,\pi(j)},\quad \pi(j)=\bigl(13\,(j-1)\bmod 32\bigr)+1 .
+\end{equation}
+Die Empfangsrichtungen sind dieselben Werte in anderer Reihenfolge, damit Sende- und
+Empfangsrichtung nicht gekoppelt sind. Die MI ändert sich nicht, wenn beide Vorzeichen zugleich
+wechseln, deshalb genügt $(0,1)$. Der Kanal ist deterministisch; im quasi-exakten Fall werden je
+Richtungspaar vier Auswertungen gemittelt, um das Rauschen des Schätzers zu senken. Gerechnet
+werden die Kurve ohne DAC-Quantisierung und die Stufen $k=0,\dots,3$
+(\file{runQamSweepBfLosDigitalDac.m}). Das SNR-Raster ist Element-SNR $-20$ bis $45$~dB in
+Schritten von $1$~dB, Gesamt-SNR $=$ Element-SNR $-10\log_{10}(N_tN_r)$.
+
+\subsection{Vereinfachung: Kombinieren vor einem ADC}\label{sec:los1}
+
+Die bisherige LOS-Referenz kombiniert die $N_r$ Signale kohärent, \emph{bevor} ein einziger ADC
+quantisiert. Das ist der \emph{analoge} Empfänger. Für die digitale Seite ist es eine
+Vereinfachung; exakt beschreibt es den Fall \quotedblbase  Sender digital, Empfänger analog\textquotedblleft.
+Übrig bleibt der skalare Kanal
 \begin{equation}
 r=c(x)+n,\qquad c(x)=\sqrt{N_r}\;a_t^{\mathsf H}\,t(x),\qquad n\sim\mathcal{CN}(0,\sigma^2).
 \end{equation}
@@ -213,18 +245,21 @@ unabhängig sind. Die MI ist trotzdem exakt berechenbar: mit den Zeilenvektoren
 $p^{\mathrm R}(x)=p(\re c(x))$ und $p^{\mathrm I}(x)=p(\im c(x))$ der Länge $L_A$ gilt
 \begin{equation}
 P(\ell^{\mathrm R},\ell^{\mathrm I})=\frac1M\sum_{x\in\mathcal X}p^{\mathrm R}_{\ell^{\mathrm R}}(x)\,p^{\mathrm I}_{\ell^{\mathrm I}}(x),\qquad
-I(u)=\mathsf H(P)-\frac1M\sum_{x\in\mathcal X}\bigl[h(p^{\mathrm R}(x))+h(p^{\mathrm I}(x))\bigr].
+I(u_t)=\mathsf H(P)-\frac1M\sum_{x\in\mathcal X}\bigl[h(p^{\mathrm R}(x))+h(p^{\mathrm I}(x))\bigr].
 \end{equation}
 Die Schwellen folgen aus $\sigma_y^2=\tfrac{1}{2M}\sum_x|c(x)|^2+\tfrac{\sigma^2}{2}$ wie in Schritt~6.
+Gemittelt wird über die $32$ Senderichtungen $u_{t,j}$; die Empfangsrichtung fällt durch das
+Kombinieren heraus. Für $u_t=0$ sind alle Gewichte gleich und reell; nichts ist gedreht, und die
+Kurve ist die bisherige (\file{runQamSweepBfIdealDac.m}, Element-SNR in Schritten von $0{,}5$~dB).
 
-Gemittelt wird über die Senderichtung, gleichverteilt in $u$. Die MI ist in $u$ gerade (der
-Übergang $u\to-u$ konjugiert alle Größen), deshalb genügen Mittelpunkte auf $(0,1)$:
-\begin{equation}
-I(\rho)=\frac1{32}\sum_{j=1}^{32}I(u_j),\qquad u_j=\frac{j-\tfrac12}{32}.
-\end{equation}
-Für $u=0$ sind alle Gewichte gleich und reell; nichts ist gedreht, und die Kurve ist die bisherige.
-Das SNR-Raster ist das der bisherigen LOS-Referenz: Element-SNR $-20$ bis $45$~dB in Schritten
-von $0{,}5$~dB, Gesamt-SNR $=$ Element-SNR $-10\log_{10}(N_tN_r)$.
+\subsection{Unterschied der beiden Empfänger}
+
+Mit $N_r$ ADCs mitteln sich die Quantisierungsfehler der Antennen beim digitalen Kombinieren
+teilweise heraus; die Kurve liegt deshalb etwas \emph{über} der mit einem ADC. Im exakt
+rechenbaren Fall $2\times2$ ohne DAC-Quantisierung sind es höchstens $0{,}009$~bit (4-QAM) und
+$0{,}018$~bit (16-QAM) bei $B=\tfrac12\log_2M+3$. Für größere Arrays liegen dazu noch keine
+gerechneten Kurven vor. Weitere Eigenmoden gibt es in beiden Modellen nicht ($\sigma_j=0$ für
+$j\ge2$).
 
 \section{Zwei Sonderfälle zum Nachrechnen}
 
@@ -261,8 +296,8 @@ $\tfrac12\log_2M$ Bit, die Drehung übernehmen die Phasenschieber.
 \section{Annahmen}\label{sec:annahmen}
 
 \begin{enumerate}[leftmargin=1.6em,itemsep=0.25em]
-\item \textbf{Der Empfänger kennt $H$ und alle $M$ Sendevektoren $t(x)$.} Im Rayleigh-Fall wertet er
-alle $N_r$ quantisierten Signale gemeinsam aus; $I(x;y_q\mid H)$ ist die Rate des besten
+\item \textbf{Der Empfänger kennt $H$ und alle $M$ Sendevektoren $t(x)$.} Im Rayleigh-Fall und in
+Abschnitt~\ref{sec:losd} wertet er alle $N_r$ quantisierten Signale gemeinsam aus; $I(x;y_q\mid H)$ ist die Rate des besten
 digitalen Empfängers.
 \item \textbf{Die Aussteuerung wird nach dem Fehler je Antenne gewählt}, nicht nach der MI.
 \item \textbf{Kein Abschneiden.} Für ein gedrehtes QAM-Symbol brächte Abschneiden höchstens etwa
@@ -270,6 +305,8 @@ $0{,}1$~dB; bei mehreren präkodierten Strömen wäre es wichtig.
 \item \textbf{Die gemeinsame Phase ist eine Konvention} (erstes Gewicht reell), nicht optimiert.
 \item \textbf{Schlichtes Runden.} Eine Präkodierung, die die quantisierten Ausgänge direkt wählt,
 wäre besser.
+\item \textbf{Empfänger der LOS-Referenz.} Die digitale Seite gehört zu Abschnitt~\ref{sec:losd}
+(ein ADC je Antenne). Die Vereinfachung aus Abschnitt~\ref{sec:los1} unterschätzt sie leicht.
 \end{enumerate}
 
 \textbf{Eine Folge von Annahme 1.} Mit $H=\sum_j\sigma_ju_jv_j^{\mathsf H}$ ist
@@ -285,7 +322,9 @@ tritt der Effekt nicht auf. Ein Empfänger, der nur auf $u_1$ kombiniert, hätte
 \section{Ergebnis im Überblick}
 
 Mehrbedarf an SNR gegenüber der Kurve ohne DAC-Quantisierung bei $I=0{,}75\log_2M$, in dB,
-Aussteuerung je Antenne (aus den gerechneten Kurven, Stand 9.~Oktober 2026):
+Aussteuerung je Antenne (aus den gerechneten Kurven, Stand 9.~Oktober 2026). Die LOS-Zeilen
+stammen aus der Vereinfachung mit einem ADC (Abschnitt~\ref{sec:los1}); die Kurven mit einem
+ADC je Antenne sind noch nicht gerechnet:
 
 \begin{center}
 \begin{tabular}{llrrrrr}

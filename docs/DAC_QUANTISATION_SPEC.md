@@ -67,7 +67,24 @@ dem DAC voraus, die niemand bezahlt; der Vergleichsfall zeigt, was sie wert ist.
 sind die beiden Faelle verschieden: die Betraege sind dort gleich, der Spitzenwert haengt aber
 von der Drehung ab.
 
-## LOS-Referenz (`runQamSweepBfIdealDac`)
+## LOS-Referenz mit einem ADC je Empfangsantenne (`runQamSweepBfLosDigitalDac`)
+
+Nachtrag 2026-10-12, Einwand des Nutzers: rein digitales Beamforming hat N Empfangsketten und
+damit N ADCs. Die LOS-Referenz des naechsten Abschnitts kombiniert dagegen VOR einem einzigen
+ADC -- das ist der analoge Empfaenger. Fuer die digitale Seite ist das eine Vereinfachung, die
+Rayleigh-Kurven rechnen schon immer mit einem ADC je Antenne.
+
+- Derselbe Code wie fuer Rayleigh (`ergodicMiBeamforming`), nur mit dem deterministischen
+  Rang-1-Kanal `H = a_r * a_t'` (`riceChannel`, K = Inf).
+- Sechs Kurvensaetze: idealer DAC, vier DAC-Stufen je Antenne, Stufe +0 gemeinsam.
+- Mittelung ueber 32 Richtungspaare `(u_t, u_r)`; die Empfangsrichtung zaehlt, weil sie
+  bestimmt, wie die Antennensignale auf den ADC-Rastern liegen.
+- Im Gearbox der Kanal `losd` (`SE_data_bflosd_fixedB[_dac<k>]`). Die Kurven mit EINEM ADC
+  bleiben als Kanal `los`; sie beschreiben "Sender digital, Empfaenger analog".
+- Erwartung: mit `1/2*log2(M) + 3` ADC-Bit liegt die Kurve mit N ADCs wenig UEBER der mit einem
+  ADC (am 2026-10-01 fuer 16-QAM, drei Empfangsantennen, 5 Bit: +0.018 bit).
+
+## LOS-Referenz mit einem ADC hinter dem Kombinierer (`runQamSweepBfIdealDac`)
 
 - `H = a_r * a_t'`, ULA mit halber Wellenlaenge, Gewichte `v = a_t / sqrt(N_t)` (reine Phasen).
 - Quantisieren und normieren wie oben. Nach idealem Kombinieren am Empfaenger bleibt ein

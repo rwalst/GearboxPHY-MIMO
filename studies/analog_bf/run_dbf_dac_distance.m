@@ -15,15 +15,17 @@ function run_dbf_dac_distance(over)
 %
 %   WAS GERECHNET WIRD (alles QAM, 28 GHz, ADC-Modell "envelope", ADC-Regel
 %   fixedB; Raster wie run_analog_bf_distance):
-%     Kanal    "los" (Rang 1, immer) und "ray" (Rayleigh, sobald die
-%              Kurvenordner existieren)
+%     Kanal    "losd" (Rang 1, ein ADC je Empfangsantenne), "los" (Rang 1,
+%              Kombinieren vor EINEM ADC) und "ray" (Rayleigh) -- jeweils
+%              sobald die Kurvenordner existieren
 %     LO       loShared und lo12p5mW (LO-Puffer je zusaetzlichem Mischer)
 %     DAC-Leistungsmodell (makeScenarioConfig 'dacPowerModel'):
 %              "analytic" (3 V, Stand des Codes), "analytic_1V"
 %              (Dissertation Kap. 5/6), "survey" (DAC-Uebersicht)
 %   Je (Kanal, LO, DAC-Modell) eine Datei mit der DIGITALEN Seite:
-%     Eideal   Kurve mit idealem DAC, bezahlt 1/2*log2(M) -- der bisherige
-%              Stand (SE_data_bfideal_fixedB bzw. SE_data_bf_fixedB)
+%     Eideal   Kurve mit idealem DAC, bezahlt 1/2*log2(M)
+%              (SE_data_bflosd_fixedB, SE_data_bfideal_fixedB bzw.
+%              SE_data_bf_fixedB)
 %     E        Kurven mit DAC-Quantisierung, letzte Dimension = DAC-Stufe
 %              (SE_data_..._dac<k>), der DAC bezahlt sourceBdac
 %     Ebest    Minimum ueber die Stufen (gearboxphy.sweep.minOverDacLevels),
@@ -71,12 +73,17 @@ CFG = struct('rates', P.rates, 'distances', P.distances, 'fcGHz', P.fcGHz, 'Ms',
              'psBits', P.psBits, 'psPower', P.psPower, 'psLossDb', P.psLossDb);
 
 % ---- Kanaele: Ordner der digitalen Seite und der analogen Varianten ----
+%   "losd" ist die LOS-Referenz mit dem Empfaenger des digitalen Beamformings
+%   (ein ADC je Antenne, runQamSweepBfLosDigitalDac). "los" kombiniert vor
+%   EINEM ADC -- das ist der analoge Empfaenger; als digitale Referenz ist
+%   es eine Vereinfachung, die Kurven beschreiben "Sender digital,
+%   Empfaenger analog". Die analogen Varianten sind fuer beide dieselben.
 CH = struct( ...
-  'name',       {"los", "ray"}, ...
-  'digBase',    {"SE_data_bfideal_fixedB", "SE_data_bf_fixedB"}, ...
-  'anaData',    {"SE_data_bfideal_fixedB", "SE_data_abf_fixedB"}, ...
-  'anaMode',    {"beamforming", "multiplexing"}, ...
-  'anaPrefix',  {"abf", "abfray"});
+  'name',       {"losd", "los", "ray"}, ...
+  'digBase',    {"SE_data_bflosd_fixedB", "SE_data_bfideal_fixedB", "SE_data_bf_fixedB"}, ...
+  'anaData',    {"SE_data_bfideal_fixedB", "SE_data_bfideal_fixedB", "SE_data_abf_fixedB"}, ...
+  'anaMode',    {"beamforming", "beamforming", "multiplexing"}, ...
+  'anaPrefix',  {"abf", "abf", "abfray"});
 PS_NAMES = ["active" "passive_comp" "passive_pen"];
 PS_TYPES = ["active" "passive_compensated" "passive_penalty"];
 
@@ -95,7 +102,7 @@ for ch = CH
         continue
     end
     assert(isfolder(gearboxphy.paths.dataDir(ch.digBase)), 'run_dbf_dac_distance:noData', ...
-        '%s fehlt - erst export_mimo_comparison_curves ausfuehren.', ch.digBase);
+        '%s fehlt - die Kurven mit idealem DAC gehoeren dazu (Export wiederholen).', ch.digBase);
 
     for dacModel = P.DAC_MODELS
         % ---------------- digitale Seite ----------------
