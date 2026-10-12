@@ -29,18 +29,23 @@
 \title{\textbf{Digitales Beamforming mit DAC-Quantisierung}\\[0.3em]
 \large Berechnung der MI-Kurven, Schritt für Schritt}
 \author{Gearbox-PHY, Studie analoges gegen digitales Beamforming}
-\date{12. Oktober 2026, ergänzt um den digitalen LOS-Empfänger}
+\date{12. Oktober 2026, ergänzt um den digitalen LOS-Empfänger und die Präkodierung}
 
 \begin{document}
 \maketitle
 
 \noindent Dieses Dokument beschreibt, wie die Kurven der Transinformation (MI) für digitales
 Eigen-Beamforming mit endlicher DAC-Auflösung entstehen. Es folgt dem Code in
-\file{QuantizedMimoMI} (\file{dacQuantize.m}, \file{ergodicMiBeamforming.m},
-\file{runQamSweepBfRayleighDac.m}, \file{runQamSweepBfLosDigitalDac.m},
-\file{runQamSweepBfIdealDac.m}). Abschnitt~\ref{sec:ray}
-behandelt den Rayleigh-Kanal, Abschnitt~\ref{sec:los} die LOS-Referenz mit beiden Empfängermodellen, Abschnitt~\ref{sec:gb}
-die Übergabe an das Gearbox, Abschnitt~\ref{sec:annahmen} die Annahmen.
+\file{QuantizedMimoMI}:
+\begin{itemize}[leftmargin=1.4em,itemsep=0.05em,topsep=0.2em]
+\item \file{dacQuantize.m} und \file{ergodicMiBeamforming.m} (Quantisierer und MI),
+\item \file{runQamSweepBfRayleighDac.m} (Rayleigh),
+\item \file{runQamSweepBfLosDigitalDac.m} und \file{runQamSweepBfIdealDac.m} (LOS).
+\end{itemize}
+Abschnitt~\ref{sec:prec} erklärt, wie die Gewichte gefunden werden, Abschnitt~\ref{sec:ray}
+behandelt den Rayleigh-Kanal, Abschnitt~\ref{sec:los} die LOS-Referenz mit beiden
+Empfängermodellen, Abschnitt~\ref{sec:gb} die Übergabe an das Gearbox,
+Abschnitt~\ref{sec:annahmen} die Annahmen.
 
 \section{Größen und Bezeichnungen}
 
@@ -58,6 +63,122 @@ Ohne DAC-Quantisierung ($k$ beliebig groß) ist das Verfahren das bisherige: der
 $t(x)=v\,x$ ab. Mit $b_{\mathrm{DAC}}=\tfrac12\log_2M$ Bit lässt sich ein \emph{ungedrehtes}
 QAM-Symbol exakt darstellen, das Produkt $v_i\,x$ mit komplexem Gewicht $v_i$ im Allgemeinen nicht.
 
+\section{Präkodierung: wie die Gewichte entstehen}\label{sec:prec}
+
+\subsection{Aufgabe}
+
+Gesendet wird \emph{ein} Datenstrom. Jede Antenne strahlt dasselbe Symbol $x$ ab, multipliziert
+mit einem eigenen komplexen Gewicht:
+\begin{equation}
+t=v\,x,\qquad v\in\mathbb C^{N_t},\qquad \|v\|=1 .
+\end{equation}
+Die Nebenbedingung $\|v\|=1$ hält die Gesamtleistung fest: $\E\|t\|^2=\|v\|^2\,\E|x|^2=1$. Betrag
+und Phase jedes $v_i$ sind frei wählbar. Genau das unterscheidet die digitale Präkodierung von der
+analogen, bei der nur die Phasen frei sind ($|v_i|=1/\sqrt{N_t}$), und es ist der Grund, warum jede
+Antenne ihren eigenen DAC braucht.
+
+Am Empfänger kommt ohne Quantisierung
+\begin{equation}
+y=H\,v\,x+n=h_{\mathrm{eff}}\,x+n,\qquad h_{\mathrm{eff}}=Hv\in\mathbb C^{N_r}
+\end{equation}
+an. Ein Empfänger, der die $N_r$ Signale mit $w=h_{\mathrm{eff}}/\|h_{\mathrm{eff}}\|$ kombiniert
+(Maximum-Ratio-Combining), erhält den skalaren Kanal
+\begin{equation}
+z=w^{\mathsf H}y=\|Hv\|\,x+\tilde n,\qquad \tilde n\sim\mathcal{CN}(0,\sigma^2),\qquad
+\mathrm{SNR}_{\mathrm{eff}}=\rho\,\|Hv\|^2 .
+\end{equation}
+Die Wahl der Gewichte ist damit ein Optimierungsproblem: der Arraygewinn $\|Hv\|^2$ soll so groß
+wie möglich werden,
+\begin{equation}\label{eq:opt}
+v^\star=\arg\max_{\|v\|=1}\;\|Hv\|^2=\arg\max_{\|v\|=1}\;v^{\mathsf H}H^{\mathsf H}H\,v .
+\end{equation}
+
+\subsection{Lösung über die Singulärwertzerlegung}
+
+Der Kanal wird zerlegt in
+\begin{equation}
+H=U\Sigma V^{\mathsf H}=\sum_{j=1}^{r}\sigma_j\,u_jv_j^{\mathsf H},\qquad
+\sigma_1\ge\sigma_2\ge\dots\ge\sigma_r>0,
+\end{equation}
+mit orthonormalen Senderichtungen $v_j\in\mathbb C^{N_t}$, orthonormalen Empfangsrichtungen
+$u_j\in\mathbb C^{N_r}$ und dem Rang $r$. Jedes Paar $(v_j,u_j)$ ist ein \emph{Eigenmode}: was in
+Richtung $v_j$ gesendet wird, kommt in Richtung $u_j$ an, verstärkt um $\sigma_j$.
+
+Jeder Einheitsvektor lässt sich als $v=\sum_jc_jv_j+v_\perp$ schreiben, mit
+$\sum_j|c_j|^2\le1$ und einem Anteil $v_\perp$ im Nullraum von $H$. Dann ist
+\begin{equation}
+\|Hv\|^2=\Bigl\|\sum_j\sigma_jc_j\,u_j\Bigr\|^2=\sum_j\sigma_j^2\,|c_j|^2\;\le\;\sigma_1^2 ,
+\end{equation}
+mit Gleichheit genau dann, wenn die ganze Leistung im stärksten Eigenmode liegt
+($|c_1|=1$). Die Lösung von \eqref{eq:opt} ist also der \emph{dominante rechte Singulärvektor},
+\begin{equation}
+v^\star=v_1,\qquad \|Hv_1\|^2=\sigma_1^2=\lambda_{\max}\bigl(H^{\mathsf H}H\bigr),\qquad Hv_1=\sigma_1u_1 .
+\end{equation}
+Gleichwertig: $v_1$ ist der Eigenvektor von $H^{\mathsf H}H$ zum größten Eigenwert. Daher der Name
+Eigen-Beamforming. Das Signal kommt entlang $u_1$ an; der passende Kombinierer ist $w=u_1$.
+
+Im Code ist das eine Zeile je Kanalrealisierung: die Zerlegung \file{[\textasciitilde,\textasciitilde,V] = svd(H,'econ')}
+und daraus die erste Spalte von $V$. Für $N_t=1$ gibt es nichts zu wählen, $v=1$.
+
+\subsection{Was die Gewichte anschaulich tun}
+
+\textbf{Eine Empfangsantenne ($N_r=1$).} Mit $H=h^{\mathsf T}$ ist
+\begin{equation}
+v_i=\frac{h_i^\ast}{\|h\|},\qquad \|Hv\|^2=\|h\|^2=\sum_i|h_i|^2 .
+\end{equation}
+Die Phase jedes Gewichts hebt die Phase seines Pfades auf, sodass alle Beiträge am Empfänger
+gleichphasig ankommen. Der Betrag ist proportional zu $|h_i|$: ein starker Pfad bekommt mehr
+Leistung als ein schwacher. Das ist Maximum-Ratio-Transmission.
+
+\textbf{LOS, Rang 1.} Für $H=a_ra_t^{\mathsf H}$ gibt es nur einen Eigenmode,
+\begin{equation}
+v_1=\frac{a_t}{\sqrt{N_t}},\qquad u_1=\frac{a_r}{\sqrt{N_r}},\qquad \sigma_1^2=N_tN_r .
+\end{equation}
+Alle Gewichte haben denselben Betrag und unterscheiden sich nur in der Phase
+$e^{\mathrm j\pi(i-1)u_t}$: die Antennenzeile wird in die Richtung $u_t$ ausgerichtet. Der Gewinn ist
+der volle $N_tN_r$. Hier fällt die digitale mit der analogen Lösung zusammen.
+
+\textbf{Rayleigh, voller Rang.} Die Einträge von $H$ sind unabhängig, es gibt $N$ Eigenmoden mit
+verschiedenen $\sigma_j$. Die Gewichte haben verschiedene Beträge \emph{und} Phasen; ihre Beträge
+streuen von Antenne zu Antenne. Der mittlere Gewinn $\E[\sigma_1^2]$ liegt unter $N_tN_r$, weil
+sich die Kanalenergie auf alle Moden verteilt: um etwa $0{,}6$~dB bei $2\times2$, $2{,}2$~dB bei
+$4\times4$, $4{,}3$~dB bei $8\times8$ und $6{,}8$~dB bei $16\times16$. Die übrigen Moden bleiben beim
+Beamforming ungenutzt; Multiplexing würde gerade sie für weitere Datenströme verwenden.
+
+\subsection{Die freie Phase}
+
+Mit $v$ löst auch $v\,e^{\mathrm j\theta}$ das Problem \eqref{eq:opt}, für jedes $\theta$: der
+Gewinn ändert sich nicht, am Empfänger ist nur die Konstellation um $\theta$ gedreht. Ohne
+Quantisierung ist $\theta$ deshalb bedeutungslos. Mit Quantisierung nicht mehr, denn $\theta$
+legt fest, wie die Symbole auf den quadratischen Rastern von DAC und ADC liegen. Der Code nimmt
+eine feste Konvention,
+\begin{equation}
+v=v_1\,e^{-\mathrm j\arg([v_1]_1)},
+\end{equation}
+sodass das erste Gewicht reell und positiv ist. Antenne~1 sendet damit ein ungedrehtes Symbol.
+Die Phase wird nicht auf die MI optimiert; eine Auswahl der besten aus 16 Phasen brächte am
+Quantisierer höchstens etwa $0{,}2$~dB, und nur bei $k=0$.
+
+\subsection{Was dabei vorausgesetzt und was nicht optimiert ist}
+
+\begin{itemize}[leftmargin=1.4em,itemsep=0.2em,topsep=0.2em]
+\item \textbf{Der Sender kennt $H$ vollständig und fehlerfrei.} Kanalschätzung und Rückmeldung
+kosten im Modell nichts.
+\item \textbf{$v_1$ ist optimal für einen Strom ohne Quantisierung.} Dort hängt die Rate nur von
+$\|Hv\|^2$ ab. Mit ADCs und endlichem Alphabet ist das nicht mehr streng richtig; $v_1$ bleibt die
+naheliegende Wahl, ist aber nicht als MI-optimal bewiesen.
+\item \textbf{Erst gewichten, dann runden.} Die Gewichte werden so bestimmt, als gäbe es keinen DAC;
+die Rundung kommt danach (Schritt~4). Eine Präkodierung, die gleich die auf dem Raster
+darstellbaren Sendevektoren sucht, würde den DAC von vornherein berücksichtigen und wäre bei
+wenigen Bit besser.
+\item \textbf{In der MI steht kein Kombinierer.} Berechnet wird $I(x;y_q\mid H)$ aus allen
+quantisierten Empfangssignalen; das ist die Rate des besten digitalen Empfängers. Der Kombinierer
+$w=u_1$ oben dient nur der Herleitung der Gewichte.
+\item \textbf{Die Beträge der Gewichte bestimmen die Aussteuerung.} Weil $|v_i|$ im Rayleigh-Kanal
+streut, hat jede Antenne einen anderen Spitzenwert; deshalb wird der DAC je Antenne ausgesteuert
+(Schritte~3 und~4).
+\end{itemize}
+
 \section{Rayleigh-Kanal}\label{sec:ray}
 
 Für jede Kurve $(N,M,k)$ und jeden SNR-Punkt $\rho$ werden $K=400$ Kanäle $H_1,\dots,H_K$ mit
@@ -65,8 +186,9 @@ unabhängigen Einträgen $\mathcal{CN}(0,1)$ gezogen (Threefry-Strom $\kappa$ f�
 Kanäle wie in den Kurven ohne DAC). Die Schritte 1 bis 7 gelten je Kanal.
 
 \schritt{1: Gewichte}
-Singulärwertzerlegung $H=U\Sigma V^{\mathsf H}$ mit $\sigma_1\ge\sigma_2\ge\dots$, dominanter rechter
-Singulärvektor $v_1$. Die freie gemeinsame Phase wird durch eine feste Konvention entfernt:
+Wie in Abschnitt~\ref{sec:prec} hergeleitet: Singulärwertzerlegung $H=U\Sigma V^{\mathsf H}$ mit
+$\sigma_1\ge\sigma_2\ge\dots$, dominanter rechter Singulärvektor $v_1$. Die freie gemeinsame Phase
+wird durch die feste Konvention entfernt:
 \begin{equation}
 v \;=\; v_1\,e^{-\mathrm j\arg([v_1]_1)},\qquad \|v\|=1,\qquad [v]_1\in\mathbb R_{>0}.
 \end{equation}
@@ -128,7 +250,7 @@ ist bitgleich zur bisherigen, und der DAC kostet $\tfrac12\log_2M$ Bit.
 \end{itemize}
 
 \emph{Vergleichsfall \quotedblbase gemeinsame Aussteuerung\textquotedblleft.} Ein Spitzenwert $A=\max_iA_i$ und eine
-Stufenzahl für alle Antennen, gewählt nach dem Gesamtfehler $\sum_ie_i(L_c)$. Er kommt ohne
+Stufenzahl für alle Antennen. Gewählt wird nach dem Gesamtfehler $\sum_ie_i(L_c)$. Er kommt ohne
 Verstärkungseinstellung je Antenne hinter dem DAC aus.
 
 \schritt{5: Normierung der Sendeleistung}
