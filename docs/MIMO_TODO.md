@@ -250,6 +250,89 @@ vorhandenen `dac0_common`-Zwillingen gemessen: 0,24 h je Rayleigh-Ordner,
 als `_K0`, überall sonst heißt K = 0 „kein Suffix". Eine Prüfung nach der
 üblichen Konvention meldet dort 20 Fehlstellen, die nicht existieren.
 
+### 6.1 Fehlende MI-Kurven, Datei für Datei
+
+Alle fehlenden Kurven liegen in **QuantizedMimoMI** (`qam/results/`) — im
+Gearbox-Repo fehlt nichts, was an der Quelle vorhanden wäre. Umgekehrt
+gilt das nicht: siehe 6.2.
+
+**Block A + B — Rice bei N = 8 und 16, ADC-Regel `scaledB`** (24 Kurven,
+Treiber `runQamSweepRiceMux` und `runQamSweepRiceBf`, beide stehen auf dem
+vollen Gitter):
+
+| Block | Ordner | Datei | N×N | M | B | K |
+|---|---|---|---|---|---|---|
+| A | `rule_mux` | `mi_Nt8_Nr8_M64_B9_K3.mat` | 8×8 | 64 | 9 | 3 |
+| A | `rule_mux` | `mi_Nt8_Nr8_M256_B10_K3.mat` | 8×8 | 256 | 10 | 3 |
+| A | `rule_mux` | `mi_Nt16_Nr16_M64_B10_K3.mat` | 16×16 | 64 | 10 | 3 |
+| A | `rule_mux` | `mi_Nt16_Nr16_M256_B11_K3.mat` | 16×16 | 256 | 11 | 3 |
+| A | `rule_mux` | `mi_Nt8_Nr8_M64_B9_K30.mat` | 8×8 | 64 | 9 | 30 |
+| A | `rule_mux` | `mi_Nt8_Nr8_M256_B10_K30.mat` | 8×8 | 256 | 10 | 30 |
+| A | `rule_mux` | `mi_Nt16_Nr16_M64_B10_K30.mat` | 16×16 | 64 | 10 | 30 |
+| A | `rule_mux` | `mi_Nt16_Nr16_M256_B11_K30.mat` | 16×16 | 256 | 11 | 30 |
+| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M4_B7_K3.mat` | 8×8 | 4 | 7 | 3 |
+| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M16_B8_K3.mat` | 8×8 | 16 | 8 | 3 |
+| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M64_B9_K3.mat` | 8×8 | 64 | 9 | 3 |
+| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M256_B10_K3.mat` | 8×8 | 256 | 10 | 3 |
+| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M4_B8_K3.mat` | 16×16 | 4 | 8 | 3 |
+| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M16_B9_K3.mat` | 16×16 | 16 | 9 | 3 |
+| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M64_B10_K3.mat` | 16×16 | 64 | 10 | 3 |
+| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M256_B11_K3.mat` | 16×16 | 256 | 11 | 3 |
+| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M4_B7_K30.mat` | 8×8 | 4 | 7 | 30 |
+| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M16_B8_K30.mat` | 8×8 | 16 | 8 | 30 |
+| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M64_B9_K30.mat` | 8×8 | 64 | 9 | 30 |
+| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M256_B10_K30.mat` | 8×8 | 256 | 10 | 30 |
+| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M4_B8_K30.mat` | 16×16 | 4 | 8 | 30 |
+| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M16_B9_K30.mat` | 16×16 | 16 | 9 | 30 |
+| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M64_B10_K30.mat` | 16×16 | 64 | 10 | 30 |
+| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M256_B11_K30.mat` | 16×16 | 256 | 11 | 30 |
+
+**Block C — Vergleichsfall „gemeinsame Aussteuerung" bei den DAC-Stufen
++1 bis +3** (120 Kurven, 6 Ordner × 20). Die Ordner existieren überhaupt
+nicht; jeder enthält dieselben 20 Kombinationen:
+
+| Ordner | Dateimuster | Kurven | gemessene Kosten |
+|---|---|---|---|
+| `bf_rayleigh_dac1_common` | `mi_bf_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,24 h |
+| `bf_rayleigh_dac2_common` | `mi_bf_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,24 h |
+| `bf_rayleigh_dac3_common` | `mi_bf_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,24 h |
+| `bf_los_digital_dac1_common` | `mi_bflosd_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,08 h |
+| `bf_los_digital_dac2_common` | `mi_bflosd_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,08 h |
+| `bf_los_digital_dac3_common` | `mi_bflosd_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,08 h |
+
+Die 20 Kombinationen je Ordner, `fixedB` und damit unabhängig von N:
+N ∈ {1, 2, 4, 8, 16} × M = 4 (B = 4), 16 (B = 5), 64 (B = 6), 256 (B = 7).
+Kein K-Suffix — alle drei DAC-Familien sind K = 0.
+
+Kosten gemessen an den vorhandenen `dac0_common`-Zwillingen, die dieselbe
+Arbeit sind: **0,96 h für alle 120.** Auslöser ist eine Zeile je Treiber,
+`runQamSweepBfRayleighDac.m:49` und `runQamSweepBfLosDigitalDac.m:73`
+tragen `DAC_OFFSETS_COMMON = 0`, wo `runQamSweepBfIdealDac`
+`[0 1 2 3]` hat.
+
+### 6.2 Gerechnet, aber nicht exportiert (8 Kurven)
+
+Diese Kurven liegen an der Quelle und sind im Gearbox-Repo NICHT als
+`SE_data`-Kurve vorhanden — je K = 3 und 30:
+`mi_Nt8_Nr8_M4_B7_K*`, `mi_Nt8_Nr8_M16_B8_K*`, `mi_Nt16_Nr16_M4_B8_K*`,
+`mi_Nt16_Nr16_M16_B9_K*` in `rule_mux`.
+
+Das ist Absicht: `localAvailableNs` nimmt ein N nur mit allen vier M, und
+bei N = 8/16 hat Rice bisher nur M = 4 und 16. Eine halbe Zeile verzerrt
+die Hüllkurve über (M,N) genauso wie eine fehlende. **Sie werden
+automatisch mitexportiert, sobald Block A gerechnet ist** — Block A hebt
+also 16 Kurven in die Studie, nicht 8.
+
+### 6.3 Kurz, aber vollständig
+
+Drei `SE_data`-Ordner haben weniger als 16 MIMO-Kurven, ohne eine Lücke zu
+sein:
+
+| Ordner | Kurven | warum vollständig |
+|---|---|---|
+| `SE_data_bf_scaledB_K3`, `_K30` | 8 | deckungsgleich mit der Quelle; digitales BF hat bei Rice gar kein N = 8/16 (das ist Block B) |
+| `SE_data_mux_alphabetB` | 11 | die fünf Fehlenden sind nicht rechenbar: `alphabetB` verlangt B = 27 (8×8/M=64) bis 67 (16×16/M=256), über 20 bricht `adcBitsRule` ab |
+
 ## 7. Grenzen, die in jede Aussage gehören
 
 Keine davon ist ein Fehler; jede schiebt das Ergebnis in eine bekannte Richtung.
