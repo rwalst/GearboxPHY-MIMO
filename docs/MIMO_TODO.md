@@ -267,17 +267,39 @@ Kurven gewachsen, weil die BF-Seite unter der neuen Regel bei allen N ≥ 2
 neu gerechnet wird. **Alle drei Treiber sind umgestellt, committet und
 gepusht** (QuantizedMimoMI bis `6c4e8e5`, GearboxPHY-MIMO bis `bcdc949`).
 
-Für Block A und B stehen die Treiber auf dem vollen Gitter:
+Für Block A und B stehen die Treiber auf dem vollen Gitter. **Block A ist
+auf zwei gleichzeitige Jobs aufgeteilt**, je ein Rice-Faktor:
 
 ```
 git pull                                  # bis 592f149
-salloc --nodes=1 --cpus-per-task=200 --mem=64G --time=24:00:00
-matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepRiceBf"    # Block B, < 1 h je K
-matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepRiceMux"   # Block A, 35,6 h je K
+
+# Block B zuerst, billig und sichert das gemeinsame Gitter
+salloc --nodes=1 --cpus-per-task=200 --mem=64G --time=02:00:00
+matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepRiceBf"
+
+# Block A: ZWEI GETRENNTE Allokationen, gleichzeitig, je 200 Kerne
+salloc --nodes=1 --cpus-per-task=200 --mem=64G --time=40:00:00
+matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepRiceMuxK3"
+# und parallel dazu, in einer eigenen Allokation:
+matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepRiceMuxK30"
 ```
 
-Block B zuerst: billig, und er sichert das gemeinsame Gitter, bevor die
-71 h der MUX-Seite starten. Für Block A sind je K zwei Jobs in Folge nötig.
+Je Job 35,6 h, zusammen also 35,6 h Wandzeit statt 71,2 h. Die beiden
+Treiber sind je zwei Zeilen und delegieren an `runQamSweepRiceMux(K)` --
+die Konfiguration bleibt an einer Stelle, weil zwei Vollkopien genau dort
+auseinanderliefen, wo die Studie auf Gleichheit beruht.
+
+**Getrennte Allokationen, nicht zwei Aufrufe in derselben:** jeder Job
+will 200 Kerne für sich, und `startPool` leitet `JobStorageLocation` aus
+`SLURM_JOB_ID` ab. Seit 2026-10-12 hängt zusätzlich die Prozess-ID im
+Pfad, der Fall ist also abgefangen statt nur dokumentiert. Kollisionsfrei
+sind die beiden ohnehin: gleiche Zielordner, aber Dateinamen mit
+K-Suffix, und der Checkpoint liegt unter dem Kurvennamen.
+
+Erlaubt die Partition keine 40 h, reichen zwei Fenster je Job — fertige
+Kurven werden anhand der Datei übersprungen, eine angefangene setzt am
+nächsten SNR-Punkt fort, und die größte einzelne Kurve (16×16/256-QAM,
+22,4 h) passt noch in ein 24-h-Fenster.
 
 **Nichts muss vorher gelöscht werden.** Jede Übersprunglogik im Ablauf ist
 entweder dateinamenbasiert (und damit kollisionsfrei, weil `fixedB` andere
