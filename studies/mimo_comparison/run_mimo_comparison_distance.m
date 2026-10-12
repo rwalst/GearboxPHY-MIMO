@@ -33,7 +33,7 @@ function run_mimo_comparison_distance()
 VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fixedB" "bfideal_scaledB"];
 for Kv = [3 30]
     VARIANTS(end+1) = sprintf("mux_scaledB_K%g", Kv); %#ok<AGROW>
-    VARIANTS(end+1) = sprintf("bf_scaledB_K%g", Kv);  %#ok<AGROW>
+    VARIANTS(end+1) = sprintf("bf_fixedB_K%g", Kv);   %#ok<AGROW>
 end
 % Rang-1-Endpunkt, nur MUX -- fuer BF ist bfideal_scaledB bereits dieser Fall.
 VARIANTS(end+1) = "mux_scaledB_KInf";

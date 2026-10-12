@@ -19,7 +19,7 @@ Dokumentation der Ergebnisse — die steht in `HPC_RUNBOOK_MIMO_VERGLEICH.md`,
 |---|---|---|
 | **Kanal** | LOS (K → ∞), Rice (K = 3, 30), Rayleigh (K = 0) | `riceChannel.m`, `opt.K` der Treiber |
 | **Architektur** | MUX (N Ströme), digitales BF (1 Strom, N Ketten), analoges BF (1 Strom, 1 Kette, N Phasenschieber) | `opt.mode`, `beamformingArch` |
-| **Auflösung / Hardware** | MUX + digitales BF: ADC-Regel `fixedB` / `scaledB` / `alphabetB`; analoges BF: PS-Modell `active` / `passive_pen` / `passive_comp` | `adcBitsRule.m`, `psType` |
+| **Auflösung / Hardware** | MUX: ADC-Regel `fixedB` / `scaledB` / `alphabetB`; digitales BF: `fixedB` (ein Strom, siehe E8); analoges BF: PS-Modell `active` / `passive_pen` / `passive_comp` | `adcBitsRule.m`, `psType` |
 
 Die drei Achsen sind **nicht** vollständig kreuzbar: `alphabetB` ist nur für
 15 der 20 (N, M) rechenbar (B ≤ 20), und für analoges BF ist jede ADC-Regel
@@ -46,7 +46,7 @@ Legende: **✓** Kurven da und Studie gelaufen · **K** nur Kurven da · **–**
 | Kanal | fixedB | scaledB | DAC-Quantisierung (+0…+3 bit) |
 |---|---|---|---|
 | Rayleigh K = 0 | ✓ 36/36, 3a + 3b | ✓ 3a + 3b | **K** MI-Kurven da, **Export fehlt** (AP4) |
-| Rice K = 3 / 30 | – | **K** 24/24 (N ≤ 4), 8 Ecken laufen (AP1), nur 3b | – |
+| Rice K = 3 / 30 | **K** nur N = 1; N ≥ 2 laufen (AP1/B) | überholt (E8) | – |
 | LOS K → ∞ | ✓ `bfideal` 3a + 3b | ✓ 3a + 3b | **K** MI-Kurven da, **Export fehlt** (AP4) |
 
 ### 2.3 Analoges BF (PS-Modell als dritte Achse)
@@ -204,8 +204,18 @@ Architekturen über Kanal und Distanz zusammenführt.
    weil es das gemeinsame Gitter sofort absichert.
 6. `runQamSweepRiceMux` — 8 neue Kurven, 71,2 h, je K zwei Jobs in Folge.
 
-**Danach**: Export erneut (holt das N-Raster jetzt selbst), dann AP2 für die
-Rice-Varianten auf dem vollen Raster, dann AP6.
+**Danach**, und nach dem Regelwechsel E8 zwingend in dieser Kette:
+
+7. `export_mimo_comparison_curves` — erzeugt `SE_data_bf_fixedB_K3/_K30`
+   und holt das N-Raster jetzt selbst.
+8. `run_mimo_comparison_distance` (3b) — `cmp_distance_bf_fixedB_K3/_K30.mat`
+   existiert noch nicht; die alten `..._bf_scaledB_K*.mat` werden nicht
+   mehr gelesen.
+9. `analyze_rice_comparison` und `analyze_bf_vs_mux_qam` — **K\* ist neu zu
+   bestimmen.** Die bisherige Zahl (16,5 bei 56 m) ist unter BF-`scaledB`
+   entstanden und damit überholt; sie verschiebt sich zu kleinerem K.
+
+Dann AP2 für die Rice-Varianten auf dem vollen Raster, dann AP6.
 
 ## 5. Entscheidungen
 
@@ -216,6 +226,7 @@ Rice-Varianten auf dem vollen Raster, dann AP6.
 | E5 | ZXM / IR / CPM in die MIMO-Matrix? | **NEIN** (2026-10-12). ZXM-MIMO ist bei N_t >= 2 blockiert (der komplexe Kanal braucht den Gruppenpfad über 2·N_t Ströme); die SISO-Gänge decken den Kleinratenbereich ab. |
 | E2 | Rice auch für `fixedB` und `alphabetB`? | offen. Empfehlung: nein, nur `scaledB` — die Regel kostet nachweislich nichts (Median 0,00 %), ein zweites Rice-Raster bringt keine neue Aussage. |
 | E4 | DAC-Kurven am Ideal-DAC deckeln? | **JA** (2026-10-12), umgesetzt und getestet — siehe AP4. Quantisierung darf nicht helfen, sonst bevorzugt `minOverDacLevels` genau die Stufe, die am meisten rundet. |
+| E8 | ADC-Regel je Modus statt einheitlich? | **JA** (2026-10-12). `scaledB`s `log₂Nt` stammt laut `adcBitsRule` aus der Überlagerung von N_t Strömen an jeder Empfangsantenne. Digitales BF sendet **einen** Strom — die Aussteuerung je Antenne bleibt eine M-QAM-Konstellation, und die kohärente Summe entsteht nach dem ADC, wo Wortbreite nichts kostet. BF trägt deshalb `fixedB`, MUX weiter `scaledB`. Das Repo argumentierte so schon zweimal: analoges BF ist durchweg `fixedB` (alle vier K), und `analyze_bf_vs_mux_qam` paart `mux_alphabetB` gegen `bf_fixedB`. Richtung: BF wird günstiger, bis 2,65 % im Verhältnis BF/MUX — die bisherigen BF-Zahlen waren benachteiligt, nicht geschönt. |
 | E7 | Wie wird der `isfile`-Aussetzer auf dem UNC-Share abgestellt? | offen, und er verfälscht Ergebnisse still. Empfehlung: die Kandidatenprüfung EINMAL im Client machen und das Ergebnis in den parfor broadcasten, statt sie je Worker und je Distanz zu wiederholen -- das ist auch 25× weniger Dateizugriffe. Zusätzlich die fünf betroffenen Läufe neu rechnen. |
 | E6 | N > 16? | offen. Empfehlung: nein — `alphabetB` ist dort nicht rechenbar, und die Phasenquantisierung verliert bei großen Arrays ohnehin. |
 
@@ -256,11 +267,12 @@ Alle fehlenden Kurven liegen in **QuantizedMimoMI** (`qam/results/`) — im
 Gearbox-Repo fehlt nichts, was an der Quelle vorhanden wäre. Umgekehrt
 gilt das nicht: siehe 6.2.
 
-**Block A + B — der Rice-Kanal bei großen Arrays** (24 Kurven). Beide
-Modi haben bei Rice nur Arrays bis 4×4; es fehlt die obere Hälfte der
-Array-Achse. Die ADC-Auflösung ist dabei keine freie Größe, sondern folgt
-der Regel `scaledB` (½·log₂M + log₂N + 3) — sie steht hier nur, weil sie
-den Rechenaufwand bestimmt.
+**Block A + B — der Rice-Kanal** (40 Kurven). Die ADC-Auflösung ist keine
+freie Größe, sondern folgt der Regel — und die ist seit E8 **je Modus eine
+andere**: MUX `scaledB` (½·log₂M + log₂N + 3), digitales BF `fixedB`
+(½·log₂M + 3). Block A füllt die obere Hälfte der Array-Achse; Block B
+rechnet die BF-Seite unter der neuen Regel komplett neu, weil es dort
+`fixedB` bisher nur bei N = 1 gibt (wo alle Regeln zusammenfallen).
 
 | Block | Modus | Kanal | Array | Modulation | ADC | Kurven |
 |---|---|---|---|---|---|---|
@@ -268,15 +280,14 @@ den Rechenaufwand bestimmt.
 | A | Multiplexing | Rice K = 3 | 16×16 | 64- und 256-QAM | 10 / 11 bit | 2 |
 | A | Multiplexing | Rice K = 30 (14,8 dB) | 8×8 | 64- und 256-QAM | 9 / 10 bit | 2 |
 | A | Multiplexing | Rice K = 30 | 16×16 | 64- und 256-QAM | 10 / 11 bit | 2 |
-| B | digitales Beamforming | Rice K = 3 | 8×8 | alle vier Ordnungen | 7…10 bit | 4 |
-| B | digitales Beamforming | Rice K = 3 | 16×16 | alle vier Ordnungen | 8…11 bit | 4 |
-| B | digitales Beamforming | Rice K = 30 | 8×8 | alle vier Ordnungen | 7…10 bit | 4 |
-| B | digitales Beamforming | Rice K = 30 | 16×16 | alle vier Ordnungen | 8…11 bit | 4 |
+| B | digitales Beamforming | Rice K = 3 | 2×2 … 16×16 | alle vier Ordnungen | 4…7 bit (`fixedB`) | 16 |
+| B | digitales Beamforming | Rice K = 30 | 2×2 … 16×16 | alle vier Ordnungen | 4…7 bit (`fixedB`) | 16 |
 
 Die MUX-Seite braucht nur die beiden hohen Modulationsordnungen, weil
-4- und 16-QAM dort schon gerechnet sind (siehe 6.2); die BF-Seite hat bei
-8×8 und 16×16 noch gar nichts. Treiber: `runQamSweepRiceMux` (35,6 h je K)
-und `runQamSweepRiceBf` (unter 1 h je K), beide auf dem vollen Gitter.
+4- und 16-QAM dort schon gerechnet sind (siehe 6.2). Treiber:
+`runQamSweepRiceMux` (35,6 h je K) und `runQamSweepRiceBf` (unter 1 h je K,
+`fixedB` braucht weniger ADC-Bits als die alte Rechnung), beide auf dem
+vollen Gitter.
 
 **Block C — der Vergleichsfall „gemeinsame Aussteuerung" bei gröberem DAC**
 (120 Kurven). Eine Aussteuerung für alle Antennen statt einer je Antenne;
@@ -320,7 +331,7 @@ sein:
 
 | Ordner | Kurven | warum vollständig |
 |---|---|---|
-| `SE_data_bf_scaledB_K3`, `_K30` | 8 | deckungsgleich mit der Quelle; digitales BF hat bei Rice gar kein N = 8/16 (das ist Block B) |
+| `SE_data_bf_scaledB_K3`, `_K30` | 8 | **überholt durch E8** — digitales BF trägt bei Rice jetzt `fixedB`. Die Ordner bleiben als Beleg der alten Rechnung liegen, werden aber nicht mehr erzeugt noch gelesen; dasselbe gilt für `results/cmp_distance_bf_scaledB_K3/_K30.mat` |
 | `SE_data_mux_alphabetB` | 11 | die fünf Fehlenden sind nicht rechenbar: `alphabetB` verlangt B = 27 (8×8/M=64) bis 67 (16×16/M=256), über 20 bricht `adcBitsRule` ab |
 
 ## 7. Grenzen, die in jede Aussage gehören

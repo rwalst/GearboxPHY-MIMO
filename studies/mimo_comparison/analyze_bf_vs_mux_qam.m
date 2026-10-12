@@ -80,8 +80,15 @@ V(end+1) = struct('chan',"K=0",    'rule',"alphabetB",'mux',"mux_alphabetB",    
 % unabhaengig von N_t, und adcBitsRule(M,Nt,Nr,"alphabetB") faellt dort mit
 % fixedB zusammen. Ein eigener BF-alphabetB-Lauf existiert deshalb nicht --
 % er waere bitgleich. Siehe runQamSweepAlphabet1.m "NUR MULTIPLEXING".
-V(end+1) = struct('chan',"K=3",    'rule',"scaledB", 'mux',"mux_scaledB_K3",   'bf',"bf_scaledB_K3",    'bfLimit',false);
-V(end+1) = struct('chan',"K=30",   'rule',"scaledB", 'mux',"mux_scaledB_K30",  'bf',"bf_scaledB_K30",   'bfLimit',false);
+% RICE GEGEN bf_fixedB, aus demselben Grund wie alphabetB eine Zeile
+% hoeher: bei Beamforming kommt EIN Strom an, das log2(Nt) von scaledB
+% stammt aber aus der Ueberlagerung von Nt Stroemen. BF unter scaledB zu
+% rechnen hiess, es log2(N) ADC-Bit bezahlen zu lassen, die es nicht
+% braucht. Seit 2026-10-12 traegt die BF-Seite bei Rice fixedB
+% (runQamSweepRiceBf.m). 'rule' bezeichnet wie in der alphabetB-Zeile die
+% MUX-seitige Regel.
+V(end+1) = struct('chan',"K=3",    'rule',"scaledB", 'mux',"mux_scaledB_K3",   'bf',"bf_fixedB_K3",     'bfLimit',false);
+V(end+1) = struct('chan',"K=30",   'rule',"scaledB", 'mux',"mux_scaledB_K30",  'bf',"bf_fixedB_K30",    'bfLimit',false);
 V(end+1) = struct('chan',"Rank 1", 'rule',"scaledB", 'mux',"mux_scaledB_KInf", 'bf',"bfideal_scaledB",  'bfLimit',true);
 % RANG 1 GIBT ES NUR FUER scaledB. Ein fixedB-Rang-1-Lauf auf der
 % MUX-Seite existiert nicht (runQamSweepMuxRank1 rechnet scaledB), und

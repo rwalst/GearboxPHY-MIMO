@@ -68,13 +68,19 @@ for m = 1:numel(MODE)
         D{m,k} = localLoad(localName(MODE(m), KS(k)));
     end
 end
-ideal = localLoad("bfideal_scaledB");
+% fixedB, NICHT scaledB: diese Kurve ist der rechte Endpunkt DERSELBEN
+% BF-Reihe (gleiche Farbe, Label "BF, rank 1"). Traegt sie eine andere
+% ADC-Regel als die BF-Punkte bei K = 3 und 30, wechselt die Reihe
+% zwischen K = 30 und K = Inf die Regel und der Sprung waere teils
+% Wandler-, nicht Kanaleffekt. Ideales BF ist ebenfalls Einstrom, fixedB
+% ist dort also auch die physikalisch passende Regel.
+ideal = localLoad("bfideal_fixedB");
 % Der MUX-Endpunkt bei K = Inf (runQamSweepMuxRank1). Fuer BF ist
 % bfideal genau dieser Fall; fuer MUX fehlte er, und die Abbildung konnte
 % am rechten Rand nur EINEN der beiden Modi zeigen.
 muxInf = localLoad("mux_scaledB_KInf");
 assert(any(~cellfun(@isempty, D(:))), 'analyzeRice:noData', ...
-    ['Keine results/cmp_distance_*scaledB*.mat gefunden - erst ' ...
+    ['Keine results/cmp_distance_mux_scaledB*/bf_fixedB*.mat gefunden - erst ' ...
      'run_mimo_comparison_distance ausfuehren.']);
 
 ref = localFirst(D);
@@ -187,7 +193,17 @@ end
 
 % =======================================================================
 function n = localName(mode, K)
-if K == 0, n = mode + "_scaledB"; else, n = mode + sprintf("_scaledB_K%g", K); end
+%LOCALNAME  Variantenname je Modus und Rice-Faktor.
+%   JE MODUS DIE PHYSIKALISCH PASSENDE ADC-REGEL: MUX scaledB -- jede
+%   Empfangsantenne sieht Nt ueberlagerte Stroeme, daher das log2(Nt).
+%   BF fixedB -- ein Strom, das beobachtete Alphabet bleibt M, unabhaengig
+%   von N. Bis 2026-10-12 stand hier fuer BEIDE scaledB; BF bezahlte damit
+%   log2(N) ADC-Bit, die es nicht braucht (siehe runQamSweepRiceBf.m).
+%   Bei K = 0 liegen fuer BF beide Regeln vor, sodass der Preis der Regel
+%   dort messbar bleibt.
+rule = "_scaledB";
+if mode == "bf", rule = "_fixedB"; end
+if K == 0, n = mode + rule; else, n = mode + rule + sprintf("_K%g", K); end
 end
 
 function S = localLoad(variant)

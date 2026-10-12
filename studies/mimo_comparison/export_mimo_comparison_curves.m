@@ -33,8 +33,12 @@ qamRoot = fullfile(mimoRoot, 'qam');
 baseDir = gearboxphy.paths.dataDir('SE_data');
 
 % RICE-FAKTOREN. K = 0 ist der Rayleigh-Grundlauf; 3 und 30 kommen aus dem
-% Rice-Sweep (K = 10 wurde bewusst ausgelassen). Nur scaledB, nur die
-% beiden Rayleigh-Modi -- ideales Beamforming ist AWGN und kennt kein K.
+% Rice-Sweep (K = 10 wurde bewusst ausgelassen). Nur die beiden
+% Rayleigh-Modi -- ideales Beamforming ist AWGN und kennt kein K. JE MODUS
+% DIE PHYSIKALISCH PASSENDE REGEL: MUX scaledB (jede Antenne sieht Nt
+% ueberlagerte Stroeme), BF fixedB (ein Strom, das Alphabet bleibt M). Bis
+% 2026-10-12 lief auch BF unter scaledB und bezahlte log2(N) ADC-Bit, die
+% es nicht braucht.
 % Inf ist der Endpunkt der K-Achse: reines LOS, Rang 1. Nur fuer MUX neu
 % zu rechnen (runQamSweepMuxRank1); fuer BF gibt es ihn seit jeher als
 % bfideal. Beide zusammen schliessen die Achse rechts.
@@ -76,9 +80,12 @@ for Kv = K_RICE
     % bfideal (SISO-AWGN plus Gewinn Nt*Nr, exakt gerechnet). Ein zweiter
     % Weg zum selben Punkt waere eine Dublette unter anderem Namen.
     if ~isinf(Kv)
-        V(end+1) = struct('name', sprintf("bf_scaledB_K%g", Kv), ...
+        % BF mit fixedB, NICHT scaledB -- siehe den Kopf des K-Blocks und
+        % runQamSweepRiceBf.m. Die alten scaledB-Kurven liegen im selben
+        % Quellordner und werden hier ueber den B-Filter ausgeschlossen.
+        V(end+1) = struct('name', sprintf("bf_fixedB_K%g", Kv), ...
             'src', fullfile(qamRoot,'results','bf_rayleigh'), 'pattern', 'mi_bf_Nt*_Nr*_M*_B*_K*.mat', ...
-            'variant', "scaledB", 'channel', "rayleigh", 'K', Kv); %#ok<AGROW>
+            'variant', "fixedB", 'channel', "rayleigh", 'K', Kv); %#ok<AGROW>
     end
 end
 
