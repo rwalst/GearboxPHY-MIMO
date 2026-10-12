@@ -108,7 +108,37 @@ liegen vollständig (je 20 Dateien in `bf_rayleigh_dac0..3`,
 `bf_ideal_dac0..3[_common]`, `bf_los_digital_dac0..3`,
 `bf_los_digital_ideal`).
 
-Zwei Schritte, beide Gearbox-Seite, beide ohne MI-Rechnung:
+**Beide Schritte sind am 2026-10-12 gelaufen** (Protokoll
+`../nachtraegliches_protokoll.txt`): der Export schrieb 19 Ordner, der
+Distanz-Sweep alle drei DAC-Modelle × zwei LO-Fälle × drei Kanäle plus die
+analogen Varianten. Dabei sind zwei Dinge aufgefallen:
+
+**(a) Sechs Ordner fehlen wirklich — die `_common`-Stufen +1..+3.** Erwartet
+waren 25 Ordner, geschrieben 19. Es fehlen
+`SE_data_bf_fixedB_dac{1,2,3}_common` und
+`SE_data_bflosd_fixedB_dac{1,2,3}_common`, weil die MI-Quellen
+`bf_rayleigh_dac{1,2,3}_common` und `bf_los_digital_dac{1,2,3}_common` nicht
+existieren — **120 MI-Kurven**. Nur `bf_ideal` hat alle vier `_common`-Stufen.
+Folge: der Vergleich „gemeinsame Aussteuerung" ist über die DAC-Stufen nur
+für `bfideal` (LOS, ein ADC hinter dem Kombinierer) lesbar; bei Rayleigh und
+bei LOS-mit-ADC-je-Antenne gibt es ihn nur bei +0 bit. Das Protokoll zeigt
+das direkt: `+0_common` 18 mal, `+1/+2/+3_common` je 6 mal (nur die
+`los`-Läufe).
+
+**(b) `isfile` setzt auf dem UNC-Share aus — und wirft dabei still
+Kandidaten aus der Optimierung.** Fünf Warnungen `gearboxphy:mimoCurveMissing`
+betreffen Kurven, die im SELBEN Protokoll vom Export geschrieben wurden.
+Jeder betroffene Ordner wird in 6 Läufen benutzt und meldet in genau 1 --
+fehlte die Datei, käme die Meldung sechsmal. `filterAvailableAntennaConfigs`
+läuft nach der Warnung bewusst weiter, also hatten diese Läufe eine kleinere
+Kandidatenmenge als ihre Geschwister und sind nicht gegeneinander lesbar.
+Betroffen sind `dbfdac_distance_losd_lo12p5mW_analytic_1V`,
+`..._losd_lo12p5mW_survey`, `..._los_loShared_analytic_1V`,
+`..._ray_loShared_survey` und ein `abfdac_distance_abfray_*_analytic`.
+Offen, wie das abgestellt wird (Wiederholversuch, Vorabprüfung im Client
+statt je Worker, oder harter Fehler) -- siehe E7.
+
+Die beiden Schritte waren:
 1. `export_dbf_dac_curves` — erzeugt die `SE_data_*_dac<k>`-Ordner.
 2. `run_dbf_dac_distance` — 25 Worker, Zeitbedarf nicht gemessen,
    `SKIP_EXISTING` trägt einen Neustart.
@@ -186,6 +216,7 @@ Rice-Varianten auf dem vollen Raster, dann AP6.
 | E5 | ZXM / IR / CPM in die MIMO-Matrix? | **NEIN** (2026-10-12). ZXM-MIMO ist bei N_t >= 2 blockiert (der komplexe Kanal braucht den Gruppenpfad über 2·N_t Ströme); die SISO-Gänge decken den Kleinratenbereich ab. |
 | E2 | Rice auch für `fixedB` und `alphabetB`? | offen. Empfehlung: nein, nur `scaledB` — die Regel kostet nachweislich nichts (Median 0,00 %), ein zweites Rice-Raster bringt keine neue Aussage. |
 | E4 | DAC-Kurven am Ideal-DAC deckeln? | **JA** (2026-10-12), umgesetzt und getestet — siehe AP4. Quantisierung darf nicht helfen, sonst bevorzugt `minOverDacLevels` genau die Stufe, die am meisten rundet. |
+| E7 | Wie wird der `isfile`-Aussetzer auf dem UNC-Share abgestellt? | offen, und er verfälscht Ergebnisse still. Empfehlung: die Kandidatenprüfung EINMAL im Client machen und das Ergebnis in den parfor broadcasten, statt sie je Worker und je Distanz zu wiederholen -- das ist auch 25× weniger Dateizugriffe. Zusätzlich die fünf betroffenen Läufe neu rechnen. |
 | E6 | N > 16? | offen. Empfehlung: nein — `alphabetB` ist dort nicht rechenbar, und die Phasenquantisierung verliert bei großen Arrays ohnehin. |
 
 ## 6. Grenzen, die in jede Aussage gehören
