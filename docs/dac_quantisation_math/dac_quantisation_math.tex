@@ -377,11 +377,17 @@ Kurve ist die bisherige (\file{runQamSweepBfIdealDac.m}, Element-SNR in Schritte
 \subsection{Unterschied der beiden Empfänger}
 
 Mit $N_r$ ADCs mitteln sich die Quantisierungsfehler der Antennen beim digitalen Kombinieren
-teilweise heraus; die Kurve liegt deshalb etwas \emph{über} der mit einem ADC. Im exakt
-rechenbaren Fall $2\times2$ ohne DAC-Quantisierung sind es höchstens $0{,}009$~bit (4-QAM) und
-$0{,}018$~bit (16-QAM) bei $B=\tfrac12\log_2M+3$. Für größere Arrays liegen dazu noch keine
-gerechneten Kurven vor. Weitere Eigenmoden gibt es in beiden Modellen nicht ($\sigma_j=0$ für
-$j\ge2$).
+teilweise heraus; die Kurve liegt deshalb etwas \emph{über} der mit einem ADC. Aus den gerechneten
+Kurven ohne DAC-Quantisierung (Stand 12.~Oktober 2026, $B=\tfrac12\log_2M+3$): der Vorteil bei
+$I=0{,}75\log_2M$ beträgt $0{,}03$ bis $0{,}06$~dB für $2\times2$ und wächst auf $0{,}12$ bis
+$0{,}17$~dB für $16\times16$. Für $2\times2$ mit 4-QAM und 16-QAM ist das exakt gerechnet
+(höchstens $0{,}009$ bzw.\ $0{,}018$~bit); für größere Arrays ist der quasi-exakte Schätzer im
+Spiel, dessen Rauschen hier bei rund $0{,}02$~bit liegt.
+
+Der Mehrbedarf durch den DAC ist in beiden Modellen praktisch derselbe: die Werte der Tabelle in
+Abschnitt~\ref{sec:erg} ändern sich um höchstens $0{,}02$~dB. Weitere Eigenmoden gibt es in beiden
+Modellen nicht ($\sigma_j=0$ für $j\ge2$), und die Kurven mit DAC liegen auch mit $N_r$ ADCs nicht
+über der ohne DAC (Überschreitungen im Rahmen des Schätzerrauschens).
 
 \section{Zwei Sonderfälle zum Nachrechnen}
 
@@ -441,12 +447,12 @@ In den Ergebnissen liegt deshalb im Rayleigh-Kanal die Kurve mit $k=0$ für $M\g
 \emph{über} der Kurve ohne DAC (bis $0{,}10$~bit). Im LOS-Fall ist $\sigma_j=0$ für $j\ge2$, dort
 tritt der Effekt nicht auf. Ein Empfänger, der nur auf $u_1$ kombiniert, hätte davon nichts.
 
-\section{Ergebnis im Überblick}
+\section{Ergebnis im Überblick}\label{sec:erg}
 
 Mehrbedarf an SNR gegenüber der Kurve ohne DAC-Quantisierung bei $I=0{,}75\log_2M$, in dB,
 Aussteuerung je Antenne (aus den gerechneten Kurven, Stand 9.~Oktober 2026). Die LOS-Zeilen
-stammen aus der Vereinfachung mit einem ADC (Abschnitt~\ref{sec:los1}); die Kurven mit einem
-ADC je Antenne sind noch nicht gerechnet:
+stammen aus der Vereinfachung mit einem ADC (Abschnitt~\ref{sec:los1}); mit einem ADC je
+Antenne ergeben sich bis auf $0{,}02$~dB dieselben Werte:
 
 \begin{center}
 \begin{tabular}{llrrrrr}
