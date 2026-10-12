@@ -250,78 +250,68 @@ vorhandenen `dac0_common`-Zwillingen gemessen: 0,24 h je Rayleigh-Ordner,
 als `_K0`, überall sonst heißt K = 0 „kein Suffix". Eine Prüfung nach der
 üblichen Konvention meldet dort 20 Fehlstellen, die nicht existieren.
 
-### 6.1 Fehlende MI-Kurven, Datei für Datei
+### 6.1 Welche MI-Kurven fehlen
 
 Alle fehlenden Kurven liegen in **QuantizedMimoMI** (`qam/results/`) — im
 Gearbox-Repo fehlt nichts, was an der Quelle vorhanden wäre. Umgekehrt
 gilt das nicht: siehe 6.2.
 
-**Block A + B — Rice bei N = 8 und 16, ADC-Regel `scaledB`** (24 Kurven,
-Treiber `runQamSweepRiceMux` und `runQamSweepRiceBf`, beide stehen auf dem
-vollen Gitter):
+**Block A + B — der Rice-Kanal bei großen Arrays** (24 Kurven). Beide
+Modi haben bei Rice nur Arrays bis 4×4; es fehlt die obere Hälfte der
+Array-Achse. Die ADC-Auflösung ist dabei keine freie Größe, sondern folgt
+der Regel `scaledB` (½·log₂M + log₂N + 3) — sie steht hier nur, weil sie
+den Rechenaufwand bestimmt.
 
-| Block | Ordner | Datei | N×N | M | B | K |
+| Block | Modus | Kanal | Array | Modulation | ADC | Kurven |
 |---|---|---|---|---|---|---|
-| A | `rule_mux` | `mi_Nt8_Nr8_M64_B9_K3.mat` | 8×8 | 64 | 9 | 3 |
-| A | `rule_mux` | `mi_Nt8_Nr8_M256_B10_K3.mat` | 8×8 | 256 | 10 | 3 |
-| A | `rule_mux` | `mi_Nt16_Nr16_M64_B10_K3.mat` | 16×16 | 64 | 10 | 3 |
-| A | `rule_mux` | `mi_Nt16_Nr16_M256_B11_K3.mat` | 16×16 | 256 | 11 | 3 |
-| A | `rule_mux` | `mi_Nt8_Nr8_M64_B9_K30.mat` | 8×8 | 64 | 9 | 30 |
-| A | `rule_mux` | `mi_Nt8_Nr8_M256_B10_K30.mat` | 8×8 | 256 | 10 | 30 |
-| A | `rule_mux` | `mi_Nt16_Nr16_M64_B10_K30.mat` | 16×16 | 64 | 10 | 30 |
-| A | `rule_mux` | `mi_Nt16_Nr16_M256_B11_K30.mat` | 16×16 | 256 | 11 | 30 |
-| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M4_B7_K3.mat` | 8×8 | 4 | 7 | 3 |
-| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M16_B8_K3.mat` | 8×8 | 16 | 8 | 3 |
-| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M64_B9_K3.mat` | 8×8 | 64 | 9 | 3 |
-| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M256_B10_K3.mat` | 8×8 | 256 | 10 | 3 |
-| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M4_B8_K3.mat` | 16×16 | 4 | 8 | 3 |
-| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M16_B9_K3.mat` | 16×16 | 16 | 9 | 3 |
-| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M64_B10_K3.mat` | 16×16 | 64 | 10 | 3 |
-| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M256_B11_K3.mat` | 16×16 | 256 | 11 | 3 |
-| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M4_B7_K30.mat` | 8×8 | 4 | 7 | 30 |
-| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M16_B8_K30.mat` | 8×8 | 16 | 8 | 30 |
-| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M64_B9_K30.mat` | 8×8 | 64 | 9 | 30 |
-| B | `bf_rayleigh` | `mi_bf_Nt8_Nr8_M256_B10_K30.mat` | 8×8 | 256 | 10 | 30 |
-| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M4_B8_K30.mat` | 16×16 | 4 | 8 | 30 |
-| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M16_B9_K30.mat` | 16×16 | 16 | 9 | 30 |
-| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M64_B10_K30.mat` | 16×16 | 64 | 10 | 30 |
-| B | `bf_rayleigh` | `mi_bf_Nt16_Nr16_M256_B11_K30.mat` | 16×16 | 256 | 11 | 30 |
+| A | Multiplexing | Rice K = 3 (4,8 dB) | 8×8 | 64- und 256-QAM | 9 / 10 bit | 2 |
+| A | Multiplexing | Rice K = 3 | 16×16 | 64- und 256-QAM | 10 / 11 bit | 2 |
+| A | Multiplexing | Rice K = 30 (14,8 dB) | 8×8 | 64- und 256-QAM | 9 / 10 bit | 2 |
+| A | Multiplexing | Rice K = 30 | 16×16 | 64- und 256-QAM | 10 / 11 bit | 2 |
+| B | digitales Beamforming | Rice K = 3 | 8×8 | alle vier Ordnungen | 7…10 bit | 4 |
+| B | digitales Beamforming | Rice K = 3 | 16×16 | alle vier Ordnungen | 8…11 bit | 4 |
+| B | digitales Beamforming | Rice K = 30 | 8×8 | alle vier Ordnungen | 7…10 bit | 4 |
+| B | digitales Beamforming | Rice K = 30 | 16×16 | alle vier Ordnungen | 8…11 bit | 4 |
 
-**Block C — Vergleichsfall „gemeinsame Aussteuerung" bei den DAC-Stufen
-+1 bis +3** (120 Kurven, 6 Ordner × 20). Die Ordner existieren überhaupt
-nicht; jeder enthält dieselben 20 Kombinationen:
+Die MUX-Seite braucht nur die beiden hohen Modulationsordnungen, weil
+4- und 16-QAM dort schon gerechnet sind (siehe 6.2); die BF-Seite hat bei
+8×8 und 16×16 noch gar nichts. Treiber: `runQamSweepRiceMux` (35,6 h je K)
+und `runQamSweepRiceBf` (unter 1 h je K), beide auf dem vollen Gitter.
 
-| Ordner | Dateimuster | Kurven | gemessene Kosten |
-|---|---|---|---|
-| `bf_rayleigh_dac1_common` | `mi_bf_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,24 h |
-| `bf_rayleigh_dac2_common` | `mi_bf_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,24 h |
-| `bf_rayleigh_dac3_common` | `mi_bf_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,24 h |
-| `bf_los_digital_dac1_common` | `mi_bflosd_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,08 h |
-| `bf_los_digital_dac2_common` | `mi_bflosd_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,08 h |
-| `bf_los_digital_dac3_common` | `mi_bflosd_Nt<N>_Nr<N>_M<M>_B<B>.mat` | 20 | 0,08 h |
+**Block C — der Vergleichsfall „gemeinsame Aussteuerung" bei gröberem DAC**
+(120 Kurven). Eine Aussteuerung für alle Antennen statt einer je Antenne;
+die Aussteuerung je Antenne setzt eine stufenlose Verstärkung hinter jedem
+DAC voraus, die niemand bezahlt, und dieser Fall zeigt, was sie wert ist.
+Gerechnet ist er nur beim feinsten DAC (+0 bit) — und nur für LOS mit
+einem ADC hinter dem Kombinierer gibt es ihn über alle Stufen.
 
-Die 20 Kombinationen je Ordner, `fixedB` und damit unabhängig von N:
-N ∈ {1, 2, 4, 8, 16} × M = 4 (B = 4), 16 (B = 5), 64 (B = 6), 256 (B = 7).
-Kein K-Suffix — alle drei DAC-Familien sind K = 0.
+| Modus | Kanal / Empfänger | fehlende DAC-Stufen | Kurven | Kosten |
+|---|---|---|---|---|
+| digitales Beamforming | Rayleigh | +1, +2, +3 bit | 60 | 0,72 h |
+| digitales Beamforming | LOS, ein ADC je Antenne | +1, +2, +3 bit | 60 | 0,24 h |
 
-Kosten gemessen an den vorhandenen `dac0_common`-Zwillingen, die dieselbe
-Arbeit sind: **0,96 h für alle 120.** Auslöser ist eine Zeile je Treiber,
+Jede der sechs fehlenden Kombinationen deckt das volle Gitter ab: alle
+fünf Arraygrößen (SISO bis 16×16) × alle vier Modulationsordnungen, ADC
+nach `fixedB` (4 bis 7 bit), Kanal durchweg K = 0. Die Stufenangabe ist
+relativ zur idealen DAC-Auflösung ½·log₂M.
+
+Kosten gemessen an den vorhandenen Zwillingen bei +0 bit, die dieselbe
+Arbeit sind: **0,96 h für alle 120.** Auslöser ist eine Zeile je Treiber —
 `runQamSweepBfRayleighDac.m:49` und `runQamSweepBfLosDigitalDac.m:73`
-tragen `DAC_OFFSETS_COMMON = 0`, wo `runQamSweepBfIdealDac`
-`[0 1 2 3]` hat.
+tragen `DAC_OFFSETS_COMMON = 0`, wo `runQamSweepBfIdealDac` `[0 1 2 3]` hat.
 
 ### 6.2 Gerechnet, aber nicht exportiert (8 Kurven)
 
-Diese Kurven liegen an der Quelle und sind im Gearbox-Repo NICHT als
-`SE_data`-Kurve vorhanden — je K = 3 und 30:
-`mi_Nt8_Nr8_M4_B7_K*`, `mi_Nt8_Nr8_M16_B8_K*`, `mi_Nt16_Nr16_M4_B8_K*`,
-`mi_Nt16_Nr16_M16_B9_K*` in `rule_mux`.
+Multiplexing im Rice-Kanal, K = 3 und 30, bei **8×8 und 16×16 mit 4- und
+16-QAM**: diese Kurven liegen an der Quelle und sind im Gearbox-Repo nicht
+als `SE_data`-Kurve vorhanden.
 
-Das ist Absicht: `localAvailableNs` nimmt ein N nur mit allen vier M, und
-bei N = 8/16 hat Rice bisher nur M = 4 und 16. Eine halbe Zeile verzerrt
-die Hüllkurve über (M,N) genauso wie eine fehlende. **Sie werden
-automatisch mitexportiert, sobald Block A gerechnet ist** — Block A hebt
-also 16 Kurven in die Studie, nicht 8.
+Das ist Absicht: `localAvailableNs` nimmt eine Arraygröße nur mit allen
+vier Modulationsordnungen, und bei 8×8 und 16×16 hat Rice bisher nur die
+beiden niedrigen. Eine halbe Zeile verzerrt die Hüllkurve über
+(Modulation, Array) genauso wie eine fehlende. **Sie werden automatisch
+mitexportiert, sobald Block A gerechnet ist** — Block A hebt also 16
+Kurven in die Studie, nicht 8.
 
 ### 6.3 Kurz, aber vollständig
 
