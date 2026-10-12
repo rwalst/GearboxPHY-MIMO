@@ -98,20 +98,39 @@ SNR_GRID_RAYLEIGH = -15:2:25;
 
 Ns = [1 2 4 8 16];
 Ms = [4 16 64 256];
-% Der Rice-Sweep lief nur bis 4x4 -- dort sind 8x8 und 16x16 keine Luecke,
-% sondern nie gerechnet worden. Sonst meldete die Vollstaendigkeitspruefung
-% fuer jede Rice-Variante acht Fehlstellen, die keine sind.
-NS_RICE = [1 2 4];
+% DAS N-RASTER DER RICE-VARIANTEN WIRD GEMESSEN, NICHT GESETZT.
+% Hier stand NS_RICE = [1 2 4], weil der Rice-Sweep nur bis 4x4 lief --
+% 8x8 und 16x16 waren keine Luecke, sondern nie gerechnet. Seit die
+% Rice-Treiber auf dem vollen Gitter laufen (QuantizedMimoMI 2cd285a,
+% Entscheidung E1 in docs/MIMO_TODO.md) waechst das Raster mit den
+% Kurven, und eine feste Liste waere jetzt zweimal falsch: vor dem Lauf
+% zu gross, danach zu klein. localAvailableNs fragt stattdessen den
+% Quellordner -- ein N zaehlt, wenn ALLE M dafuer vorliegen. Teilzeilen
+% bleiben draussen, denn eine halbe Zeile verzerrt die Huellkurve ueber
+% (M,N) genau wie eine fehlende.
 missingTotal = 0;
 for k = 1:numel(V)
     dst = gearboxphy.paths.dataDir("SE_data_" + V(k).name);
     fprintf('\n################ %s ################\n', V(k).name);
     NsV = Ns;
-    % NS_RICE gilt fuer die Rice-Laeufe (K = 3, 30), deren MI-Sweeps nur
-    % N <= 4 rechnen. NICHT fuer K = Inf: runQamSweepMuxRank1 rechnet das
-    % volle Gitter, und seine N = 8/16-Kurven kamen erst nach dem letzten
-    % Exportlauf -- der Ordner war deshalb nur veraltet, nicht begrenzt.
-    if V(k).K ~= 0 && isfinite(V(k).K), NsV = NS_RICE; end
+    % Nur fuer die K-Varianten gemessen. K = 0 behaelt das volle Raster,
+    % damit die Vollstaendigkeitspruefung dort weiter MELDET statt still
+    % zu kuerzen -- bei mux_alphabetB sind N = 8/16 bei kleinem M
+    % rechnerisch unmoeglich (B > 20), und das soll als Fehlstelle
+    % sichtbar bleiben, nicht als leeres Raster verschwinden.
+    if V(k).K ~= 0 && isfolder(V(k).src)
+        NsV = localAvailableNs(V(k).src, V(k).pattern, V(k).K, Ns, Ms);
+        if isempty(NsV)
+            warning('export:noRiceCurves', ...
+                '%s: keine vollstaendige N-Zeile in %s - uebersprungen.', ...
+                V(k).name, V(k).src);
+            continue;
+        end
+        if numel(NsV) < numel(Ns)
+            fprintf('   N-Raster gemessen: %s (von %s)\n', ...
+                mat2str(NsV), mat2str(Ns));
+        end
+    end
     if ~isfolder(V(k).src)
         warning('export:noSource', 'Quelle %s fehlt - %s uebersprungen.', V(k).src, V(k).name);
         missingTotal = missingTotal + numel(NsV)*numel(Ms);
@@ -231,4 +250,28 @@ end
 
 function s = tern(c, a, b)
 if c, s = a; else, s = b; end
+end
+
+function ns = localAvailableNs(src, pattern, K, Ns, Ms)
+%LOCALAVAILABLENS  Welche N-Zeilen liegen fuer diesen Rice-Faktor VOLLSTAENDIG
+%   vor? Ein N zaehlt nur, wenn es fuer JEDES M in Ms eine Kurvendatei gibt.
+%
+%   Der Dateiname traegt B, und B haengt von (M, N, Regel) ab -- deshalb wird
+%   hier ueber '*' an der B-Stelle gesucht statt adcBitsRule erneut
+%   aufzurufen. Das haelt den Helfer von der Bitregel unabhaengig: er
+%   beantwortet "liegt die Kurve vor", nicht "mit welcher Aufloesung".
+%
+%   K = Inf trifft ueber sprintf('%g') das Suffix _KInf, wie es
+%   runRuleSweep schreibt.
+ns = [];
+for N = Ns
+    have = true;
+    for M = Ms
+        g = strrep(pattern,  'Nt*_Nr*', sprintf('Nt%d_Nr%d', N, N));
+        g = strrep(g,        '_M*_',    sprintf('_M%d_', M));
+        g = strrep(g,        '_K*.mat', sprintf('_K%g.mat', K));
+        if isempty(dir(fullfile(src, g))), have = false; break; end
+    end
+    if have, ns(end+1) = N; end %#ok<AGROW>
+end
 end
