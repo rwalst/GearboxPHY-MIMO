@@ -219,7 +219,38 @@ Rice-Varianten auf dem vollen Raster, dann AP6.
 | E7 | Wie wird der `isfile`-Aussetzer auf dem UNC-Share abgestellt? | offen, und er verfälscht Ergebnisse still. Empfehlung: die Kandidatenprüfung EINMAL im Client machen und das Ergebnis in den parfor broadcasten, statt sie je Worker und je Distanz zu wiederholen -- das ist auch 25× weniger Dateizugriffe. Zusätzlich die fünf betroffenen Läufe neu rechnen. |
 | E6 | N > 16? | offen. Empfehlung: nein — `alphabetB` ist dort nicht rechenbar, und die Phasenquantisierung verliert bei großen Arrays ohnehin. |
 
-## 6. Grenzen, die in jede Aussage gehören
+## 6. Inventur der Kurvendateien (2026-10-12, nach dem Pull)
+
+Gegen das erwartete Gitter geprüft, Bitzahl je Regel aus `adcBitsRule`.
+**Vollständig:** `bHalf` 20/20 · `rule_mux` scaledB K=0 und K=Inf je 20/20,
+alphabetB 15/15 · `bf_rayleigh` K=0 (fixedB+scaledB) 40/40 · `bf_ideal`
+40/40 · `bf_analog` **80/80** über alle vier K · `bf_los_digital_ideal`
+20/20 · alle 19 vorhandenen DAC-Ordner je 20/20.
+
+**Es fehlen genau 144 Kurven in drei Blöcken:**
+
+| Block | Ordner | fehlend | Kosten | Treiber |
+|---|---|---|---|---|
+| A | `rule_mux` (MUX, scaledB) | 8: N = 8, 16 × M = 64, 256 × K = 3, 30 | 35,6 h je K | `runQamSweepRiceMux` |
+| B | `bf_rayleigh` (dig. BF, scaledB) | 16: N = 8, 16 × alle M × K = 3, 30 | < 1 h je K | `runQamSweepRiceBf` |
+| C | `bf_rayleigh_dac{1,2,3}_common`, `bf_los_digital_dac{1,2,3}_common` | 120: 6 Ordner × 20 | **0,96 h zusammen** | s. u. |
+
+A und B sind AP1 (Entscheidung E1), die Treiber stehen schon auf dem vollen
+Gitter.
+
+**Block C ist eine Zeile je Treiber.** `runQamSweepBfIdealDac` hat
+`DAC_OFFSETS_COMMON = [0 1 2 3]`, die beiden anderen haben dort `0`:
+`runQamSweepBfRayleighDac.m:49` und `runQamSweepBfLosDigitalDac.m:73`. Auf
+`[0 1 2 3]` gesetzt, rechnet der Lauf nur die sechs fehlenden Ordner --
+fertige Kurven werden anhand der Datei übersprungen. Kosten aus den
+vorhandenen `dac0_common`-Zwillingen gemessen: 0,24 h je Rayleigh-Ordner,
+0,08 h je LOS-digital-Ordner.
+
+**Eine Namensabweichung, die keine Lücke ist:** `bf_analog` schreibt K = 0
+als `_K0`, überall sonst heißt K = 0 „kein Suffix". Eine Prüfung nach der
+üblichen Konvention meldet dort 20 Fehlstellen, die nicht existieren.
+
+## 7. Grenzen, die in jede Aussage gehören
 
 Keine davon ist ein Fehler; jede schiebt das Ergebnis in eine bekannte Richtung.
 
