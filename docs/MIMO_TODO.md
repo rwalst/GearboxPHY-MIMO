@@ -7,8 +7,9 @@ und zwar so, dass die Wahl für jeden Kanal und jede Wandler­annahme
 nachvollziehbar ist.
 
 Stand: 2026-10-12, Entscheidungen E1/E3/E4/E5/E8/E9 getroffen (Abschnitt 5).
-Code-Snapshot für den HPC-Abgleich: **`a438306f0032`** (394 Dateien, beide
-Repos; `codeManifest('diff','a438306f0032')` sagt, was fehlt).
+Code-Snapshot für den HPC-Abgleich: **`15762a1cd1cf`** (394 Dateien, beide
+Repos; `codeManifest('diff','15762a1cd1cf')` sagt, was fehlt). Davor
+`a438306f0032` — die ID änderte sich mit dem CPM-Treiber aus `da24c2e`.
 Dieses Dokument ist der gemeinsame Plan, nicht die
 Dokumentation der Ergebnisse — die steht in `HPC_RUNBOOK_MIMO_VERGLEICH.md`,
 `HPC_RUNBOOK_ANALOG_BF.md` und `HPC_RUNBOOK_DAC.md`.
@@ -47,9 +48,9 @@ Legende: **✓** Kurven da und Studie gelaufen · **K** nur Kurven da · **–**
 
 | Kanal | fixedB | scaledB | DAC-Quantisierung (+0…+3 bit) |
 |---|---|---|---|
-| Rayleigh K = 0 | ✓ 36/36, 3a + 3b | ✓ 3a + 3b | **K** MI-Kurven da, **Export fehlt** (AP4) |
+| Rayleigh K = 0 | ✓ 36/36, 3a + 3b | ✓ 3a + 3b | ✓ MI-Kurven 24/24 Ordner, **Export fehlt** (AP4) |
 | Rice K = 3 / 30 | **K** nur N = 1; N ≥ 2 laufen (AP1/B) | überholt (E8) | – |
-| LOS K → ∞ | ✓ `bfideal` 3a + 3b | ✓ 3a + 3b | **K** MI-Kurven da, **Export fehlt** (AP4) |
+| LOS K → ∞ | ✓ `bfideal` 3a + 3b | ✓ 3a + 3b | ✓ MI-Kurven 24/24 Ordner, **Export fehlt** (AP4) |
 
 ### 2.3 Analoges BF (PS-Modell als dritte Achse)
 
@@ -117,8 +118,10 @@ analogen Varianten. **Beide müssen wiederholt werden** — der Export, weil
 er jetzt deckelt (E4) und die `_common`-Stufen dazukommen; der Sweep, weil
 `E` seit E9 den anderen Fall trägt. Dabei sind zwei Dinge aufgefallen:
 
-**(a) Sechs Ordner fehlen wirklich — die `_common`-Stufen +1..+3.** Erwartet
-waren 25 Ordner, geschrieben 19. Es fehlen
+**(a) ERLEDIGT am 2026-10-12.** Es fehlten sechs Ordner — die
+`_common`-Stufen +1..+3; sie sind gerechnet (`592f149`), alle 24
+DAC-Ordner sind vollständig. Der Export muss sie noch übersetzen.
+Ursprünglicher Befund: erwartet waren 25 Ordner, geschrieben 19. Es fehlten
 `SE_data_bf_fixedB_dac{1,2,3}_common` und
 `SE_data_bflosd_fixedB_dac{1,2,3}_common`, weil die MI-Quellen
 `bf_rayleigh_dac{1,2,3}_common` und `bf_los_digital_dac{1,2,3}_common` nicht
@@ -192,12 +195,10 @@ Architekturen über Kanal und Distanz zusammenführt.
 
 ## 4. Was jetzt in welcher Reihenfolge läuft
 
-**Zuerst, weil billig und weil der Standardfall daran hängt** (MI-Seite,
-unter einer Stunde): `runQamSweepBfRayleighDac` und
-`runQamSweepBfLosDigitalDac` → die 120 `_common`-Kurven (Block C).
-Startklar, siehe Abschnitt 6.
+**Block C ist erledigt** (2026-10-12, 120 Kurven). Damit ist der
+DAC-Zweig auf der MI-Seite vollständig und die Gearbox-Seite dran.
 
-**Dann ohne weiteren MI-Lauf** (Gearbox-Seite, Stunden):
+**Ohne neuen MI-Lauf** (Gearbox-Seite, Stunden):
 
 1. `export_dbf_dac_curves` → die `SE_data_*_dac*`-Ordner neu, jetzt
    inklusive der `_common`-Stufen und an der Ideal-DAC-Kurve gedeckelt
@@ -251,30 +252,32 @@ alphabetB 15/15 · `bf_rayleigh` K=0 (fixedB+scaledB) 40/40 · `bf_ideal`
 40/40 · `bf_analog` **80/80** über alle vier K · `bf_los_digital_ideal`
 20/20 · alle 19 vorhandenen DAC-Ordner je 20/20.
 
-**Es fehlen genau 160 Kurven in drei Blöcken:**
+**Block C ist am 2026-10-12 gerechnet** (`QuantizedMimoMI 592f149`, 120
+Kurven, alle **24 DAC-Ordner jetzt vollständig** 20/20). Damit fehlen noch
+**40 Kurven in zwei Blöcken:**
 
 | Block | Ordner | fehlend | Kosten | Treiber |
 |---|---|---|---|---|
 | A | `rule_mux` (MUX, scaledB) | 8: N = 8, 16 × M = 64, 256 × K = 3, 30 | 35,6 h je K | `runQamSweepRiceMux` |
 | B | `bf_rayleigh` (dig. BF, **fixedB**) | 32: N = 2…16 × alle M × K = 3, 30 | < 1 h je K | `runQamSweepRiceBf` |
-| C | `bf_rayleigh_dac{1,2,3}_common`, `bf_los_digital_dac{1,2,3}_common` | 120: 6 Ordner × 20 | **0,96 h zusammen** | `runQamSweepBfRayleighDac`, `runQamSweepBfLosDigitalDac` |
+| ~~C~~ | ~~`bf_rayleigh_dac{1,2,3}_common`, `bf_los_digital_dac{1,2,3}_common`~~ | **erledigt** 2026-10-12 | 0,96 h | `runQamSweepBfRayleighDac`, `runQamSweepBfLosDigitalDac` |
 
 A und B sind AP1 (Entscheidung E1); Block B ist durch E8 von 16 auf 32
 Kurven gewachsen, weil die BF-Seite unter der neuen Regel bei allen N ≥ 2
 neu gerechnet wird. **Alle drei Treiber sind umgestellt, committet und
 gepusht** (QuantizedMimoMI bis `6c4e8e5`, GearboxPHY-MIMO bis `bcdc949`).
 
-**Block C ist startklar und wartet nur auf den HPC-Lauf:**
+Für Block A und B stehen die Treiber auf dem vollen Gitter:
 
 ```
-git pull                                  # bis 6c4e8e5
-salloc --nodes=1 --cpus-per-task=200 --mem=64G --time=02:00:00
-matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepBfRayleighDac"
-matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepBfLosDigitalDac"
+git pull                                  # bis 592f149
+salloc --nodes=1 --cpus-per-task=200 --mem=64G --time=24:00:00
+matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepRiceBf"    # Block B, < 1 h je K
+matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepRiceMux"   # Block A, 35,6 h je K
 ```
 
-Die `time`-Angaben in den Treiberköpfen (48 h bzw. 24 h) gelten für einen
-Lauf von Null; hier werden nur die sechs fehlenden Ordner gerechnet.
+Block B zuerst: billig, und er sichert das gemeinsame Gitter, bevor die
+71 h der MUX-Seite starten. Für Block A sind je K zwei Jobs in Folge nötig.
 
 **Nichts muss vorher gelöscht werden.** Jede Übersprunglogik im Ablauf ist
 entweder dateinamenbasiert (und damit kollisionsfrei, weil `fixedB` andere
@@ -331,24 +334,24 @@ Die MUX-Seite braucht nur die beiden hohen Modulationsordnungen, weil
 `fixedB` braucht weniger ADC-Bits als die alte Rechnung), beide auf dem
 vollen Gitter.
 
-**Block C — der Vergleichsfall „gemeinsame Aussteuerung" bei gröberem DAC**
-(120 Kurven). Eine Aussteuerung für alle Antennen statt einer je Antenne;
+**Block C — erledigt am 2026-10-12.** Der Abschnitt bleibt stehen, weil er
+das Modell erklärt, aber die Kurven liegen vor.
+Eine Aussteuerung für alle Antennen statt einer je Antenne;
 die Aussteuerung je Antenne setzt eine stufenlose Verstärkung hinter jedem
 DAC voraus, die niemand bezahlt, und dieser Fall zeigt, was sie wert ist.
 Gerechnet ist er nur beim feinsten DAC (+0 bit) — und nur für LOS mit
 einem ADC hinter dem Kombinierer gibt es ihn über alle Stufen.
 
-| Modus | Kanal / Empfänger | fehlende DAC-Stufen | Kurven | Kosten |
+| Modus | Kanal / Empfänger | DAC-Stufen | Kurven | Stand |
 |---|---|---|---|---|
-| digitales Beamforming | Rayleigh | +1, +2, +3 bit | 60 | 0,72 h |
-| digitales Beamforming | LOS, ein ADC je Antenne | +1, +2, +3 bit | 60 | 0,24 h |
+| digitales Beamforming | Rayleigh | +1, +2, +3 bit | 60 | ✓ 2026-10-12 |
+| digitales Beamforming | LOS, ein ADC je Antenne | +1, +2, +3 bit | 60 | ✓ 2026-10-12 |
 
-**Seit E9 ist das keine Ergänzung mehr, sondern der Standardfall selbst.**
-Die gemeinsame Aussteuerung liegt bei diesen beiden Kanälen nur bei +0 bit
-vor; ohne diese 120 Kurven hat der Standard ein Stufenraster von einem
-Punkt, während der Vergleich vier hat. `run_dbf_dac_distance` warnt
-deshalb mit `run_dbf_dac_distance:commonIncomplete`, statt das Ergebnis
-als vollen Sweep auszugeben.
+**Seit E9 war das keine Ergänzung, sondern der Standardfall selbst** — die
+gemeinsame Aussteuerung lag bei diesen beiden Kanälen nur bei +0 bit vor.
+Jetzt trägt der Standard dasselbe vierstufige Raster wie der Vergleich,
+und `run_dbf_dac_distance:commonIncomplete` darf nicht mehr auftreten.
+Kommt die Warnung trotzdem, ist der Export nicht gelaufen.
 
 Jede der sechs fehlenden Kombinationen deckt das volle Gitter ab: alle
 fünf Arraygrößen (SISO bis 16×16) × alle vier Modulationsordnungen, ADC
