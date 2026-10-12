@@ -32,7 +32,11 @@ function run_dbf_dac_distance(over)
 %              (SE_data_bflosd_fixedB, SE_data_bfideal_fixedB bzw.
 %              SE_data_bf_fixedB)
 %     E        Kurven mit DAC-Quantisierung, letzte Dimension = DAC-Stufe
-%              (SE_data_..._dac<k>), der DAC bezahlt sourceBdac
+%              (SE_data_..._dac<k>), der DAC bezahlt sourceBdac. Diese
+%              Kurven sind beim Export an der Ideal-DAC-Kurve GEDECKELT
+%              (Entscheidung E4, capDacCurvesAgainstIdeal) -- ohne das
+%              liegt eine groebere Stufe stellenweise ueber der feineren,
+%              und minOverDacLevels waehlte sie dann genau deswegen.
 %     Ebest    Minimum ueber die Stufen (gearboxphy.sweep.minOverDacLevels),
 %     kBest    Index der gewaehlten Stufe
 %     Ecommon  Vergleichsfall gemeinsame Aussteuerung, soweit Ordner

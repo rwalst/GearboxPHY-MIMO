@@ -22,6 +22,22 @@
 %   Raster der Quelle, Rayleigh wird auf -15:2:25 dB ausgeduennt -- beides
 %   wie bei den Ordnern ohne DAC, damit der Vergleich nur den DAC misst.
 %
+%   DECKELUNG AN DER IDEAL-DAC-KURVE (Entscheidung E4, docs/MIMO_TODO.md):
+%   jede DAC-Kurve wird punktweise auf die Kurve MIT idealem DAC derselben
+%   (M, N) begrenzt. Quantisierung darf nicht helfen -- ohne die Deckelung
+%   liegt die DAC-Kurve stellenweise DARUEBER, weil der Rundungsfehler die
+%   Stroeme zufaellig dekorreliert und damit ein Stueck Multiplexgewinn
+%   vortaeuscht, das ein Empfaenger mit angepasstem Filter nicht heben kann.
+%   Gemessen im Fall bflosd/dac2: 247 von 1056 Punkten lagen darueber, bis
+%   0,0209 bit; bei Rayleigh und M >= 64, N >= 4 bis 0,10 bit.
+%
+%   Jede gedeckelte Datei traegt dacCapRef, dacCapPoints, dacCapMaxBit und
+%   dacCapUncovered -- die Deckelung ist damit im Ergebnis nachlesbar und
+%   nicht nur hier beschrieben. Fehlt der Referenzordner, wird NICHT still
+%   ungedeckelt geschrieben, sondern mit export:noDacCapRef gewarnt.
+%   Gerechnet wird sie in +gearboxphy/+data/capDacCurvesAgainstIdeal.m
+%   (dort auch die Herleitung), geprueft von tests/+unit/DacCapTest.m.
+%
 %   Fehlende Quellen werden uebersprungen: der Export laeuft schon nach dem
 %   LOS-Lauf und spaeter noch einmal nach dem Rayleigh-Lauf.
 mimoRoot = fullfile(gearboxphy.paths.root(), '..', 'QuantizedMimoMI');
@@ -50,7 +66,8 @@ for k = 0:3
                       sprintf("SE_data_bf_fixedB_dac%d%s", k, suffix), ...
                       sprintf("SE_data_bflosd_fixedB_dac%d%s", k, suffix)}, ...
           'pattern', {'mi_bfideal_Nt*_Nr*_M*_B*.mat', 'mi_bf_Nt*_Nr*_M*_B*.mat', 'mi_bflosd_Nt*_Nr*_M*_B*.mat'}, ...
-          'grid',    {[], -15:2:25, []});
+          'grid',    {[], -15:2:25, []}, ...
+          'ref',     {"SE_data_bfideal_fixedB", "SE_data_bf_fixedB", "SE_data_bflosd_fixedB"});
         for j = 1:numel(J)
             if ~isfolder(J(j).src) || isempty(dir(fullfile(J(j).src, J(j).pattern)))
                 continue
@@ -59,7 +76,9 @@ for k = 0:3
             o = struct('pattern', J(j).pattern, 'variant', "fixedB", 'K', 0, ...
                        'baseDir', baseDir, 'sisoFrom1x1', true);
             if ~isempty(J(j).grid), o.snrGrid = J(j).grid; end
-            exportToGearboxSEData(J(j).src, gearboxphy.paths.dataDir(J(j).name), o);
+            dst = gearboxphy.paths.dataDir(J(j).name);
+            exportToGearboxSEData(J(j).src, dst, o);
+            gearboxphy.data.capDacCurvesAgainstIdeal(dst, gearboxphy.paths.dataDir(J(j).ref), J(j).name, J(j).ref);
             nDone = nDone + 1;
         end
     end
@@ -70,3 +89,4 @@ if nDone == 0
 else
     fprintf('\nexport_dbf_dac_curves: %d Ordner geschrieben.\n', nDone);
 end
+

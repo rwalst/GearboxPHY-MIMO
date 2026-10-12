@@ -6,7 +6,7 @@ entscheiden: Multiplexing, digitales Beamforming oder analoges Beamforming —
 und zwar so, dass die Wahl für jeden Kanal und jede Wandler­annahme
 nachvollziehbar ist.
 
-Stand: 2026-10-12, Entscheidungen E1/E3/E5 getroffen (siehe Abschnitt 5).
+Stand: 2026-10-12, Entscheidungen E1/E3/E4/E5 getroffen (siehe Abschnitt 5).
 Dieses Dokument ist der gemeinsame Plan, nicht die
 Dokumentation der Ergebnisse — die steht in `HPC_RUNBOOK_MIMO_VERGLEICH.md`,
 `HPC_RUNBOOK_ANALOG_BF.md` und `HPC_RUNBOOK_DAC.md`.
@@ -113,11 +113,13 @@ Zwei Schritte, beide Gearbox-Seite, beide ohne MI-Rechnung:
 2. `run_dbf_dac_distance` — 25 Worker, Zeitbedarf nicht gemessen,
    `SKIP_EXISTING` trägt einen Neustart.
 
-**Offene Entscheidung (E4, noch nicht getroffen):** die exportierten Kurven
-am Ideal-DAC deckeln? Bei Rayleigh liegt die +0-bit-Kurve für M >= 64,
-N >= 4 bis zu 0,10 bit *darüber* — zufälliges Multiplexing durch den
-Rundungsfehler, real, aber für einen Empfänger mit angepasstem Filter nicht
-nutzbar.
+**E4 ist entschieden (ja, deckeln) und umgesetzt:**
+`+gearboxphy/+data/capDacCurvesAgainstIdeal.m` begrenzt jede DAC-Kurve
+punktweise auf die Kurve mit idealem DAC derselben (M, N); der Export ruft
+das nach jedem Ordner auf. Gemessen an bflosd/dac2: 247 von 1056 Punkten
+lagen darüber, bis 0,0209 bit — alle gedeckelt, keiner angehoben. Jede
+Datei trägt danach `dacCapRef`, `dacCapPoints`, `dacCapMaxBit` und
+`dacCapUncovered`. Abgedeckt von `tests/+unit/DacCapTest.m` (7 Tests).
 
 ### AP5 — DAC-Leistungsmodell *(entschieden: ja — und schon gebaut)*
 Auch hier war der Plan überholt: der Schalter **existiert**, ist verdrahtet
@@ -183,7 +185,7 @@ Rice-Varianten auf dem vollen Raster, dann AP6.
 | E3 | DAC-Leistungsmodell neu? | **JA** (2026-10-12), als Schalter mit altem Default — und genau so schon gebaut. Zu tun bleibt der Lauf, siehe AP5. |
 | E5 | ZXM / IR / CPM in die MIMO-Matrix? | **NEIN** (2026-10-12). ZXM-MIMO ist bei N_t >= 2 blockiert (der komplexe Kanal braucht den Gruppenpfad über 2·N_t Ströme); die SISO-Gänge decken den Kleinratenbereich ab. |
 | E2 | Rice auch für `fixedB` und `alphabetB`? | offen. Empfehlung: nein, nur `scaledB` — die Regel kostet nachweislich nichts (Median 0,00 %), ein zweites Rice-Raster bringt keine neue Aussage. |
-| E4 | DAC-Kurven am Ideal-DAC deckeln? | offen, blockiert AP4.1 nicht, ändert aber die exportierten Kurven. Empfehlung: ja, deckeln und den Effekt im Docstring erklären — Quantisierung darf nicht helfen. |
+| E4 | DAC-Kurven am Ideal-DAC deckeln? | **JA** (2026-10-12), umgesetzt und getestet — siehe AP4. Quantisierung darf nicht helfen, sonst bevorzugt `minOverDacLevels` genau die Stufe, die am meisten rundet. |
 | E6 | N > 16? | offen. Empfehlung: nein — `alphabetB` ist dort nicht rechenbar, und die Phasenquantisierung verliert bei großen Arrays ohnehin. |
 
 ## 6. Grenzen, die in jede Aussage gehören
