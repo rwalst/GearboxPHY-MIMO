@@ -135,10 +135,14 @@ classdef AnalogBeamformingTest < matlab.unittest.TestCase
             testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 8), 7 * 12.5e-3, 'RelTol', 1e-12);
             cs.loDistPowerPerMixer = 50e-3;
             testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 4), 3 * 50e-3, 'RelTol', 1e-12);
-            % no default away from 28 GHz
-            cs8 = gearboxphy.sweep.resolveScenarioForCarrier( ...
-                gearboxphy.sweep.makeScenarioConfig('loDistributionModel', "per_mixer"), 8e9);
-            testCase.verifyError(@() gearboxphy.physics.loDistributionPower(cs8, 4), 'gearboxphy:loDistPower');
+            % per-carrier defaults at 2.4 and 8 GHz, none at 60 GHz
+            s = gearboxphy.sweep.makeScenarioConfig('loDistributionModel', "per_mixer");
+            cs2 = gearboxphy.sweep.resolveScenarioForCarrier(s, 2.4e9);
+            cs8 = gearboxphy.sweep.resolveScenarioForCarrier(s, 8e9);
+            cs60 = gearboxphy.sweep.resolveScenarioForCarrier(s, 60e9);
+            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs2, 4), 3 * 3e-3, 'RelTol', 1e-12);
+            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs8, 4), 3 * 7e-3, 'RelTol', 1e-12);
+            testCase.verifyError(@() gearboxphy.physics.loDistributionPower(cs60, 4), 'gearboxphy:loDistPower');
         end
 
         function loDistributionHitsDigitalNotAnalog(testCase)

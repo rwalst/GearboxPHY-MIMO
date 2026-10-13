@@ -151,8 +151,15 @@ in the QAM, NA-QAM and ZXM gears (`+physics/loDistributionPower.m`).
 
 Default per additional mixer: 12.5 mW at 28 GHz (set 2026-10-13, before that 16.6 mW), the
 measured LO repeaters per I/Q downconverter of Khanna et al., JSSC 2026. That is the
-distribution alone. Other carriers have no default and need `loDistPowerPerMixer` set by
-hand.
+distribution alone.
+
+Defaults at the other carriers (set 2026-10-13): 3 mW at 2.4 GHz and 7 mW at 8 GHz, about half
+of P_LO as at 28 GHz. Measured LO phase generation plus mixer drivers per chain from an
+external LO: 3 and 7.1 mW at 2 GHz (one outlier at 24 mW; a Bluetooth LE radio 0.23 mW);
+1.4 mW at 5.5 GHz, 24 mW at 7.5 GHz (transmitter) and 29 mW at 6 GHz (eight LO phases). The
+8 GHz value is therefore a setting inside a range of 2 to 25 mW, and none of these designs is
+an array. 60 GHz has no default and needs `loDistPowerPerMixer` set by hand. Data:
+`LituratureReview/lo_survey/lo_chain_survey.csv`, summary in `docs/LO_POWER_MODEL.md`.
 
 Evidence collected 2026-10-08 (papers in `LituratureReview/lo_distribution/`, Khanna et al.
 in `LituratureReview/ps_survey/tmp_rtps/ucla2026.txt`):

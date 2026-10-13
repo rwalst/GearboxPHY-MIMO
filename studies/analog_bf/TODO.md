@@ -29,8 +29,9 @@ Phasenquantisierung nachgeprueft (beides in `docs/ANALOG_BEAMFORMING.md`).
 ## Modell
 
 - [ ] **Werte fuer 2.4, 8 und 60 GHz** in `phaseShifterParams.m` sind die von vor der Survey.
-      LO-Puffer je Mischer hat nur bei 28 GHz einen Wert. Vor einer Studie auf anderen
-      Traegern nachziehen.
+      Vor einer Studie auf anderen Traegern nachziehen. Der LO-Puffer je Mischer hat seit
+      2026-10-13 Vorgaben bei 2.4 GHz (3 mW) und 8 GHz (7 mW, Setzung in einer Spanne von
+      2-25 mW); bei 60 GHz fehlt er weiterhin.
 - [ ] **Phasenquantisierung in Fall 2.** Die Formel setzt eine kohaerente Summe voraus und
       wird im Rayleigh-Fall als Naeherung benutzt. Sauberer: quantisierte Phasen direkt in
       `analogBfGain` (QuantizedMimoMI) und der Gearbox rechnet dann mit `psBits = Inf`.
