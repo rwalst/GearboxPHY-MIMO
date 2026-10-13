@@ -6,7 +6,7 @@ entscheiden: Multiplexing, digitales Beamforming oder analoges Beamforming —
 und zwar so, dass die Wahl für jeden Kanal und jede Wandler­annahme
 nachvollziehbar ist.
 
-Stand: 2026-10-13, Entscheidungen E1/E3/E4/E5/E8/E9 getroffen (Abschnitt 5).
+Stand: 2026-10-13, Entscheidungen E1/E3/E4/E5/E8/E9/E10 getroffen (Abschnitt 5).
 
 **Code-Abgleich mit dem HPC: die ID wird erzeugt, nicht hier abgelesen.**
 `codeManifest('snapshot')` am Arbeitsplatz, dann auf dem HPC
@@ -211,6 +211,34 @@ soll; `run_dbf_dac_distance` rechnet die analogen Varianten als
 E_BF/E_MUX 1,07 → 0,89 bei 500 m und 1 Gbit/s. Das dreht die Rangfolge
 BF↔MUX, taugt also nicht als Fußnote.
 
+### AP7 — Arbeitspunkt je Punkt *(erledigt 2026-10-13)*
+Gespeichert war nur, **was** ein Arbeitspunkt kostet (E_bit und seine
+Aufteilung), nicht **wo** er betrieben wird: Spektraleffizienz und der von
+der Kurve geforderte SNR lebten nur als lokale Variablen in `computeCore`.
+
+Jetzt tragen alle vier Gänge `SE`, `SNR_rx_dB`, `SNR_tx_dB`, `P_t_W`,
+`B_Hz` und `gamma` heraus — durch `optimizeOnePoint`, die Checkpoints und
+`saveAllResults` (`0ac0e18`) — und alle fünf Distanz-Studien legen `SE` und
+`SNRrx_dB` in der Form ihrer Energiefelder ab (`8e1e2d3`).
+
+**Nicht im Leistungsbudget:** dessen Felder summieren sich zu E_bit. Vier
+Auswertungen, zwei Unit-Tests und eine `assert`-Prüfung in
+`run_beamforming_distance_sweep` (`setdiff(fieldnames(pb), [TXF RXF])` muss
+leer sein) verlassen sich darauf.
+
+**Ein Fehler von mir dabei, gefunden und behoben vom Nutzer (`6c76e68`):**
+in `saveAllResults` standen die zwei neuen Argumente im `arguments`-Block,
+aber nicht in der Funktionszeile — damit brach JEDER `runSweep`-Lauf beim
+Speichern der ersten Kombination ab. Die Unit-Suite und der Golden Master
+fahren `runSweep` nicht und waren trotzdem grün; was es gefunden hätte,
+sind `tests/smoke_test.m` und `tests/mimo_smoke_test.m`. **Diese zwei
+gehören nach jeder Änderung an der Sweep- oder Speicherebene dazu.**
+
+**Vorhandene Ergebnisdateien tragen die Felder nicht** — sie entstehen erst
+in neuen Läufen. Die 18 `dbfdac_distance_*` werden wegen E9 ohnehin neu
+gerechnet, die übrigen Studien behalten ihre alten Dateien bis zur
+Wiederholung.
+
 ### AP6 — Auswertung und Abbildungen *(Gearbox-Seite)*
 `analyze_analog_bf` ist gelaufen, hat aber nur `results/abf_figures/abf_summary.csv`
 erzeugt — keine Abbildungen, während `results/cmp_figures/` rund 20 PNGs hat.
@@ -235,13 +263,17 @@ DAC-Zweig auf der MI-Seite vollständig und die Gearbox-Seite dran.
    sie in `E` den alten Standardfall tragen (E9).
 3. `run_analog_bf_distance` um die Rice-Datenordner erweitern (AP3) — die
    Kurven liegen als `SE_data_abf_fixedB_K3/_K30/_KInf` längst da.
-4. `run_mimo_comparison_rate` für `mux_alphabetB` und die fünf
+   **Diese Zeile ist noch nicht gebaut** (Stand 2026-10-13): der Treiber
+   kennt nur `SE_data_abf_fixedB`, die drei Rice-Ordner liest kein Sweep.
+   Ohne das ist analoges BF die einzige Architektur ohne Rice-Spalte.
+4. `run_mimo_comparison_sweep` für `mux_alphabetB` und die fünf
    Rice-Varianten (AP2), 100 Kerne, 8 h je Lauf.
 
 **MI-Läufe** (QuantizedMimoMI, HPC):
 
-5. `runQamSweepRiceBf` — 16 neue Kurven, unter 1 h. Zuerst, weil billig und
-   weil es das gemeinsame Gitter sofort absichert.
+5. `runQamSweepRiceBf` — **32** neue Kurven (seit E8 `fixedB` bei allen
+   N ≥ 2), unter 2 h. Zuerst, weil billig und weil es das gemeinsame Gitter
+   sofort absichert.
 6. `runQamSweepRiceMux` — als `runQamSweepRiceMuxK3` und `...K30`
    gleichzeitig, 35,6 h statt 71,2 h (Block A).
 7. `runQamSweepRiceBfDac` — 320 Kurven, 4,6 h (Block D). **Nach** Block B
@@ -273,6 +305,7 @@ Dann AP2 für die Rice-Varianten auf dem vollen Raster, dann AP6.
 | E9 | Gemeinsame Aussteuerung als Standard? | **JA** (2026-10-12). `perAntenna` setzt hinter jedem DAC eine stufenlos einstellbare Verstärkung je Antenne voraus, die im Energiebudget niemand bezahlt — der optimistische Fall, nicht der normale. Umgestellt: Default von `dacQuantize` und `ergodicMiBeamforming`, die Herkunftsvorgabe in `runRuleSweep`, `DAC_OFFSETS_COMMON = [0 1 2 3]` in beiden Treibern, und in `run_dbf_dac_distance` speisen die `_common`-Ordner jetzt `E`/`Ebest` (Vergleich als `Eper`). Der Unterschied ist bei +0 bit gemessen bis 0,285 bit (Rayleigh) bzw. 0,192 bit (LOS je Antenne) — und er kommt nicht nur aus der Amplitudenspreizung, sondern auch aus der Drehung, die den I/Q-Spitzenwert je Antenne verschiebt (`validateBfDac` D9). `validateBfDac` bleibt mit dem neuen Default 12/12 grün. **Die 18 vorhandenen `dbfdac_distance_*`-Dateien tragen in `E` den alten Fall und sind überholt**; `localDone` verlangt jetzt das Feld `dacScaleStandard` und rechnet sie deshalb neu. |
 | E10 | DAC-Quantisierung auch über Rice? | **JA, voller Lauf** (2026-10-12). Nicht nur eine Stufe zur Stichprobe, sondern das Kreuzprodukt: 2 K × 4 Stufen × 2 Aussteuerungen = 320 Kurven für 4,6 h. Damit ist K\* unter endlicher DAC-Auflösung bestimmbar statt nur unter idealer. Treiber `runQamSweepRiceBfDac`, Export und `run_dbf_dac_distance` (Kanäle `ray3`/`ray30`) sind umgestellt. |
 | E8 | ADC-Regel je Modus statt einheitlich? | **JA** (2026-10-12). `scaledB`s `log₂Nt` stammt laut `adcBitsRule` aus der Überlagerung von N_t Strömen an jeder Empfangsantenne. Digitales BF sendet **einen** Strom — die Aussteuerung je Antenne bleibt eine M-QAM-Konstellation, und die kohärente Summe entsteht nach dem ADC, wo Wortbreite nichts kostet. BF trägt deshalb `fixedB`, MUX weiter `scaledB`. Das Repo argumentierte so schon zweimal: analoges BF ist durchweg `fixedB` (alle vier K), und `analyze_bf_vs_mux_qam` paart `mux_alphabetB` gegen `bf_fixedB`. Richtung: BF wird günstiger, bis 2,65 % im Verhältnis BF/MUX — die bisherigen BF-Zahlen waren benachteiligt, nicht geschönt. |
+| E11 | Wie wird der stochastische Golden Master belastbar? | offen, und er hat am 2026-10-13 fast eine korrekte Änderung belastet. `qamMatchesOriginal` und `naQamMatchesOriginal` vergleichen **zwei Zufalls-Optimierer** auf RelTol 1e-6: beide Seiten ziehen ihre Mehrfachstarts aus dem ungeseedeten globalen Strom (`run_multistart_fminsearch.m:65,66,77`; kein `rng()` in `multistartOptimize`). Gemessene Streuung: E_bit 0,42 %, γ 4,4 % — und die NEUE Seite findet das bessere Optimum. Grün über die Dateiform, rot über die Ordnerform (`IncludeSubfolders`); Reihenfolge und Fixtures sind identisch, den Mechanismus dahinter habe ich **nicht** aufgeklärt. Empfehlung: je Testmethode seeden UND die Toleranz auf die echte Streuung weiten (E_bit ~1e-2, γ ~1e-1); nur einen passenden Seed zu suchen wäre Rosinenpickerei. |
 | E7 | Wie wird der `isfile`-Aussetzer auf dem UNC-Share abgestellt? | offen, und er verfälscht Ergebnisse still. Empfehlung: die Kandidatenprüfung EINMAL im Client machen und das Ergebnis in den parfor broadcasten, statt sie je Worker und je Distanz zu wiederholen -- das ist auch 25× weniger Dateizugriffe. Zusätzlich die fünf betroffenen Läufe neu rechnen. |
 | E6 | N > 16? | offen. Empfehlung: nein — `alphabetB` ist dort nicht rechenbar, und die Phasenquantisierung verliert bei großen Arrays ohnehin. |
 
