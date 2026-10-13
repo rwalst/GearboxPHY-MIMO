@@ -149,10 +149,10 @@ mixer per side.
 The first mixer is covered by P_LO, so SISO and analog arrays are unchanged. The switch acts
 in the QAM, NA-QAM and ZXM gears (`+physics/loDistributionPower.m`).
 
-Default per additional mixer: 16.6 mW at 28 GHz, the measured two-stage LO buffer per path of
-Pang et al., JSSC 2019 (Table II). That is the buffer alone; the complete LO chain per path
-of that LO-phase-shifting transceiver draws about 89 mW. Other carriers have no default and
-need `loDistPowerPerMixer` set by hand.
+Default per additional mixer: 12.5 mW at 28 GHz (set 2026-10-13, before that 16.6 mW), the
+measured LO repeaters per I/Q downconverter of Khanna et al., JSSC 2026. That is the
+distribution alone. Other carriers have no default and need `loDistPowerPerMixer` set by
+hand.
 
 Evidence collected 2026-10-08 (papers in `LituratureReview/lo_distribution/`, Khanna et al.
 in `LituratureReview/ps_survey/tmp_rtps/ucla2026.txt`):
@@ -167,7 +167,7 @@ in `LituratureReview/ps_survey/tmp_rtps/ucla2026.txt`):
 
 So two measured 28 GHz designs give 12.5 and 16.6 mW per additional chain, a system-level
 paper assumes 10 mW, and a per-element synthesizer reaches about 4 mW. The default of
-16.6 mW is at the upper end of this range; 4 to 17 mW is the range to scan. None of the
+12.5 mW is the middle of this range; 4 to 17 mW is the range to scan. None of the
 measured designs is a fully digital array: Pang shifts the phase in the LO path, Khanna
 combines four elements at RF before each downconverter.
 

@@ -14,12 +14,14 @@ function P = loDistributionPower(cs, nMixers)
 %         (SISO, or analog beamforming with its one mixer) is unchanged.
 %
 %   P_buf is cs.loDistPowerPerMixer; NaN (default) takes the per-carrier
-%   value below. Only 28 GHz has one: 16.6 mW, the measured two-stage LO
-%   buffer per path in Pang et al., JSSC 2019 (Table II; "only consumes
-%   17 mW" in the text). That is the buffer alone. The complete LO chain
-%   per path of that LO-phase-shifting transceiver draws about 89 mW
-%   (polyphase-filter buffer 44.4, LO switch and buffer 28.0, LO buffer
-%   16.6), so 16.6 mW is the low end.
+%   value below. Only 28 GHz has one: 12.5 mW, the measured LO repeaters
+%   per I/Q downconverter in Khanna et al., JSSC 2026 (25 mW for two
+%   downconverters, four LO phases over 600 um). It is the middle of the
+%   measured 28 GHz values for a buffer or repeater per additional chain
+%   (9 to 17 mW; Pang et al., JSSC 2019: 16.6 mW two-stage LO buffer). It
+%   covers the distribution only: where each chain also generates its own
+%   I/Q phases or shifts the LO phase, 35 to 95 mW per chain are reported
+%   (docs/ANALOG_BEAMFORMING.md). Until 2026-10-13 the default was 16.6 mW.
 P = 0;
 if ~isfield(cs, 'loDistributionModel') || string(cs.loDistributionModel) == "shared"
     return
@@ -33,7 +35,7 @@ P_buf = NaN;
 if isfield(cs, 'loDistPowerPerMixer'), P_buf = cs.loDistPowerPerMixer; end
 if isnan(P_buf)
     if cs.f_c == 28e9
-        P_buf = 16.6e-3;
+        P_buf = 12.5e-3;
     else
         error('gearboxphy:loDistPower', ...
             ['loDistributionModel="per_mixer" has a default LO-buffer power only at 28 GHz. ' ...

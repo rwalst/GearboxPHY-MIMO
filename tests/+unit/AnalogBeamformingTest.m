@@ -132,7 +132,7 @@ classdef AnalogBeamformingTest < matlab.unittest.TestCase
         function loDistributionChargesMixersBeyondTheFirst(testCase)
             cs = localScenario("digital", "active", 'loDistributionModel', "per_mixer");
             testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 1), 0);
-            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 8), 7 * 16.6e-3, 'RelTol', 1e-12);
+            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 8), 7 * 12.5e-3, 'RelTol', 1e-12);
             cs.loDistPowerPerMixer = 50e-3;
             testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 4), 3 * 50e-3, 'RelTol', 1e-12);
             % no default away from 28 GHz
@@ -151,8 +151,8 @@ classdef AnalogBeamformingTest < matlab.unittest.TestCase
             g = x(2);
             % digital: 7 extra buffers per side, everything else untouched
             bS = b(dS); bP = b(dP);
-            testCase.verifyEqual(bP.LO_Rx - bS.LO_Rx, (1/R) * (g + dS.epsilon_rec * (1 - g)) * 7 * 16.6e-3, 'RelTol', 1e-9);
-            testCase.verifyEqual(bP.LO_Tx - bS.LO_Tx, (1/R) * (g + dS.epsilon_trans * (1 - g)) * 7 * 16.6e-3, 'RelTol', 1e-9);
+            testCase.verifyEqual(bP.LO_Rx - bS.LO_Rx, (1/R) * (g + dS.epsilon_rec * (1 - g)) * 7 * 12.5e-3, 'RelTol', 1e-9);
+            testCase.verifyEqual(bP.LO_Tx - bS.LO_Tx, (1/R) * (g + dS.epsilon_trans * (1 - g)) * 7 * 12.5e-3, 'RelTol', 1e-9);
             for f = ["PA","DAC","Mix_Tx","LNA","Mix_Rx","ADC"]
                 testCase.verifyEqual(bP.(f), bS.(f));
             end
@@ -221,7 +221,7 @@ classdef AnalogBeamformingTest < matlab.unittest.TestCase
             [~, aDlo] = localGear("digital", "active", 'psBits', Inf, 'beamformingArchTx', "analog", 'loDistributionModel', "per_mixer");
             bLo = b(aDlo); g = x(2);
             testCase.verifyEqual(bLo.LO_Tx, bAD.LO_Tx);
-            testCase.verifyEqual(bLo.LO_Rx - bAD.LO_Rx, (1/R) * (g + aD.epsilon_rec * (1 - g)) * 7 * 16.6e-3, 'RelTol', 1e-9);
+            testCase.verifyEqual(bLo.LO_Rx - bAD.LO_Rx, (1/R) * (g + aD.epsilon_rec * (1 - g)) * 7 * 12.5e-3, 'RelTol', 1e-9);
         end
 
         function analogNeedsASingleStream(testCase)

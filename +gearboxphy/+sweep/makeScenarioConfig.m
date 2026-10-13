@@ -145,7 +145,7 @@ arguments
     %       loDistPowerPerMixer. Charges digital arrays (N mixers per
     %       side); analog beamforming has one mixer and is unchanged.
     opts.loDistributionModel (1,1) string {mustBeMember(opts.loDistributionModel, ["shared","per_mixer"])} = "shared"
-    % [W] per additional mixer; NaN = per-carrier default (28 GHz: 16.6 mW).
+    % [W] per additional mixer; NaN = per-carrier default (28 GHz: 12.5 mW).
     opts.loDistPowerPerMixer (1,1) double = NaN
     % Per-carrier maximum bandwidth, rows [f_c B_max] in Hz. Empty
     % (default) keeps B_max = eta*f_c. When given, EVERY carrier in fcVec
