@@ -103,6 +103,7 @@ Fehler dort stand am 2026-10-13 in main, während die Suite 85/85 meldete.
 | # | Entscheidung |
 |---|---|
 | E1 | Rice auf dem vollen 20er-Gitter rechnen (71 h), statt bei N ≤ 4 zu bleiben |
+| E2 | Rice **nur** für `scaledB` — kein zweites Rice-Raster für `fixedB` oder `alphabetB`. Die Regel kostet im Median 0,00 %, ein zweiter Satz brächte keine neue Aussage |
 | E3 | DAC-Leistungsmodell als Schalter mit altem Default — war schon gebaut |
 | E4 | DAC-Kurven am Ideal-DAC deckeln; Quantisierung darf nicht helfen |
 | E5 | ZXM / IR / CPM kommen nicht in die MIMO-Matrix |
@@ -114,7 +115,6 @@ Fehler dort stand am 2026-10-13 in main, während die Suite 85/85 meldete.
 
 | # | Frage | Empfehlung |
 |---|---|---|
-| E2 | Rice auch für `fixedB` und `alphabetB`? | nein — die Regel kostet im Median 0,00 % |
 | E6 | N > 16? | nein — `alphabetB` dort nicht rechenbar, Phasenquantisierung verliert ohnehin |
 | E7 | `isfile`-Aussetzer auf dem UNC-Share? | Kandidaten einmal im Client prüfen und ins parfor broadcasten; die fünf betroffenen Läufe neu rechnen |
 | E11 | Golden Master belastbar machen? | je Testmethode seeden **und** Toleranz auf die echte Streuung weiten (E_bit ~1e-2, γ ~1e-1) |
