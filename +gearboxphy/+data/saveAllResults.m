@@ -26,6 +26,13 @@ function saveAllResults(resultsDir, key, RVec, distance, antennaConfigs, E_per_b
 %   optimizeOnePointBestConfig.m. Optional/empty by default so a caller
 %   that only ever wants the winner (or an old checkpoint predating this
 %   field) doesn't have to supply them.
+%
+%   OperatingPoint/OperatingPoint_all hold, per rate point, WHERE the
+%   optimum sits: SE, the SNR the curve demands there, the transmit-side
+%   SNR, P_t, B and gamma (+gears/operatingPointFrom.m). They are
+%   deliberately NOT inside PowerBudget, whose fields sum to E_bit.
+%   Optional like the _all fields, so an older caller still works and a
+%   file written before this change simply lacks them.
 arguments
     resultsDir (1,1) string
     key (1,1) string
@@ -42,6 +49,8 @@ arguments
     Optimal_B_all (:,:) double = []
     Optimal_gamma_all (:,:) double = []
     PowerBudget_all (:,:) cell = {}
+    OperatingPoint (:,1) cell = {}
+    OperatingPoint_all (:,:) cell = {}
 end
 if ~exist(resultsDir, 'dir')
     mkdir(resultsDir)
@@ -49,5 +58,6 @@ end
 antennaConfigsUsed = antennaConfigs;
 file = fullfile(resultsDir, key + ".mat");
 save(file, 'RVec', 'distance', 'antennaConfigsUsed', 'E_per_bit', 'Optimal_B', 'Optimal_gamma', 'PowerBudget', ...
-    'Optimal_N_t', 'Optimal_N_r', 'E_per_bit_all', 'Optimal_B_all', 'Optimal_gamma_all', 'PowerBudget_all');
+    'Optimal_N_t', 'Optimal_N_r', 'E_per_bit_all', 'Optimal_B_all', 'Optimal_gamma_all', 'PowerBudget_all', ...
+    'OperatingPoint', 'OperatingPoint_all');
 end

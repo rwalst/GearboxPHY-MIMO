@@ -120,44 +120,52 @@ for fi = 1:numel(scenario.fcVec)
             Optimal_B_all = NaN(n, nCfg);
             Optimal_gamma_all = NaN(n, nCfg);
             PowerBudget_all = cell(n, nCfg);
+            % Arbeitspunkt je Ratenpunkt (SE, noetiger SNR, P_t, B, gamma)
+            OperatingPoint = cell(n,1);
+            OperatingPoint_all = cell(n, nCfg);
 
             if opts.useParallel
                 parfor r = 1:n
                     if gearboxphy.data.hasPointCheckpoint(resultsDirLocal, key, r) %#ok<PFBNS>
                         [E_per_bit(r), Optimal_B(r), Optimal_gamma(r), PowerBudget{r}, Optimal_N_t(r), Optimal_N_r(r), ...
-                            E_per_bit_all(r,:), Optimal_B_all(r,:), Optimal_gamma_all(r,:), PowerBudget_all(r,:)] = ...
+                            E_per_bit_all(r,:), Optimal_B_all(r,:), Optimal_gamma_all(r,:), PowerBudget_all(r,:), ...
+                            OperatingPoint{r}, OperatingPoint_all(r,:)] = ...
                             gearboxphy.data.loadPointCheckpoint(resultsDirLocal, key, r);
                     else
-                        [e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all] = gearboxphy.sweep.optimizeOnePointBestConfig( ...
+                        [e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all, opPt, opPt_all] = gearboxphy.sweep.optimizeOnePointBestConfig( ...
                             gear, ctxList, antennaConfigs, RVec(r), x0, bounds, optParams); %#ok<PFBNS>
-                        gearboxphy.data.savePointCheckpoint(resultsDirLocal, key, r, e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all);
+                        gearboxphy.data.savePointCheckpoint(resultsDirLocal, key, r, e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all, opPt, opPt_all);
                         E_per_bit(r) = e; Optimal_B(r) = b; Optimal_gamma(r) = g; PowerBudget{r} = pb;
                         Optimal_N_t(r) = nt; Optimal_N_r(r) = nr;
                         E_per_bit_all(r,:) = e_all; Optimal_B_all(r,:) = b_all; Optimal_gamma_all(r,:) = g_all;
                         PowerBudget_all(r,:) = pb_all;
+                        OperatingPoint{r} = opPt; OperatingPoint_all(r,:) = opPt_all;
                     end
                 end
             else
                 for r = 1:n
                     if gearboxphy.data.hasPointCheckpoint(resultsDirLocal, key, r)
                         [E_per_bit(r), Optimal_B(r), Optimal_gamma(r), PowerBudget{r}, Optimal_N_t(r), Optimal_N_r(r), ...
-                            E_per_bit_all(r,:), Optimal_B_all(r,:), Optimal_gamma_all(r,:), PowerBudget_all(r,:)] = ...
+                            E_per_bit_all(r,:), Optimal_B_all(r,:), Optimal_gamma_all(r,:), PowerBudget_all(r,:), ...
+                            OperatingPoint{r}, OperatingPoint_all(r,:)] = ...
                             gearboxphy.data.loadPointCheckpoint(resultsDirLocal, key, r);
                     else
-                        [e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all] = gearboxphy.sweep.optimizeOnePointBestConfig( ...
+                        [e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all, opPt, opPt_all] = gearboxphy.sweep.optimizeOnePointBestConfig( ...
                             gear, ctxList, antennaConfigs, RVec(r), x0, bounds, optParams);
-                        gearboxphy.data.savePointCheckpoint(resultsDirLocal, key, r, e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all);
+                        gearboxphy.data.savePointCheckpoint(resultsDirLocal, key, r, e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all, opPt, opPt_all);
                         E_per_bit(r) = e; Optimal_B(r) = b; Optimal_gamma(r) = g; PowerBudget{r} = pb;
                         Optimal_N_t(r) = nt; Optimal_N_r(r) = nr;
                         E_per_bit_all(r,:) = e_all; Optimal_B_all(r,:) = b_all; Optimal_gamma_all(r,:) = g_all;
                         PowerBudget_all(r,:) = pb_all;
+                        OperatingPoint{r} = opPt; OperatingPoint_all(r,:) = opPt_all;
                     end
                 end
             end
 
             gearboxphy.data.saveAllResults(opts.resultsDir, key, scenario.RVec, ...
                 scenario.distance, antennaConfigs, E_per_bit, Optimal_B, Optimal_gamma, PowerBudget, Optimal_N_t, Optimal_N_r, ...
-                E_per_bit_all, Optimal_B_all, Optimal_gamma_all, PowerBudget_all);
+                E_per_bit_all, Optimal_B_all, Optimal_gamma_all, PowerBudget_all, ...
+                OperatingPoint, OperatingPoint_all);
             gearboxphy.data.clearCheckpoints(opts.resultsDir, key);
         end
     end

@@ -194,8 +194,9 @@ out = (1/R) * ( (gamma+hw.epsilon_trans*(1-gamma))*(core.P_PA+core.P_DAC+ctx.P_L
               + (gamma+hw.epsilon_rec*(1-gamma))*(core.P_ADC+core.P_LNA+ctx.P_LO_Rx+core.P_Mix_Rx) );
 end
 
-function budget = computeBudget(ctx, x, R)
+function [budget, op] = computeBudget(ctx, x, R)
 core = computeCore(x, ctx, R);
+op = gearboxphy.gears.operatingPointFrom(core);
 hw = ctx.hw;
 gamma = core.gamma;
 budget.PA     = (1/R)*(gamma+hw.epsilon_trans*(1-gamma))*core.P_PA;
@@ -235,6 +236,15 @@ if P_t > hw.Maximum_P_T
 end
 
 core.feasible = true;
+% ARBEITSPUNKT MITFUEHREN. Diese vier Groessen beschreiben, WO der Punkt
+% betrieben wird, und waren bisher nur lokale Variablen -- nach dem
+% Optimieren war die Spektraleffizienz und der noetige SNR nicht mehr
+% rekonstruierbar. computeBudget gibt sie als zweites Argument heraus,
+% NICHT im Budget: dessen Felder summieren sich zu E_bit.
+core.SE        = S;
+core.SNR_rx_dB = SNR_rec;
+core.SNR_tx_dB = SNR_transmitter;
+core.P_t_W     = P_t;
 
 % --- MIMO hardware power scaling (MIMO_EXTENSION.md section 2) ---
 % ADC/LNA/DAC/mixer are FIXED per-chain circuit-power terms (functions of
