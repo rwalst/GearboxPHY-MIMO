@@ -30,6 +30,7 @@ studies/        one folder per study, each with its run/analyze/validate scripts
 ├── beamforming/         the beamforming sweeps
 ├── analog_bf/           analog vs. digital beamforming (phase shifters, LO distribution)
 ├── digital_bf_dac/      digital beamforming with finite DAC resolution, three DAC power models
+├── dac_power_model/     SISO sweep per DAC power model (power budget, optimal gear)
 ├── common/              helpers shared by several studies (bf_arch_scenario.m)
 ├── lna/                 the LNA power-model comparison
 ├── downlink_multiuser/  one user at rate x vs. n users at x/n

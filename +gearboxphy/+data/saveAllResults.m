@@ -1,5 +1,5 @@
 function saveAllResults(resultsDir, key, RVec, distance, antennaConfigs, E_per_bit, Optimal_B, Optimal_gamma, PowerBudget, Optimal_N_t, Optimal_N_r, ...
-    E_per_bit_all, Optimal_B_all, Optimal_gamma_all, PowerBudget_all)
+    E_per_bit_all, Optimal_B_all, Optimal_gamma_all, PowerBudget_all, OperatingPoint, OperatingPoint_all)
 %SAVEALLRESULTS Single bulk write of an entire gear/order/carrier rate
 %   sweep to one .mat file. Called exactly once, after a parfor loop over
 %   R has finished computing all points into plain arrays/cell array (no
