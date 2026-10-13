@@ -10,15 +10,16 @@ function cfg = hw_comparison_config()
 %
 %   Variants (makeScenarioConfig arguments)
 %     "old"       hardwareModel = "old":  LNA fom_bandwidth, ADC envelope,
-%                 DAC analytic (3 V) - the dissertation's models
+%                 DAC analytic (3 V), shared LO - the dissertation's models
 %     "new"       hardwareModel = "new":  LNA envelope, ADC quantile5,
-%                 DAC survey
+%                 DAC survey, LO buffer per additional mixer
 %     "lna_only" / "adc_only" / "dac_only"
 %                 hardwareModel = "custom" with ONE model switched to its
 %                 new variant - shows which model moves the result. Not
 %                 run by default (run_hw_comparison, VARIANTS).
-%   PA, mixer and LO are the same in every variant; SISO has one mixer per
-%   side, so the LO distribution does not enter.
+%   PA, mixer and P_LO are the same in every variant. "new" also charges an
+%   LO buffer per additional mixer, but SISO has one mixer per side, so
+%   that part is zero here.
 
 cfg.root      = gearboxphy.paths.resultsDir('hardware_models');
 cfg.fcVec     = [2.4 8 28] * 1e9;

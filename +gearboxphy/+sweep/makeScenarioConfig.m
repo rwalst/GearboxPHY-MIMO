@@ -70,15 +70,16 @@ arguments
     opts.P_0 (1,1) double = NaN
     % Collective switch for the component power models
     % (docs/HARDWARE_MODEL_SWITCH.md, +physics/hardwareModelPreset.m).
-    %   "custom" (default) - lnaPowerModel, adcPowerModel and dacPowerModel
-    %       below are used as given; byte-identical to every existing
-    %       result and call.
+    %   "custom" (default) - lnaPowerModel, adcPowerModel, dacPowerModel
+    %       and loDistributionModel below are used as given;
+    %       byte-identical to every existing result and call.
     %   "old" - the dissertation's models: fom_bandwidth / envelope /
-    %       analytic, i.e. the defaults of the three switches.
-    %   "new" - the survey-based models: envelope / quantile5 / survey.
-    % "old" and "new" SET the three switches. Combining them with a single
+    %       analytic / shared LO, i.e. the defaults of the four switches.
+    %   "new" - the survey-based models: envelope / quantile5 / survey,
+    %       and an LO buffer per additional mixer (per_mixer).
+    % "old" and "new" SET the four switches. Combining them with a single
     % switch that asks for something else is an error - use "custom" to
-    % mix. PA, LO and phase-shifter switches are not touched.
+    % mix. P_LO, PA and phase-shifter switches are not touched.
     opts.hardwareModel (1,1) string {mustBeMember(opts.hardwareModel, ["custom","old","new"])} = "custom"
     % LNA power model (LNA_POWER_MODEL.md, +physics/lnaPowerFor.m).
     %   "fom_bandwidth" (default) - the dissertation's lnaPower.m,

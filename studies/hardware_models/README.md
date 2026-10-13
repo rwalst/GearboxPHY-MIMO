@@ -11,8 +11,10 @@ siehe `docs/HARDWARE_MODEL_SWITCH.md`. Hauptergebnisse: der gewählte Gang
 | `new` | `envelope` | `quantile5` (3,17 fJ) | `survey` |
 | `lna_only`, `adc_only`, `dac_only` | je EIN Modell neu, Rest alt | | |
 
-PA, Mischer und LO sind in allen Varianten gleich. SISO hat einen Mischer je
-Seite, die LO-Verteilung (`loDistributionModel`) geht also nicht ein.
+PA, Mischer und `P_LO` sind in allen Varianten gleich. `new` rechnet
+zusätzlich einen LO-Puffer je weiterem Mischer (`loDistributionModel =
+"per_mixer"`); SISO hat einen Mischer je Seite, dieser Teil ist hier also
+null.
 
 Raster (`hw_comparison_config.m`): SISO, d = 50 m, Träger 2,4 / 8 / 28 GHz,
 100 Raten von 1 kbit/s bis 100 Gbit/s, alle Gänge.

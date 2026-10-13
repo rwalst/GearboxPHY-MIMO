@@ -24,6 +24,7 @@ classdef HardwareModelTest < matlab.unittest.TestCase
             testCase.verifyEqual(s.lnaPowerModel, "fom_bandwidth");
             testCase.verifyEqual(s.adcPowerModel, "envelope");
             testCase.verifyEqual(s.dacPowerModel, "analytic");
+            testCase.verifyEqual(s.loDistributionModel, "shared");
         end
 
         function oldEqualsTheDefaultScenario(testCase)
@@ -38,21 +39,28 @@ classdef HardwareModelTest < matlab.unittest.TestCase
             end
         end
 
-        function newSetsAllThreeSurveyModels(testCase)
+        function newSetsTheSurveyModelsAndTheLoBuffers(testCase)
             s = gearboxphy.sweep.makeScenarioConfig('hardwareModel', "new");
             testCase.verifyEqual(s.lnaPowerModel, "envelope");
             testCase.verifyEqual(s.adcPowerModel, "quantile5");
             testCase.verifyEqual(s.dacPowerModel, "survey");
+            testCase.verifyEqual(s.loDistributionModel, "per_mixer");
             cs = gearboxphy.sweep.resolveScenarioForCarrier(s, 28e9);
+            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 1), 0);       % SISO unchanged
+            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 4), 3 * 12.5e-3, 'RelTol', 1e-12);
+            sOld = gearboxphy.sweep.makeScenarioConfig('hardwareModel', "old");
+            csOld = gearboxphy.sweep.resolveScenarioForCarrier(sOld, 28e9);
+            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(csOld, 4), 0);
             testCase.verifyEqual(cs.c_ADC, 3.17e-15);
             testCase.verifyEqual(cs.DAC_VDD * cs.DAC_I0 / 2, 1.2e-6, 'RelTol', 1e-12);
             testCase.verifyEqual(cs.DAC_Cp * cs.DAC_VDD^2, 0.25e-12, 'RelTol', 1e-12);
         end
 
-        function newEqualsTheThreeSingleSwitches(testCase)
+        function newEqualsTheFourSingleSwitches(testCase)
             sNew = gearboxphy.sweep.makeScenarioConfig('hardwareModel', "new");
             sCus = gearboxphy.sweep.makeScenarioConfig('lnaPowerModel', "envelope", ...
-                'adcPowerModel', "quantile5", 'dacPowerModel', "survey");
+                'adcPowerModel', "quantile5", 'dacPowerModel', "survey", ...
+                'loDistributionModel', "per_mixer");
             testCase.verifyEqual(rmfield(sNew, 'hardwareModel'), rmfield(sCus, 'hardwareModel'));
         end
 
@@ -75,12 +83,13 @@ classdef HardwareModelTest < matlab.unittest.TestCase
             testCase.verifyError(mk('hardwareModel', "new", 'lnaPowerModel', "fom_floor"), 'gearboxphy:hardwareModelConflict');
             testCase.verifyError(mk('hardwareModel', "old", 'adcPowerModel', "quantile5"), 'gearboxphy:hardwareModelConflict');
             testCase.verifyError(mk('hardwareModel', "old", 'dacPowerModel', "survey"), 'gearboxphy:hardwareModelConflict');
+            testCase.verifyError(mk('hardwareModel', "old", 'loDistributionModel', "per_mixer"), 'gearboxphy:hardwareModelConflict');
         end
 
         function otherSwitchesAreNotTouched(testCase)
             s = gearboxphy.sweep.makeScenarioConfig('hardwareModel', "new", ...
-                'loDistributionModel', "per_mixer", 'psType', "passive_compensated");
-            testCase.verifyEqual(s.loDistributionModel, "per_mixer");
+                'loDistPowerPerMixer', 17e-3, 'psType', "passive_compensated");
+            testCase.verifyEqual(s.loDistPowerPerMixer, 17e-3);
             testCase.verifyEqual(s.psType, "passive_compensated");
             testCase.verifyEqual(s.paPowerModel, "constant");
         end
