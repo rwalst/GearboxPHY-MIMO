@@ -56,6 +56,12 @@ Legende: **✓** Kurven da und Studie gelaufen · **K** nur Kurven da · **–**
 | Rice K = 3 / 30 | **K** nur N = 1; N ≥ 2 laufen (AP1/B) | überholt (E8) | – |
 | LOS K → ∞ | ✓ `bfideal` 3a + 3b | ✓ 3a + 3b | ✓ MI-Kurven 24/24 Ordner, **Export fehlt** (AP4) |
 
+Die `scaledB`-Spalte ist für digitales BF seit E8 **keine Alternative mehr,
+sondern eine Messung**: bei K = 0 liegen beide Regeln vor, und ihre
+Differenz ist der Preis der Regel (bis 2,65 % im Verhältnis BF/MUX). Für
+neue Läufe trägt die BF-Seite `fixedB` — ein Strom, Alphabet M unabhängig
+von N.
+
 ### 2.3 Analoges BF (PS-Modell als dritte Achse)
 
 | Kanal | active (20 mW) | passive_pen | passive_comp |
@@ -77,23 +83,31 @@ Rice lief bei N = 8 und 16 nur auf M <= 16. **Beide Treiber stehen seit
 QuantizedMimoMI 2cd285a auf dem vollen 20er-Gitter**, der Export holt sein
 N-Raster seit cf8d06e aus dem Datenordner statt aus `NS_RICE = [1 2 4]`.
 
-Der Umfang war größer als zuerst genannt — digitales BF hatte bei Rice
-dieselbe Grenze:
+Der Umfang war zweimal größer als zuerst genannt: digitales BF hatte bei
+Rice dieselbe Array-Grenze, und **E8 hat die BF-Seite zusätzlich auf
+`fixedB` umgestellt** (`c3fdb58`) — dort gibt es `fixedB` bisher nur bei
+N = 1, wo alle Regeln zusammenfallen, also wird sie für jedes N ≥ 2 neu
+gerechnet.
 
-| Seite | neue Kurven | Kosten je K | zusammen |
-|---|---|---|---|
-| MUX `scaledB` | 4 (N = 8, 16 × M = 64, 256) | 35,6 h | **71,2 h** |
-| digitales BF `scaledB` | 8 (N = 8, 16 × alle M) | ~0,4 h | **< 1 h** |
+| Seite | Regel | neue Kurven je K | Kosten je K | zusammen |
+|---|---|---|---|---|
+| MUX | `scaledB` | 4 (N = 8, 16 × M = 64, 256) | 35,6 h | **71,2 h** |
+| digitales BF | `fixedB` | 16 (N = 2…16 × alle M) | < 1 h | **< 2 h** |
 
 Die MUX-Zahlen sind keine Hochrechnung: Rice kostet exakt so viel wie
 Rayleigh (N=4/M=256 braucht 5,60 h bei K = 0, 3 **und** 30), also sind die
 K=0-Zwillinge die Rechnung — 8x8/M=64 0,70 h, 8x8/M=256 11,17 h,
 16x16/M=64 1,40 h, 16x16/M=256 22,35 h.
 
-**Job-Zuschnitt:** je K zwei Jobs in Folge, denn 35,6 h passen nicht in ein
-24-h-Fenster. Die größte einzelne Kurve (16x16/M=256, 22,4 h) passt noch,
-kein Einzelpunkt sprengt also den Job. Fertige Kurven werden anhand der
-Datei übersprungen, eine angefangene setzt am nächsten SNR-Punkt fort.
+**Job-Zuschnitt:** die MUX-Seite läuft seit `8cac31b` als **zwei
+gleichzeitige Jobs**, einer je Rice-Faktor (`runQamSweepRiceMuxK3`,
+`...K30`, je 200 Kerne in eigener Allokation) — 35,6 h Wandzeit statt
+71,2 h. Erlaubt die Partition keine 40 h, reichen zwei Fenster je Job: die
+größte einzelne Kurve (16x16/M=256, 22,4 h) passt noch, kein Einzelpunkt
+sprengt also den Job. Fertige Kurven werden anhand der Datei übersprungen,
+eine angefangene setzt am nächsten SNR-Punkt fort — auch Checkpoints des
+alten, ungeteilten Treibers gelten weiter, weil die Signatur je Kurve
+unverändert ist.
 
 ### AP2 — 3a für die fehlenden Varianten *(Gearbox-Seite, mittel)*
 `results/cmp_<variante>_d<d>/` liegt für 7 Varianten je d = 50/500/5000 m
