@@ -1,4 +1,4 @@
-function scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel)
+function scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel, lnaModel)
 %BF_ARCH_SCENARIO  Szenario einer Beamforming-Variante (analog, digital oder
 %   gemischt) aus der Variantenbeschreibung v.
 %   Gemeinsam fuer die Studien analog_bf (run_analog_bf_distance,
@@ -15,8 +15,11 @@ function scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel
 %
 %   dacModel (optional, Vorgabe "analytic"): DAC-Leistungsmodell, siehe
 %   +physics/dacConstants.m. Ohne das Argument bleibt alles wie bisher.
+%   lnaModel (optional, Vorgabe "fom_bandwidth"): LNA-Leistungsmodell, siehe
+%   +physics/lnaPowerFor.m.
 if nargin < 7 || isempty(dacModel), dacModel = "analytic"; end
-args = {'dacPowerModel', dacModel, 'distance', d, 'RVec', CFG.rates, 'fcVec', CFG.fcGHz*1e9, 'dataDir', dataDir, ...
+if nargin < 8 || isempty(lnaModel), lnaModel = "fom_bandwidth"; end
+args = {'dacPowerModel', dacModel, 'lnaPowerModel', lnaModel, 'distance', d, 'RVec', CFG.rates, 'fcVec', CFG.fcGHz*1e9, 'dataDir', dataDir, ...
         'adcPowerModel', adcModel, 'antennaMode', v.mode, ...
         'beamformingArch', v.arch, 'psType', v.ps, 'psBits', CFG.psBits, ...
         'psPower', CFG.psPower, 'psLossDb', CFG.psLossDb};

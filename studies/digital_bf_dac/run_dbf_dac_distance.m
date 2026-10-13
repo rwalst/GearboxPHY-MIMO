@@ -27,6 +27,9 @@ function run_dbf_dac_distance(over)
 %     DAC-Leistungsmodell (makeScenarioConfig 'dacPowerModel'):
 %              "analytic" (3 V, Stand des Codes), "analytic_1V"
 %              (Dissertation Kap. 5/6), "survey" (DAC-Uebersicht)
+%     Zusaetzlich waehlbar: "hw_new" -- die survey-gestuetzten Modelle fuer
+%              LNA, ADC und DAC zusammen (localHw). Nicht in der Vorgabe;
+%              run_dbf_dac_los_newhw.m rechnet damit den LOS-Vergleich.
 %   Je (Kanal, LO, DAC-Modell) eine Datei mit der DIGITALEN Seite:
 %     Eideal   Kurve mit idealem DAC, bezahlt 1/2*log2(M)
 %              (SE_data_bflosd_fixedB, SE_data_bfideal_fixedB bzw.
@@ -65,8 +68,9 @@ P.psBits        = 6;
 P.psPower       = NaN;                  % NaN = Vorgabe aus phaseShifterParams
 P.psLossDb      = NaN;
 P.DAC_LEVELS    = [0 1 2 3];            % Bit ueber 1/2*log2(M)
-P.DAC_MODELS    = ["analytic" "analytic_1V" "survey"];
+P.DAC_MODELS    = ["analytic" "analytic_1V" "survey"];   % auch "hw_new", siehe localHw
 P.ADC_MODEL     = "envelope";
+P.CHANNELS      = "";                   % "" = alle; sonst z.B. "losd" oder ["losd" "ray"]
 P.LO_NAMES      = ["loShared" "lo12p5mW"];
 P.LO_POWER      = [NaN 12.5e-3];        % [W] je zusaetzlichem Mischer, NaN = gemeinsamer LO
 P.RESULT_PREFIX = "";                   % nur fuer Tests
@@ -108,6 +112,7 @@ PS_TYPES = ["active" "passive_compensated" "passive_penalty"];
 nWorkers = localPool(P.N_WORKERS);
 
 for ch = CH
+    if ~all(P.CHANNELS == "") && ~any(P.CHANNELS == ch.name), continue; end
     % vorhandene DAC-Stufen dieses Kanals
     lev = []; levCommon = [];
     for k = P.DAC_LEVELS
@@ -143,7 +148,9 @@ for ch = CH
     assert(isfolder(gearboxphy.paths.dataDir(ch.digBase)), 'run_dbf_dac_distance:noData', ...
         '%s fehlt - die Kurven mit idealem DAC gehoeren dazu (Export wiederholen).', ch.digBase);
 
-    for dacModel = P.DAC_MODELS
+    for hwName = P.DAC_MODELS
+        % hwName benennt die Ergebnisdatei; hw traegt die drei Schalter dazu.
+        hw = localHw(hwName, P.ADC_MODEL); dacModel = hwName;
         % ---------------- digitale Seite ----------------
         for li = 1:numel(P.LO_NAMES)
             outFile = gearboxphy.paths.resultsDir(sprintf('%sdbfdac_distance_%s_%s_%s.mat', ...
@@ -158,7 +165,7 @@ for ch = CH
                        'ps', "active", 'lo', "", 'loPower', NaN);
             if ~isnan(P.LO_POWER(li)), v.lo = "per_mixer"; v.loPower = P.LO_POWER(li); end
 
-            R0 = localCase(CFG, v, P.ADC_MODEL, dacModel, nWorkers);
+            R0 = localCase(CFG, v, hw, nWorkers);
             Eideal = R0.E; EidealDac = R0.Edac; EidealPa = R0.Epa;
             SEideal = R0.SE; SNRrxideal_dB = R0.SNRrx_dB;
 
@@ -169,7 +176,7 @@ for ch = CH
             % niemand bezahlt -- sie bleibt als Eper daneben stehen und
             % zeigt, was sie wert waere. Bis 2026-10-12 war es umgekehrt;
             % Dateien ohne das Feld dacScaleStandard stammen von davor.
-            [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localLevels(CFG, v, ch.digBase, levCommon, "_common", P.ADC_MODEL, dacModel, nWorkers);
+            [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localLevels(CFG, v, ch.digBase, levCommon, "_common", hw, nWorkers);
             [Ebest, kBest, EbestDac, EbestPa] = gearboxphy.sweep.minOverDacLevels(E, Edac, Epa);
             S = struct('E', E, 'Etx', Etx, 'Erx', Erx, 'Epa', Epa, 'Edac', Edac, ...
                        'Eideal', Eideal, 'EidealDac', EidealDac, 'EidealPa', EidealPa, ...
@@ -178,9 +185,9 @@ for ch = CH
                        'SEideal', SEideal, 'SNRrxideal_dB', SNRrxideal_dB, ...
                        'dacLevels', levCommon, 'dacLevelsPer', lev, 'dacScaleStandard', "common", ...
                        'CFG', CFG, ...
-                       'channel', ch.name, 'lo', P.LO_NAMES(li), 'dacModel', dacModel, 'v', v);
+                       'channel', ch.name, 'lo', P.LO_NAMES(li), 'dacModel', dacModel, 'hw', hw, 'v', v);
             [S.Eper, ~, ~, S.EperPa, S.EperDac, S.SEper, S.SNRrxper_dB] = ...
-                localLevels(CFG, v, ch.digBase, lev, "", P.ADC_MODEL, dacModel, nWorkers);
+                localLevels(CFG, v, ch.digBase, lev, "", hw, nWorkers);
             save(outFile, '-struct', 'S');
             fprintf('fertig nach %.1f min -> %s\n', toc(t0)/60, outFile);
         end
@@ -202,8 +209,8 @@ for ch = CH
             t0 = tic;
             v = struct('name', vname, 'data', ch.anaData, 'mode', ch.anaMode, 'arch', "analog", ...
                        'ps', PS_TYPES(pi_), 'lo', "", 'loPower', NaN);
-            S = localCase(CFG, v, P.ADC_MODEL, dacModel, nWorkers);   % traegt SE/SNRrx_dB schon als Felder
-            S.CFG = CFG; S.variant = vname; S.channel = ch.name; S.dacModel = dacModel; S.v = v;
+            S = localCase(CFG, v, hw, nWorkers);   % traegt SE/SNRrx_dB schon als Felder
+            S.CFG = CFG; S.variant = vname; S.channel = ch.name; S.dacModel = dacModel; S.hw = hw; S.v = v;
             S.dacLevels = []; S.dacLevelsCommon = [];
             save(outFile, '-struct', 'S');
             fprintf('fertig nach %.1f min -> %s\n', toc(t0)/60, outFile);
@@ -212,7 +219,7 @@ for ch = CH
 end
 end
 
-function [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localLevels(CFG, v, base, levels, suffix, adcModel, dacModel, nWorkers)
+function [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localLevels(CFG, v, base, levels, suffix, hw, nWorkers)
 %LOCALLEVELS  Dieselbe Variante fuer jede DAC-Stufe; letzte Dimension = Stufe.
 nK = numel(levels);
 sz = [numel(CFG.distances), numel(CFG.rates), numel(CFG.Ms), numel(CFG.Ns)];
@@ -220,21 +227,21 @@ E = nan([sz nK]); Etx = E; Erx = E; Epa = E; Edac = E; SE = E; SNRrx_dB = E;
 for i = 1:nK
     vk = v; vk.data = sprintf("%s_dac%d%s", base, levels(i), suffix);
     fprintf('  -- DAC-Stufe +%d%s (%s)\n', levels(i), suffix, vk.data);
-    R = localCase(CFG, vk, adcModel, dacModel, nWorkers);
+    R = localCase(CFG, vk, hw, nWorkers);
     E(:,:,:,:,i) = R.E; Etx(:,:,:,:,i) = R.Etx; Erx(:,:,:,:,i) = R.Erx;
     Epa(:,:,:,:,i) = R.Epa; Edac(:,:,:,:,i) = R.Edac;
     SE(:,:,:,:,i) = R.SE; SNRrx_dB(:,:,:,:,i) = R.SNRrx_dB;
 end
 end
 
-function R = localCase(CFG, v, adcModel, dacModel, nWorkers)
+function R = localCase(CFG, v, hw, nWorkers)
 %LOCALCASE  Eine Variante ueber alle Distanzen (parfor), Felder [nD nR nM nN].
 nD = numel(CFG.distances); nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
 dataDir = gearboxphy.paths.dataDir(v.data);
 E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E; SE = E; SNRrx = E;
 dists = CFG.distances;
 parfor (di = 1:nD, nWorkers)
-    [e, etx, erx, epa, edac, se, snr] = localOneDistance(dists(di), CFG, v, dataDir, adcModel, dacModel);
+    [e, etx, erx, epa, edac, se, snr] = localOneDistance(dists(di), CFG, v, dataDir, hw);
     E(di,:,:,:)     = reshape(e,    [1 nR nM nN]);
     Etx(di,:,:,:)   = reshape(etx,  [1 nR nM nN]);
     Erx(di,:,:,:)   = reshape(erx,  [1 nR nM nN]);
@@ -247,7 +254,7 @@ R = struct('E', E, 'Etx', Etx, 'Erx', Erx, 'Epa', Epa, 'Edac', Edac, ...
            'SE', SE, 'SNRrx_dB', SNRrx);
 end
 
-function [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localOneDistance(d, CFG, v, dataDir, adcModel, dacModel)
+function [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localOneDistance(d, CFG, v, dataDir, hw)
 %LOCALONEDISTANCE  Alle (Rate, M, N) bei einer Distanz, auf einem Worker.
 %   Wie in run_analog_bf_distance, zusaetzlich der DAC-Anteil.
 nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
@@ -258,7 +265,7 @@ E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E;
 SE = E; SNRrx_dB = E;
 fc = CFG.fcGHz * 1e9;
 configs = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
-scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel);
+scen = bf_arch_scenario(d, CFG, v, dataDir, hw.adc, configs, hw.dac, hw.lna);
 cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, fc);
 op = struct('tolerance', scen.tolerance, 'maxiters', scen.maxiters, 'numtriesPerOpt', scen.numtriesPerOpt);
 gear = gearboxphy.gears.qamGear();
@@ -288,6 +295,27 @@ for mi = 1:nM
             end
         end
     end
+end
+end
+
+function hw = localHw(name, adcDefault)
+%LOCALHW  Modellsatz zu einem Namen aus P.DAC_MODELS.
+%   "analytic", "analytic_1V", "survey": NUR das DAC-Leistungsmodell wechselt,
+%       LNA und ADC bleiben bei den Modellen der Dissertation (fom_bandwidth,
+%       P.ADC_MODEL). So sind alle bisherigen Ergebnisdateien gerechnet.
+%   "hw_new": die survey-gestuetzten Modelle fuer alle drei Komponenten --
+%       LNA "envelope", ADC "quantile5", DAC "survey". Das ist der Satz, den
+%       der Sammelschalter hardwareModel = "new" setzt
+%       (docs/HARDWARE_MODEL_SWITCH.md, Zweig worktree-hardware-model-switch);
+%       hier ueber die drei Einzelschalter, damit es ohne den Zweig laeuft.
+%   PA, LO und Mischer sind in beiden Faellen dieselben.
+switch string(name)
+    case {"analytic", "analytic_1V", "survey"}
+        hw = struct('name', string(name), 'lna', "fom_bandwidth", 'adc', string(adcDefault), 'dac', string(name));
+    case "hw_new"
+        hw = struct('name', "hw_new", 'lna', "envelope", 'adc', "quantile5", 'dac', "survey");
+    otherwise
+        error('run_dbf_dac_distance:hw', 'Unbekannter Modellsatz "%s".', string(name));
 end
 end
 

@@ -60,6 +60,21 @@ Seite gibt es jetzt dieselbe Referenz mit einem ADC je Antenne, wie im Rayleigh-
 Teil 3 haengt nicht von Teil 1 und 2 ab. Fuer den Vergleich analog gegen digital im LOS ist
 `losd` die digitale Referenz; `los` bleibt als "Sender digital, Empfaenger analog".
 
+## Teil 4: LOS mit den survey-gestuetzten Hardware-Modellen (2026-10-13)
+
+Vergleich aller DAC-Aufloesungen unter LOS fuer zwei Saetze von Leistungsmodellen: die der
+Dissertation und die survey-gestuetzten fuer LNA, ADC und DAC zusammen.
+
+| Schritt | Wo | Aufruf | Ressourcen |
+|---|---|---|---|
+| 10 Export | GearboxPHY-MIMO | `setupGearboxPath; export_dbf_dac_curves` | Sekunden; noetig, damit `SE_data_bflosd_fixedB_dac<k>_common` fuer k = 0..3 vorliegen |
+| 11 Sweep | GearboxPHY-MIMO | `setupGearboxPath; run_dbf_dac_los_newhw` | nodes=1 cpus-per-task=25 mem=64G time=12:00:00 (NICHT gemessen) |
+
+Ergebnis: `results/dbfdac_distance_losd_<lo>_{analytic,hw_new}.mat` und die analogen
+LOS-Varianten `results/abfdac_distance_abf_<ps>_{analytic,hw_new}.mat`. Der Modellsatz `hw_new`
+entspricht `hardwareModel = "new"` des Sammelschalters (Zweig `worktree-hardware-model-switch`),
+hier ueber die drei Einzelschalter gesetzt. PA, LO und Mischer sind in beiden Saetzen gleich.
+
 ## Was die Ergebnisdateien enthalten
 
 `dbfdac_distance_*`: `Eideal` (idealer DAC, der bisherige Stand), `E` (letzte Dimension =

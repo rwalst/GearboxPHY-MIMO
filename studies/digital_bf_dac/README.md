@@ -12,6 +12,7 @@ Die analogen Varianten laufen hier nur als Vergleich mit; die Studie dazu ist
 |---|---|
 | `export_dbf_dac_curves.m` | MI-Kurven mit DAC-Quantisierung aus QuantizedMimoMI nach `data/` |
 | `run_dbf_dac_distance.m` | Distanz-Sweep: je Kanal, LO-Fall und DAC-Leistungsmodell; Minimum ueber die DAC-Stufen |
+| `run_dbf_dac_los_newhw.m` | derselbe Sweep, nur Kanal `losd`, fuer zwei Modellsaetze: Dissertation (`analytic`) und survey-gestuetzt (`hw_new`: LNA `envelope`, ADC `quantile5`, DAC `survey`) |
 | `../common/bf_arch_scenario.m` | Szenario einer Variante, gemeinsam mit `analog_bf` |
 
 Im Framework: `qamGear` bezahlt `sourceBdac` (DAC-Bit der Kurve), Schalter `dacPowerModel`
