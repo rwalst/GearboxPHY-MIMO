@@ -16,6 +16,11 @@
 %     SE_data_bf_fixedB_dac<k>[_common]        Rayleigh
 %     SE_data_bflosd_fixedB                    LOS, ADC je Antenne, idealer DAC
 %     SE_data_bflosd_fixedB_dac<k>[_common]    LOS, ADC je Antenne
+%     SE_data_bf_fixedB_K<K>_dac<k>[_common]   RICE (K = 3, 30), ADC je
+%                                   Antenne -- Quelle sind dieselben
+%                                   bf_rayleigh_dac<k>-Ordner, getrennt
+%                                   ueber den K-Filter und das K-Suffix im
+%                                   Dateinamen (runQamSweepRiceBfDac).
 %   Aufbau wie die Ordner aus export_mimo_comparison_curves: Gasts uebrige
 %   Kurven aus SE_data, QAM 1x1 und NxN aus demselben Lauf, SNR auf
 %   Gesamtleistung, sourceB (ADC) und sourceBdac (DAC). LOS behaelt das
@@ -58,31 +63,56 @@ if isfolder(srcI) && ~isempty(dir(fullfile(srcI, 'mi_bflosd_Nt*_Nr*_M*_B*.mat'))
 end
 for k = 0:3
     for suffix = ["" "_common"]
+        % 'base' ohne DAC-Teil, weil Zielname UND Deckelungsreferenz
+        % denselben Rice-Infix brauchen. 'kList' je Familie: nur der
+        % Rayleigh-Zweig hat Rice-Kurven (runQamSweepRiceBfDac), die beiden
+        % LOS-Faelle sind Grenzfaelle und kennen kein K.
         J = struct( ...
-          'src',     {fullfile(resRoot, sprintf('bf_ideal_dac%d%s', k, suffix)), ...
-                      fullfile(resRoot, sprintf('bf_rayleigh_dac%d%s', k, suffix)), ...
-                      fullfile(resRoot, sprintf('bf_los_digital_dac%d%s', k, suffix))}, ...
-          'name',    {sprintf("SE_data_bfideal_fixedB_dac%d%s", k, suffix), ...
-                      sprintf("SE_data_bf_fixedB_dac%d%s", k, suffix), ...
-                      sprintf("SE_data_bflosd_fixedB_dac%d%s", k, suffix)}, ...
+          'srcBase', {sprintf('bf_ideal_dac%d%s', k, suffix), ...
+                      sprintf('bf_rayleigh_dac%d%s', k, suffix), ...
+                      sprintf('bf_los_digital_dac%d%s', k, suffix)}, ...
+          'base',    {"SE_data_bfideal_fixedB", "SE_data_bf_fixedB", "SE_data_bflosd_fixedB"}, ...
           'pattern', {'mi_bfideal_Nt*_Nr*_M*_B*.mat', 'mi_bf_Nt*_Nr*_M*_B*.mat', 'mi_bflosd_Nt*_Nr*_M*_B*.mat'}, ...
           'grid',    {[], -15:2:25, []}, ...
-          'ref',     {"SE_data_bfideal_fixedB", "SE_data_bf_fixedB", "SE_data_bflosd_fixedB"});
+          'kList',   {0, [0 3 30], 0});
         for j = 1:numel(J)
-            if ~isfolder(J(j).src) || isempty(dir(fullfile(J(j).src, J(j).pattern)))
+            src = fullfile(resRoot, J(j).srcBase);
+            if ~isfolder(src) || isempty(dir(fullfile(src, J(j).pattern)))
                 continue
             end
-            fprintf('\n################ %s ################\n', J(j).name);
-            o = struct('pattern', J(j).pattern, 'variant', "fixedB", 'K', 0, ...
-                       'baseDir', baseDir, 'sisoFrom1x1', true);
-            if ~isempty(J(j).grid), o.snrGrid = J(j).grid; end
-            dst = gearboxphy.paths.dataDir(J(j).name);
-            exportToGearboxSEData(J(j).src, dst, o);
-            gearboxphy.data.capDacCurvesAgainstIdeal(dst, gearboxphy.paths.dataDir(J(j).ref), J(j).name, J(j).ref);
-            nDone = nDone + 1;
+            for Kv = J(j).kList
+                % K-INFIX HINTER DER REGEL, wie bei den Vergleichskurven
+                % (bf_fixedB_K3). Damit baut run_dbf_dac_distance seine
+                % Ordnernamen weiter als <digBase>_dac<k>[_common]
+                % zusammen, ohne Sonderfall fuer Rice.
+                if Kv == 0, kInf = ""; else, kInf = sprintf("_K%g", Kv); end
+                name = J(j).base + kInf + sprintf("_dac%d%s", k, suffix);
+                ref  = J(j).base + kInf;
+                % Traegt die Quelle dieses K ueberhaupt? Der K-Filter in
+                % exportToGearboxSEData wuerde sonst ALLE Dateien
+                % verwerfen und einen leeren Ordner anlegen.
+                if Kv == 0
+                    hasK = ~isempty(dir(fullfile(src, strrep(J(j).pattern, '*.mat', '*[0-9].mat'))));
+                else
+                    hasK = ~isempty(dir(fullfile(src, strrep(J(j).pattern, '.mat', sprintf('_K%g.mat', Kv)))));
+                end
+                if ~hasK
+                    fprintf('   %s: keine Quellkurven mit K = %g - uebersprungen.\n', name, Kv);
+                    continue
+                end
+                fprintf('\n################ %s ################\n', name);
+                oo = struct('pattern', J(j).pattern, 'variant', "fixedB", 'K', Kv, ...
+                            'baseDir', baseDir, 'sisoFrom1x1', true);
+                if ~isempty(J(j).grid), oo.snrGrid = J(j).grid; end
+                dst = gearboxphy.paths.dataDir(name);
+                exportToGearboxSEData(src, dst, oo);
+                gearboxphy.data.capDacCurvesAgainstIdeal(dst, gearboxphy.paths.dataDir(ref), name, ref);
+                nDone = nDone + 1;
+            end
         end
     end
 end
+
 if nDone == 0
     fprintf(['export_dbf_dac_curves: keine Quellen in %s gefunden. Erst ' ...
              'runQamSweepBfIdealDac (und spaeter runQamSweepBfRayleighDac) ausfuehren.\n'], resRoot);

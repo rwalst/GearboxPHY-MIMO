@@ -242,7 +242,11 @@ DAC-Zweig auf der MI-Seite vollständig und die Gearbox-Seite dran.
 
 5. `runQamSweepRiceBf` — 16 neue Kurven, unter 1 h. Zuerst, weil billig und
    weil es das gemeinsame Gitter sofort absichert.
-6. `runQamSweepRiceMux` — 8 neue Kurven, 71,2 h, je K zwei Jobs in Folge.
+6. `runQamSweepRiceMux` — als `runQamSweepRiceMuxK3` und `...K30`
+   gleichzeitig, 35,6 h statt 71,2 h (Block A).
+7. `runQamSweepRiceBfDac` — 320 Kurven, 4,6 h (Block D). **Nach** Block B
+   und dem Vergleichsexport, weil die Deckelung die Ideal-DAC-Kurve
+   desselben K als Referenz braucht.
 
 **Danach**, und nach dem Regelwechsel E8 zwingend in dieser Kette:
 
@@ -267,6 +271,7 @@ Dann AP2 für die Rice-Varianten auf dem vollen Raster, dann AP6.
 | E2 | Rice auch für `fixedB` und `alphabetB`? | offen. Empfehlung: nein, nur `scaledB` — die Regel kostet nachweislich nichts (Median 0,00 %), ein zweites Rice-Raster bringt keine neue Aussage. |
 | E4 | DAC-Kurven am Ideal-DAC deckeln? | **JA** (2026-10-12), umgesetzt und getestet — siehe AP4. Quantisierung darf nicht helfen, sonst bevorzugt `minOverDacLevels` genau die Stufe, die am meisten rundet. |
 | E9 | Gemeinsame Aussteuerung als Standard? | **JA** (2026-10-12). `perAntenna` setzt hinter jedem DAC eine stufenlos einstellbare Verstärkung je Antenne voraus, die im Energiebudget niemand bezahlt — der optimistische Fall, nicht der normale. Umgestellt: Default von `dacQuantize` und `ergodicMiBeamforming`, die Herkunftsvorgabe in `runRuleSweep`, `DAC_OFFSETS_COMMON = [0 1 2 3]` in beiden Treibern, und in `run_dbf_dac_distance` speisen die `_common`-Ordner jetzt `E`/`Ebest` (Vergleich als `Eper`). Der Unterschied ist bei +0 bit gemessen bis 0,285 bit (Rayleigh) bzw. 0,192 bit (LOS je Antenne) — und er kommt nicht nur aus der Amplitudenspreizung, sondern auch aus der Drehung, die den I/Q-Spitzenwert je Antenne verschiebt (`validateBfDac` D9). `validateBfDac` bleibt mit dem neuen Default 12/12 grün. **Die 18 vorhandenen `dbfdac_distance_*`-Dateien tragen in `E` den alten Fall und sind überholt**; `localDone` verlangt jetzt das Feld `dacScaleStandard` und rechnet sie deshalb neu. |
+| E10 | DAC-Quantisierung auch über Rice? | **JA, voller Lauf** (2026-10-12). Nicht nur eine Stufe zur Stichprobe, sondern das Kreuzprodukt: 2 K × 4 Stufen × 2 Aussteuerungen = 320 Kurven für 4,6 h. Damit ist K\* unter endlicher DAC-Auflösung bestimmbar statt nur unter idealer. Treiber `runQamSweepRiceBfDac`, Export und `run_dbf_dac_distance` (Kanäle `ray3`/`ray30`) sind umgestellt. |
 | E8 | ADC-Regel je Modus statt einheitlich? | **JA** (2026-10-12). `scaledB`s `log₂Nt` stammt laut `adcBitsRule` aus der Überlagerung von N_t Strömen an jeder Empfangsantenne. Digitales BF sendet **einen** Strom — die Aussteuerung je Antenne bleibt eine M-QAM-Konstellation, und die kohärente Summe entsteht nach dem ADC, wo Wortbreite nichts kostet. BF trägt deshalb `fixedB`, MUX weiter `scaledB`. Das Repo argumentierte so schon zweimal: analoges BF ist durchweg `fixedB` (alle vier K), und `analyze_bf_vs_mux_qam` paart `mux_alphabetB` gegen `bf_fixedB`. Richtung: BF wird günstiger, bis 2,65 % im Verhältnis BF/MUX — die bisherigen BF-Zahlen waren benachteiligt, nicht geschönt. |
 | E7 | Wie wird der `isfile`-Aussetzer auf dem UNC-Share abgestellt? | offen, und er verfälscht Ergebnisse still. Empfehlung: die Kandidatenprüfung EINMAL im Client machen und das Ergebnis in den parfor broadcasten, statt sie je Worker und je Distanz zu wiederholen -- das ist auch 25× weniger Dateizugriffe. Zusätzlich die fünf betroffenen Läufe neu rechnen. |
 | E6 | N > 16? | offen. Empfehlung: nein — `alphabetB` ist dort nicht rechenbar, und die Phasenquantisierung verliert bei großen Arrays ohnehin. |
@@ -281,13 +286,14 @@ alphabetB 15/15 · `bf_rayleigh` K=0 (fixedB+scaledB) 40/40 · `bf_ideal`
 
 **Block C ist am 2026-10-12 gerechnet** (`QuantizedMimoMI 592f149`, 120
 Kurven, alle **24 DAC-Ordner jetzt vollständig** 20/20). Damit fehlen noch
-**40 Kurven in zwei Blöcken:**
+**360 Kurven in drei Blöcken:**
 
 | Block | Ordner | fehlend | Kosten | Treiber |
 |---|---|---|---|---|
 | A | `rule_mux` (MUX, scaledB) | 8: N = 8, 16 × M = 64, 256 × K = 3, 30 | 35,6 h je K | `runQamSweepRiceMux` |
 | B | `bf_rayleigh` (dig. BF, **fixedB**) | 32: N = 2…16 × alle M × K = 3, 30 | < 1 h je K | `runQamSweepRiceBf` |
 | ~~C~~ | ~~`bf_rayleigh_dac{1,2,3}_common`, `bf_los_digital_dac{1,2,3}_common`~~ | **erledigt** 2026-10-12 | 0,96 h | `runQamSweepBfRayleighDac`, `runQamSweepBfLosDigitalDac` |
+| D | `bf_rayleigh_dac{0..3}[_common]`, Dateien mit `_K3`/`_K30` | 320: 16 Kombinationen × 20 | **4,6 h** | `runQamSweepRiceBfDac` |
 
 A und B sind AP1 (Entscheidung E1); Block B ist durch E8 von 16 auf 32
 Kurven gewachsen, weil die BF-Seite unter der neuen Regel bei allen N ≥ 2
@@ -413,6 +419,37 @@ Arbeit sind: **0,96 h für alle 120.** Auslöser ist eine Zeile je Treiber —
 `DAC_OFFSETS_COMMON = 0`, wo `runQamSweepBfIdealDac` `[0 1 2 3]` hat. (Hier
 standen Zeilennummern, 49 und 73; meine eigenen Docstring-Ergänzungen haben
 sie auf 65 und 89 verschoben. Deshalb steht jetzt der Variablenname da.)
+
+**Block D — DAC-Quantisierung über den Rice-Faktor** (320 Kurven,
+Entscheidung E10). Die DAC-Achse war nur bei K = 0 und in den beiden
+LOS-Grenzfällen gerechnet; der Schnittpunkt K\* ist damit für einen
+**idealen** Sender-DAC bestimmt. Diese Kurven sagen, ob die endliche
+Auflösung ihn verschiebt — und sie treffen BF stärker als MUX, weil nur
+der digitale Präkodierer das Symbol dreht.
+
+| Kanal | DAC-Stufen | Aussteuerung | Kurven | Kosten |
+|---|---|---|---|---|
+| Rice K = 3 | +0…+3 bit | gemeinsam + je Antenne | 160 | 2,3 h |
+| Rice K = 30 | +0…+3 bit | gemeinsam + je Antenne | 160 | 2,3 h |
+
+Gemessen, nicht geschätzt: die acht vorhandenen K=0-Ordner brauchten
+zusammen 2,29 h (0,22 h je `perAntenna`-Ordner, 0,24…0,42 h je
+`common`-Ordner, steigend mit der Stufe), und Rice kostet dasselbe wie
+Rayleigh.
+
+**Keine neuen Ordner.** Die Kurven landen in den bestehenden
+`bf_rayleigh_dac<k>[_common]` und tragen `_K3`/`_K30` im Dateinamen — die
+Konvention der Rice-Erweiterung („K im Dateinamen, bei K = 0 ohne
+Suffix"), damit alle K einer Stufe beieinanderliegen und der Export K = 0
+ohne Sonderfall findet. Der Export schreibt daraus
+`SE_data_bf_fixedB_K<K>_dac<k>[_common]`, die Studie kennt die Kanäle
+`ray3` und `ray30`.
+
+**Reihenfolge innerhalb von D:** Block B muss vorher laufen. Die
+Deckelung (E4) braucht als Referenz die Ideal-DAC-Kurve desselben K, also
+`SE_data_bf_fixedB_K3`/`_K30` — und die entstehen erst aus Block B und dem
+Vergleichsexport. Fehlt die Referenz, warnt der Export mit
+`export:noDacCapRef` statt ungedeckelt zu schreiben.
 
 ### 6.2 Gerechnet, aber nicht exportiert (8 Kurven)
 
