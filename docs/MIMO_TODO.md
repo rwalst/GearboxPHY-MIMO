@@ -6,7 +6,7 @@ entscheiden: Multiplexing, digitales Beamforming oder analoges Beamforming —
 und zwar so, dass die Wahl für jeden Kanal und jede Wandler­annahme
 nachvollziehbar ist.
 
-Stand: 2026-10-13 (Inventur nach `QuantizedMimoMI 821c5cc`), Entscheidungen E1/E3/E4/E5/E8/E9/E10 getroffen (Abschnitt 5).
+Stand: 2026-10-13 (Inventur nach `QuantizedMimoMI e1a72e2`), Entscheidungen E1/E3/E4/E5/E8/E9/E10 getroffen (Abschnitt 5).
 
 **Code-Abgleich mit dem HPC: die ID wird erzeugt, nicht hier abgelesen.**
 `codeManifest('snapshot')` am Arbeitsplatz, dann auf dem HPC
@@ -250,96 +250,25 @@ Architekturen über Kanal und Distanz zusammenführt.
 
 ## 4. Was jetzt in welcher Reihenfolge läuft
 
-**Block C ist erledigt** (2026-10-12, 120 Kurven). Damit ist der
-DAC-Zweig auf der MI-Seite vollständig und die Gearbox-Seite dran.
-
-**Ohne neuen MI-Lauf** (Gearbox-Seite, Stunden):
-
-1. `export_dbf_dac_curves` → die `SE_data_*_dac*`-Ordner neu, jetzt
-   inklusive der `_common`-Stufen und an der Ideal-DAC-Kurve gedeckelt
-   (AP4.1, E4). Lief am 2026-10-12 schon einmal für 19 Ordner.
-2. `run_dbf_dac_distance` → DAC-Quantisierung × drei Leistungsmodelle
-   (AP4.2 + AP5), 25 Worker. Rechnet die 18 vorhandenen Dateien neu, weil
-   sie in `E` den alten Standardfall tragen (E9).
-3. `run_analog_bf_distance` um die Rice-Datenordner erweitern (AP3) — die
-   Kurven liegen als `SE_data_abf_fixedB_K3/_K30/_KInf` längst da.
-   **Diese Zeile ist noch nicht gebaut** (Stand 2026-10-13): der Treiber
-   kennt nur `SE_data_abf_fixedB`, die drei Rice-Ordner liest kein Sweep.
-   Ohne das ist analoges BF die einzige Architektur ohne Rice-Spalte.
-4. `run_mimo_comparison_sweep` für `mux_alphabetB` und die fünf
-   Rice-Varianten (AP2), 100 Kerne, 8 h je Lauf.
-
-**MI-Läufe** (QuantizedMimoMI, HPC):
-
-5. `runQamSweepRiceBf` — **32** Kurven (seit E8 `fixedB` bei allen N ≥ 2),
-   unter 2 h. Zuerst: billig, und sichert das gemeinsame Gitter, bevor die
-   44 h der MUX-Seite starten.
-6. `runQamSweepRiceMuxK3` und `...K30` gleichzeitig — jetzt nur noch
-   **je eine Kurve** (16×16/256-QAM), 22,4 h je Job statt der
-   ursprünglichen 35,6 h. Alles andere von Block A liegt vor.
-7. `runQamSweepRiceBfDac` — **65** Kurven, ~0,8 h (Rest von Block D: K = 30
-   im Vergleichsfall `perAntenna`). **Nach** Block B und dem
-   Vergleichsexport, weil die Deckelung die Ideal-DAC-Kurve desselben K als
-   Referenz braucht.
-
-**Danach**, und nach dem Regelwechsel E8 zwingend in dieser Kette:
-
-7. `export_mimo_comparison_curves` — erzeugt `SE_data_bf_fixedB_K3/_K30`
-   und holt das N-Raster jetzt selbst.
-8. `run_mimo_comparison_distance` (3b) — `cmp_distance_bf_fixedB_K3/_K30.mat`
-   existiert noch nicht; die alten `..._bf_scaledB_K*.mat` werden nicht
-   mehr gelesen.
-9. `analyze_rice_comparison` und `analyze_bf_vs_mux_qam` — **K\* ist neu zu
-   bestimmen.** Die bisherige Zahl (16,5 bei 56 m) ist unter BF-`scaledB`
-   entstanden und damit überholt; sie verschiebt sich zu kleinerem K.
-
-Dann AP2 für die Rice-Varianten auf dem vollen Raster, dann AP6.
-
-## 5. Entscheidungen
-
-| # | Frage | Stand |
-|---|---|---|
-| E1 | Rice bei N = 8, 16 rechnen? | **JA** (2026-10-12). Gegen meine Empfehlung, die auf die 71 h abhob; der Gewinn ist, dass die Hüllkurve über (M,N) bei N >= 8 wieder vollständig ist und Rice auf demselben N-Raster läuft wie K = 0. Die Aussage „das Gearbox wählt M >= 64 bei N >= 8 nie" wird damit für Rice belegt statt unterstellt. Treiber umgestellt, Export zieht nach. |
-| E3 | DAC-Leistungsmodell neu? | **JA** (2026-10-12), als Schalter mit altem Default — und genau so schon gebaut. Zu tun bleibt der Lauf, siehe AP5. |
-| E5 | ZXM / IR / CPM in die MIMO-Matrix? | **NEIN** (2026-10-12). ZXM-MIMO ist bei N_t >= 2 blockiert (der komplexe Kanal braucht den Gruppenpfad über 2·N_t Ströme); die SISO-Gänge decken den Kleinratenbereich ab. |
-| E2 | Rice auch für `fixedB` und `alphabetB`? | offen. Empfehlung: nein, nur `scaledB` — die Regel kostet nachweislich nichts (Median 0,00 %), ein zweites Rice-Raster bringt keine neue Aussage. |
-| E4 | DAC-Kurven am Ideal-DAC deckeln? | **JA** (2026-10-12), umgesetzt und getestet — siehe AP4. Quantisierung darf nicht helfen, sonst bevorzugt `minOverDacLevels` genau die Stufe, die am meisten rundet. |
-| E9 | Gemeinsame Aussteuerung als Standard? | **JA** (2026-10-12). `perAntenna` setzt hinter jedem DAC eine stufenlos einstellbare Verstärkung je Antenne voraus, die im Energiebudget niemand bezahlt — der optimistische Fall, nicht der normale. Umgestellt: Default von `dacQuantize` und `ergodicMiBeamforming`, die Herkunftsvorgabe in `runRuleSweep`, `DAC_OFFSETS_COMMON = [0 1 2 3]` in beiden Treibern, und in `run_dbf_dac_distance` speisen die `_common`-Ordner jetzt `E`/`Ebest` (Vergleich als `Eper`). Der Unterschied ist bei +0 bit gemessen bis 0,285 bit (Rayleigh) bzw. 0,192 bit (LOS je Antenne) — und er kommt nicht nur aus der Amplitudenspreizung, sondern auch aus der Drehung, die den I/Q-Spitzenwert je Antenne verschiebt (`validateBfDac` D9). `validateBfDac` bleibt mit dem neuen Default 12/12 grün. **Die 18 vorhandenen `dbfdac_distance_*`-Dateien tragen in `E` den alten Fall und sind überholt**; `localDone` verlangt jetzt das Feld `dacScaleStandard` und rechnet sie deshalb neu. |
-| E10 | DAC-Quantisierung auch über Rice? | **JA, voller Lauf** (2026-10-12). Nicht nur eine Stufe zur Stichprobe, sondern das Kreuzprodukt: 2 K × 4 Stufen × 2 Aussteuerungen = 320 Kurven für 4,6 h. Damit ist K\* unter endlicher DAC-Auflösung bestimmbar statt nur unter idealer. Treiber `runQamSweepRiceBfDac`, Export und `run_dbf_dac_distance` (Kanäle `ray3`/`ray30`) sind umgestellt. |
-| E8 | ADC-Regel je Modus statt einheitlich? | **JA** (2026-10-12). `scaledB`s `log₂Nt` stammt laut `adcBitsRule` aus der Überlagerung von N_t Strömen an jeder Empfangsantenne. Digitales BF sendet **einen** Strom — die Aussteuerung je Antenne bleibt eine M-QAM-Konstellation, und die kohärente Summe entsteht nach dem ADC, wo Wortbreite nichts kostet. BF trägt deshalb `fixedB`, MUX weiter `scaledB`. Das Repo argumentierte so schon zweimal: analoges BF ist durchweg `fixedB` (alle vier K), und `analyze_bf_vs_mux_qam` paart `mux_alphabetB` gegen `bf_fixedB`. Richtung: BF wird günstiger, bis 2,65 % im Verhältnis BF/MUX — die bisherigen BF-Zahlen waren benachteiligt, nicht geschönt. |
-| E11 | Wie wird der stochastische Golden Master belastbar? | offen, und er hat am 2026-10-13 fast eine korrekte Änderung belastet. `qamMatchesOriginal` und `naQamMatchesOriginal` vergleichen **zwei Zufalls-Optimierer** auf RelTol 1e-6: beide Seiten ziehen ihre Mehrfachstarts aus dem ungeseedeten globalen Strom (`run_multistart_fminsearch.m:65,66,77`; kein `rng()` in `multistartOptimize`). Gemessene Streuung: E_bit 0,42 %, γ 4,4 % — und die NEUE Seite findet das bessere Optimum. Grün über die Dateiform, rot über die Ordnerform (`IncludeSubfolders`); Reihenfolge und Fixtures sind identisch, den Mechanismus dahinter habe ich **nicht** aufgeklärt. Empfehlung: je Testmethode seeden UND die Toleranz auf die echte Streuung weiten (E_bit ~1e-2, γ ~1e-1); nur einen passenden Seed zu suchen wäre Rosinenpickerei. |
-| E7 | Wie wird der `isfile`-Aussetzer auf dem UNC-Share abgestellt? | offen, und er verfälscht Ergebnisse still. Empfehlung: die Kandidatenprüfung EINMAL im Client machen und das Ergebnis in den parfor broadcasten, statt sie je Worker und je Distanz zu wiederholen -- das ist auch 25× weniger Dateizugriffe. Zusätzlich die fünf betroffenen Läufe neu rechnen. |
-| E6 | N > 16? | offen. Empfehlung: nein — `alphabetB` ist dort nicht rechenbar, und die Phasenquantisierung verliert bei großen Arrays ohnehin. |
-
-## 6. Inventur der Kurvendateien (2026-10-12, nach dem Pull)
-
-Gegen das erwartete Gitter geprüft, Bitzahl je Regel aus `adcBitsRule`.
-**Vollständig:** `bHalf` 20/20 · `rule_mux` scaledB K=0 und K=Inf je 20/20,
-alphabetB 15/15 · `bf_rayleigh` K=0 (fixedB+scaledB) 40/40 · `bf_ideal`
-40/40 · `bf_analog` **80/80** über alle vier K · `bf_los_digital_ideal`
-20/20 · alle 19 vorhandenen DAC-Ordner je 20/20.
-
-**Block C ist erledigt** (2026-10-12, 120 Kurven) und **Block D zur
-Haelfte**: alle vier `_common`-Ordner tragen K = 0, 3 und 30 vollstaendig
-(60/60 je Stufe). Von Block A kamen am 2026-10-13 sechs der acht Kurven.
-Damit fehlen noch **99 Kurven in drei Blöcken:**
+**Block B und D sind gerechnet** (`82c9ad8`, `e1a72e2`), Block C schon am
+2026-10-12. Es fehlen **noch 2 Kurven**:
 
 | Block | Ordner | fehlend | Kosten | Treiber |
 |---|---|---|---|---|
-| A | `rule_mux` (MUX, `scaledB`) | **2**: 16×16/256-QAM bei K = 3 und 30 | 22,4 h je Kurve | `runQamSweepRiceMuxK3`, `...K30` |
-| B | `bf_rayleigh` (dig. BF, `fixedB`) | **32**: N = 2…16 × alle M × K = 3, 30 | < 2 h zusammen | `runQamSweepRiceBf` |
-| D | `bf_rayleigh_dac{0..3}` (ohne `_common`) | **65**: K = 30, `perAntenna` — dac0 fehlen 5, dac1/2/3 je 20 | ~0,8 h zusammen | `runQamSweepRiceBfDac` |
+| A | `rule_mux` (MUX, `scaledB`) | **2**: 16×16/256-QAM bei K = 3 und 30 | 22,4 h je Kurve, parallel | `runQamSweepRiceMuxK3`, `...K30` |
 
-**Block D war unterbrochen, nicht fehlerhaft.** Der Lauf ging in der
-Reihenfolge, die `f2b4a11` gesetzt hat: K = 3 ganz, dann K = 30 erst alle
-`_common`, dann `perAntenna` — und brach in dac0 bei 15 von 20 ab. Der
-Standardfall ist damit vollständig, liegen bleibt der Vergleichsfall. Ein
-Neustart rechnet nur die 65 fehlenden, fertige Kurven werden anhand der
-Datei übersprungen.
+Vollständig sind damit: MUX `fixedB`/`scaledB` (K = 0, ∞)/`alphabetB`,
+digitales BF `fixedB`+`scaledB` bei K = 0, **digitales BF `fixedB` bei
+Rice (40/40, Block B)**, ideales BF, analoges BF über alle vier K, und
+**alle 24 DAC-Ordner inklusive Rice (Block C und D)**.
 
-**Block A ist auf die zwei teuersten Kurven geschrumpft.** 8×8/M=64,
-8×8/M=256 und 16×16/M=64 sind da; es fehlt genau 16×16/256-QAM, die mit
-22,4 h teuerste Einzelkurve des ganzen Plans — zweimal, je K.
+**Diese zwei Kurven blockieren das N-Raster, nicht die Kette.** Der Export
+nimmt eine Arraygröße nur mit allen vier Modulationsordnungen
+(`localAvailableNs`); ohne 16×16/256-QAM läuft der Rice-MUX-Teil also auf
+N ∈ {1, 2, 4, 8} statt bis 16. Wer nicht warten will, kann die
+Gearbox-Seite jetzt starten und das kleinere Raster in Kauf nehmen — dann
+aber nach Ankunft der zwei Kurven Export und 3b wiederholen
+(`localUpToDate` erzwingt das von selbst).
 
 A und B sind AP1 (Entscheidung E1); Block B ist durch E8 von 16 auf 32
 Kurven gewachsen, weil die BF-Seite unter der neuen Regel bei allen N ≥ 2
