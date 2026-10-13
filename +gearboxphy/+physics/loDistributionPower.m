@@ -14,12 +14,22 @@ function P = loDistributionPower(cs, nMixers)
 %         (SISO, or analog beamforming with its one mixer) is unchanged.
 %
 %   P_buf is cs.loDistPowerPerMixer; NaN (default) takes the per-carrier
-%   value below. Only 28 GHz has one: 16.6 mW, the measured two-stage LO
-%   buffer per path in Pang et al., JSSC 2019 (Table II; "only consumes
-%   17 mW" in the text). That is the buffer alone. The complete LO chain
-%   per path of that LO-phase-shifting transceiver draws about 89 mW
-%   (polyphase-filter buffer 44.4, LO switch and buffer 28.0, LO buffer
-%   16.6), so 16.6 mW is the low end.
+%   value below: 3 mW at 2.4 GHz, 7 mW at 8 GHz, 12.5 mW at 28 GHz; other
+%   carriers have none and need loDistPowerPerMixer set.
+%   28 GHz: 12.5 mW are the measured LO repeaters
+%   per I/Q downconverter in Khanna et al., JSSC 2026 (25 mW for two
+%   downconverters, four LO phases over 600 um). It is the middle of the
+%   measured 28 GHz values for a buffer or repeater per additional chain
+%   (9 to 17 mW; Pang et al., JSSC 2019: 16.6 mW two-stage LO buffer). It
+%   covers the distribution only: where each chain also generates its own
+%   I/Q phases or shifts the LO phase, 35 to 95 mW per chain are reported
+%   (docs/ANALOG_BEAMFORMING.md). Until 2026-10-13 the default was 16.6 mW.
+%   2.4 and 8 GHz (set 2026-10-13): about half of P_LO, the ratio found at
+%   28 GHz. 3 mW matches a measured 2 GHz receiver (LO phase generation
+%   and mixer drivers from an external LO; measured range 3 to 7 mW).
+%   7 mW at 8 GHz is a setting: the three measured values at 5 to 8 GHz
+%   are 1.4, 24 and 29 mW and none is from an array; 2 to 25 mW is the
+%   range to scan.
 P = 0;
 if ~isfield(cs, 'loDistributionModel') || string(cs.loDistributionModel) == "shared"
     return
@@ -32,11 +42,15 @@ end
 P_buf = NaN;
 if isfield(cs, 'loDistPowerPerMixer'), P_buf = cs.loDistPowerPerMixer; end
 if isnan(P_buf)
-    if cs.f_c == 28e9
-        P_buf = 16.6e-3;
+    if cs.f_c == 2.4e9
+        P_buf = 3e-3;
+    elseif cs.f_c == 8e9
+        P_buf = 7e-3;
+    elseif cs.f_c == 28e9
+        P_buf = 12.5e-3;
     else
         error('gearboxphy:loDistPower', ...
-            ['loDistributionModel="per_mixer" has a default LO-buffer power only at 28 GHz. ' ...
+            ['loDistributionModel="per_mixer" has a default LO-buffer power only at 2.4, 8 and 28 GHz. ' ...
              'Set loDistPowerPerMixer [W] for f_c = %g GHz.'], cs.f_c/1e9);
     end
 end

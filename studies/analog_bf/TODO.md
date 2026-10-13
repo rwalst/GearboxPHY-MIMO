@@ -16,21 +16,22 @@ Phasenquantisierung nachgeprueft (beides in `docs/ANALOG_BEAMFORMING.md`).
       den gemessenen Kanalleistungen (handset-Klasse 42-54 mW je Empfangskanal).
 - [ ] **Zahlenwerte bei 28 GHz bestaetigen.** 20 mW je aktivem Phasenschieber (Survey-Median
       24 mW, CMOS 19 mW); 7.5 dB passiv (in `phaseShifterParams.m` von 9.5 dB geaendert);
-      LO-Puffer 16.6 mW je Mischer (nur der Puffer; die ganze LO-Kette bei Pang et al. liegt
-      bei 89 mW je Pfad).
-- [ ] **LO-Puffer je Mischer: Wert festlegen.** Belege bei 28 GHz: 16.6 mW (Pang 2019),
-      12.5 mW (Khanna 2026), rund 4 mW bei einem Synthesizer je Element (Wang & Razavi),
-      10 mW als Modellannahme (Dutta et al.). Die Studie rechnet 4, 12.5 und 17 mW als eigene
-      Varianten; die Vorgabe des Schalters selbst bleibt 16.6 mW. Nach der Auswertung einen
-      Wert waehlen. Quellen in `docs/ANALOG_BEAMFORMING.md`.
+      LO-Puffer 12.5 mW je Mischer (nur die Verteilung; die ganze LO-Kette je Pfad liegt bei
+      Pang et al. bei 87 mW, davon 71 mW je Kette und 65 mW je Chip geteilt).
+- [x] **LO-Puffer je Mischer bei 28 GHz: 12.5 mW** (Nutzerentscheidung 2026-10-13, Vorgabe des
+      Schalters; vorher 16.6 mW). Belege: 16.6 mW (Pang 2019), 12.5 mW (Khanna 2026), 12 mW
+      (Zhang 2022), 13 mW je Strom (Mondal 2018), 9 mW bei einer PLL je Kette (Melamed 2025).
+      Die Studien uebergeben 4, 12.5 und 17 mW weiterhin ausdruecklich. Quellen in
+      `docs/ANALOG_BEAMFORMING.md` und `docs/LO_POWER_MODEL.md`.
 - [ ] **PA-Gewinn 20 dB** (`psGainPA`) fuer die Treiberleistung auf der Sendeseite ist eine
       Annahme ohne Quelle. Empfindlichkeit pruefen (10 dB, 30 dB).
 
 ## Modell
 
 - [ ] **Werte fuer 2.4, 8 und 60 GHz** in `phaseShifterParams.m` sind die von vor der Survey.
-      LO-Puffer je Mischer hat nur bei 28 GHz einen Wert. Vor einer Studie auf anderen
-      Traegern nachziehen.
+      Vor einer Studie auf anderen Traegern nachziehen. Der LO-Puffer je Mischer hat seit
+      2026-10-13 Vorgaben bei 2.4 GHz (3 mW) und 8 GHz (7 mW, Setzung in einer Spanne von
+      2-25 mW); bei 60 GHz fehlt er weiterhin.
 - [ ] **Phasenquantisierung in Fall 2.** Die Formel setzt eine kohaerente Summe voraus und
       wird im Rayleigh-Fall als Naeherung benutzt. Sauberer: quantisierte Phasen direkt in
       `analogBfGain` (QuantizedMimoMI) und der Gearbox rechnet dann mit `psBits = Inf`.
