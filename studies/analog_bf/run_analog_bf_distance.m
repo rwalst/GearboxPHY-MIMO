@@ -83,6 +83,34 @@ if isfolder(gearboxphy.paths.dataDir("SE_data_abf_fixedB"))
 else
     fprintf('SE_data_abf_fixedB fehlt -- nur Fall 1 (LOS). Fall 2 nach export_analog_bf_curves.\n');
 end
+% FALL 2 UEBER DEN RICE-FAKTOR (AP3). Dieselbe Konstruktion wie Fall 2, nur
+% mit dem Kurvenordner des jeweiligen K -- der Arraygewinn steckt in der
+% Kurve, deshalb mode = "multiplexing". Damit hat die analoge Seite als
+% letzte der drei Architekturen eine Rice-Spalte; MUX und digitales BF
+% haben sie seit dem Rice-Sweep.
+%
+% K = Inf gehoert dazu und ist NICHT dasselbe wie Fall 1: Fall 1 nimmt die
+% bfideal-Kurve und legt den Gewinn N_t*N_r ins Linkbudget, hier kommt der
+% Rang-1-Kanal aus der Kurve selbst (phase-only Praekodierer, 1-Bit-
+% Quantisierung inklusive). Zwei Wege zum Grenzfall, die sich genau um das
+% unterscheiden, was die Studie messen will.
+%
+% Die Ordner liegen seit dem 2026-10-11 da und wurden von keinem Sweep
+% gelesen -- deshalb hier, und deshalb je Ordner nur wenn vorhanden.
+for Kv = [3 30 Inf]
+    dK = sprintf("SE_data_abf_fixedB_K%g", Kv);
+    if ~isfolder(gearboxphy.paths.dataDir(dK))
+        fprintf('%s fehlt -- Rice-Variante K = %g uebersprungen.\n', dK, Kv);
+        continue
+    end
+    pss = ["active" "passive_compensated" "passive_penalty"];
+    tag = ["active" "passive_comp" "passive_pen"];
+    for k = 1:numel(pss)
+        V(end+1) = struct('name', sprintf("abfray_%s_K%g", tag(k), Kv), 'data', dK, ...
+            'mode', "multiplexing", 'arch', "analog", 'ps', pss(k), ...
+            'lo', "", 'loPower', NaN); %#ok<AGROW>
+    end
+end
 
 for k = 1:numel(V)
     assert(isfolder(gearboxphy.paths.dataDir(V(k).data)), 'run_analog_bf_distance:noData', ...

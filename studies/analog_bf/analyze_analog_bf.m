@@ -56,6 +56,36 @@ COL = containers.Map( ...
     {[0.04 0.04 0.04], [0.30 0.30 0.30], [0.48 0.48 0.48], [0.66 0.66 0.66], [0.16 0.47 0.84], [0.92 0.41 0.20], [0.11 0.69 0.48], ...
      [0.16 0.47 0.84], [0.92 0.41 0.20], [0.11 0.69 0.48]});
 
+% RICE-VARIANTEN NACHTRAGEN (AP3). Die Zeichenschleife laeuft ueber ALLE
+% geladenen Varianten und greift LBL(v)/COL(v) direkt -- ein Name, der in
+% den Maps fehlt, bricht die Auswertung mit einem Key-Fehler ab.
+%
+% STIL TRENNT DIE KANALKLASSE, HELLIGKEIT DAS K. MATLAB hat vier
+% Linienstile, und drei sind vergeben: '-' LOS (Fall 1), '--' Rayleigh
+% (Fall 2), ':' die LO-Varianten. Fuer die drei Rice-Faktoren bleibt
+% '-.' -- also bekommen sie alle diesen Stil, die Farbe des
+% Phasenschiebertyps und eine Helligkeit je K: K = 3 hell, K = 30 wie
+% Fall 2, K = Inf dunkel. Damit bleibt in der Abbildung lesbar, was
+% Architektur, was Kanal und was Hardware ist.
+for Kv = [3 30 Inf]
+    for t = ["active" "passive_comp" "passive_pen"]
+        key  = char(sprintf('abfray_%s_K%g', t, Kv));
+        base = char("abfray_" + t);
+        if ~isKey(COL, key)
+            c = COL(base);
+            if     Kv == 3,       c = 0.55*c + 0.45*[1 1 1];
+            elseif isinf(Kv),     c = 0.65*c;
+            end
+            COL(key) = c;
+        end
+        if ~isKey(LBL, key)
+            lab = strrep(LBL(base), 'Rayleigh', 'Rice');
+            if isinf(Kv), LBL(key) = [lab ', rank 1'];
+            else,         LBL(key) = sprintf('%s, K = %g', lab, Kv); end
+        end
+    end
+end
+
 rows = {};
 for adc = unique([S.adc])
     sel = S([S.adc] == adc);
@@ -69,8 +99,7 @@ for adc = unique([S.adc])
         ax = nexttile(tl); hold(ax, 'on');
         for k = 1:numel(sel)
             v = char(sel(k).variant);
-            ls = '-'; if startsWith(v, 'abfray'), ls = '--'; end
-            if startsWith(v, 'dbf_ideal_lo'), ls = ':'; end
+            ls = localStyle(v);
             lw = 1.6; if startsWith(v, 'dbf_ideal'), lw = 2.2; end
             plot(ax, CFG.distances, sel(k).Ebest(:, ri), ls, 'Color', COL(v), 'LineWidth', lw, 'DisplayName', LBL(v));
         end
@@ -90,8 +119,7 @@ for adc = unique([S.adc])
         ax = nexttile(tl); hold(ax, 'on');
         for k = 1:numel(sel)
             v = char(sel(k).variant);
-            ls = '-'; if startsWith(v, 'abfray'), ls = '--'; end
-            if startsWith(v, 'dbf_ideal_lo'), ls = ':'; end
+            ls = localStyle(v);
             stairs(ax, CFG.distances, sel(k).Nbest(:, ri), ls, 'Color', COL(v), 'LineWidth', 1.6, 'DisplayName', LBL(v));
         end
         set(ax, 'XScale', 'log', 'YScale', 'log', 'YTick', CFG.Ns); grid(ax, 'on'); box(ax, 'off');
@@ -138,4 +166,18 @@ function s = localEng(x)
 e = floor(log10(x) / 3) * 3;
 u = containers.Map({0, 3, 6, 9, 12}, {'', 'k', 'M', 'G', 'T'});
 s = sprintf('%g %s', x / 10^e, u(e));
+end
+
+function ls = localStyle(v)
+%LOCALSTYLE  Linienstil nach KANALKLASSE, eine Stelle fuer alle Abbildungen.
+%   Vorher stand die Regel zweimal inline in zwei Zeilen; mit den
+%   Rice-Varianten (AP3) waeren daraus fuenf Faelle an zwei Stellen
+%   geworden. Farbe trennt den Phasenschiebertyp, Helligkeit das K
+%   (siehe oben), der Stil den Kanal.
+v = char(v);
+if     startsWith(v, 'dbf_ideal_lo'), ls = ':';    % LO-Verteilung je Mischer
+elseif ~isempty(regexp(v, '_K(3|30|Inf)$', 'once')), ls = '-.';  % Rice
+elseif startsWith(v, 'abfray'),       ls = '--';   % Rayleigh (Fall 2)
+else,                                 ls = '-';    % LOS (Fall 1)
+end
 end
