@@ -16,6 +16,15 @@ function savePointCheckpoint(resultsDir, key, r, E_per_bit, Optimal_B, Optimal_g
 %   reason: a resumed sweep loads these points instead of recomputing
 %   them, so leaving them out would silently produce a result file whose
 %   operating points are missing exactly where the run was interrupted.
+% Optimal_N_t/Optimal_N_r vorgeben, nicht nur die _all-Felder. Beide stehen
+% in der save-Liste, hatten aber keine Vorgabe -- ein Aufruf mit sieben
+% Argumenten (so macht es tests/smoke_test.m, um Checkpoints von Hand
+% nachzubauen) brach deshalb mit MATLAB:save:varNotFound ab. Das lag
+% brach, seit Optimal_N_t eingefuehrt wurde, und hat genau das Netz
+% ausgeschaltet, das Fehler auf der Sweep-/Speicherebene findet. 1/1 ist
+% dieselbe Vorgabe, die saveAllResults schon dokumentiert: jeder
+% SISO-Gang meldet uniform 1/1.
+if nargin < 8,  Optimal_N_t = 1; Optimal_N_r = 1; end
 if nargin < 10, E_per_bit_all = []; Optimal_B_all = []; Optimal_gamma_all = []; PowerBudget_all = {}; end
 if nargin < 14, OperatingPoint = gearboxphy.gears.operatingPointFrom([]); OperatingPoint_all = {}; end
 file = gearboxphy.data.checkpointFile(resultsDir, key, r);

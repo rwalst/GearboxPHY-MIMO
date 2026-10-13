@@ -127,10 +127,25 @@ for fi = 1:numel(scenario.fcVec)
             if opts.useParallel
                 parfor r = 1:n
                     if gearboxphy.data.hasPointCheckpoint(resultsDirLocal, key, r) %#ok<PFBNS>
-                        [E_per_bit(r), Optimal_B(r), Optimal_gamma(r), PowerBudget{r}, Optimal_N_t(r), Optimal_N_r(r), ...
-                            E_per_bit_all(r,:), Optimal_B_all(r,:), Optimal_gamma_all(r,:), PowerBudget_all(r,:), ...
-                            OperatingPoint{r}, OperatingPoint_all(r,:)] = ...
+                        [e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all, opPt, opPt_all] = ...
                             gearboxphy.data.loadPointCheckpoint(resultsDirLocal, key, r);
+                        E_per_bit(r) = e; Optimal_B(r) = b; Optimal_gamma(r) = g;
+                        PowerBudget{r} = pb; Optimal_N_t(r) = nt; Optimal_N_r(r) = nr;
+                        OperatingPoint{r} = opPt;
+                        % LEERE FELDER NICHT ZUWEISEN. Ein Checkpoint von vor
+                        % der _all- bzw. Arbeitspunkt-Erweiterung traegt sie
+                        % leer, und 1xnCfg <- 0x0 bricht mit
+                        % MATLAB:subsassigndimmismatch ab. Die Zeile bleibt
+                        % dann auf ihrem NaN/{}-Anfangswert. Getroffen hat das
+                        % tests/smoke_test.m, das Checkpoints mit sieben
+                        % Argumenten von Hand nachbaut -- der Smoke-Test lag
+                        % deshalb brach, und mit ihm das Netz fuer genau diese
+                        % Ebene.
+                        if ~isempty(e_all)
+                            E_per_bit_all(r,:) = e_all; Optimal_B_all(r,:) = b_all;
+                            Optimal_gamma_all(r,:) = g_all; PowerBudget_all(r,:) = pb_all;
+                        end
+                        if ~isempty(opPt_all), OperatingPoint_all(r,:) = opPt_all; end
                     else
                         [e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all, opPt, opPt_all] = gearboxphy.sweep.optimizeOnePointBestConfig( ...
                             gear, ctxList, antennaConfigs, RVec(r), x0, bounds, optParams); %#ok<PFBNS>
@@ -145,10 +160,25 @@ for fi = 1:numel(scenario.fcVec)
             else
                 for r = 1:n
                     if gearboxphy.data.hasPointCheckpoint(resultsDirLocal, key, r)
-                        [E_per_bit(r), Optimal_B(r), Optimal_gamma(r), PowerBudget{r}, Optimal_N_t(r), Optimal_N_r(r), ...
-                            E_per_bit_all(r,:), Optimal_B_all(r,:), Optimal_gamma_all(r,:), PowerBudget_all(r,:), ...
-                            OperatingPoint{r}, OperatingPoint_all(r,:)] = ...
+                        [e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all, opPt, opPt_all] = ...
                             gearboxphy.data.loadPointCheckpoint(resultsDirLocal, key, r);
+                        E_per_bit(r) = e; Optimal_B(r) = b; Optimal_gamma(r) = g;
+                        PowerBudget{r} = pb; Optimal_N_t(r) = nt; Optimal_N_r(r) = nr;
+                        OperatingPoint{r} = opPt;
+                        % LEERE FELDER NICHT ZUWEISEN. Ein Checkpoint von vor
+                        % der _all- bzw. Arbeitspunkt-Erweiterung traegt sie
+                        % leer, und 1xnCfg <- 0x0 bricht mit
+                        % MATLAB:subsassigndimmismatch ab. Die Zeile bleibt
+                        % dann auf ihrem NaN/{}-Anfangswert. Getroffen hat das
+                        % tests/smoke_test.m, das Checkpoints mit sieben
+                        % Argumenten von Hand nachbaut -- der Smoke-Test lag
+                        % deshalb brach, und mit ihm das Netz fuer genau diese
+                        % Ebene.
+                        if ~isempty(e_all)
+                            E_per_bit_all(r,:) = e_all; Optimal_B_all(r,:) = b_all;
+                            Optimal_gamma_all(r,:) = g_all; PowerBudget_all(r,:) = pb_all;
+                        end
+                        if ~isempty(opPt_all), OperatingPoint_all(r,:) = opPt_all; end
                     else
                         [e, b, g, pb, nt, nr, e_all, b_all, g_all, pb_all, opPt, opPt_all] = gearboxphy.sweep.optimizeOnePointBestConfig( ...
                             gear, ctxList, antennaConfigs, RVec(r), x0, bounds, optParams);
