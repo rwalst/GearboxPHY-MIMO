@@ -6,7 +6,7 @@ entscheiden: Multiplexing, digitales Beamforming oder analoges Beamforming —
 und zwar so, dass die Wahl für jeden Kanal und jede Wandler­annahme
 nachvollziehbar ist.
 
-Stand: 2026-10-13, Entscheidungen E1/E3/E4/E5/E8/E9/E10 getroffen (Abschnitt 5).
+Stand: 2026-10-13 (Inventur nach `QuantizedMimoMI 821c5cc`), Entscheidungen E1/E3/E4/E5/E8/E9/E10 getroffen (Abschnitt 5).
 
 **Code-Abgleich mit dem HPC: die ID wird erzeugt, nicht hier abgelesen.**
 `codeManifest('snapshot')` am Arbeitsplatz, dann auf dem HPC
@@ -271,14 +271,16 @@ DAC-Zweig auf der MI-Seite vollständig und die Gearbox-Seite dran.
 
 **MI-Läufe** (QuantizedMimoMI, HPC):
 
-5. `runQamSweepRiceBf` — **32** neue Kurven (seit E8 `fixedB` bei allen
-   N ≥ 2), unter 2 h. Zuerst, weil billig und weil es das gemeinsame Gitter
-   sofort absichert.
-6. `runQamSweepRiceMux` — als `runQamSweepRiceMuxK3` und `...K30`
-   gleichzeitig, 35,6 h statt 71,2 h (Block A).
-7. `runQamSweepRiceBfDac` — 320 Kurven, 4,6 h (Block D). **Nach** Block B
-   und dem Vergleichsexport, weil die Deckelung die Ideal-DAC-Kurve
-   desselben K als Referenz braucht.
+5. `runQamSweepRiceBf` — **32** Kurven (seit E8 `fixedB` bei allen N ≥ 2),
+   unter 2 h. Zuerst: billig, und sichert das gemeinsame Gitter, bevor die
+   44 h der MUX-Seite starten.
+6. `runQamSweepRiceMuxK3` und `...K30` gleichzeitig — jetzt nur noch
+   **je eine Kurve** (16×16/256-QAM), 22,4 h je Job statt der
+   ursprünglichen 35,6 h. Alles andere von Block A liegt vor.
+7. `runQamSweepRiceBfDac` — **65** Kurven, ~0,8 h (Rest von Block D: K = 30
+   im Vergleichsfall `perAntenna`). **Nach** Block B und dem
+   Vergleichsexport, weil die Deckelung die Ideal-DAC-Kurve desselben K als
+   Referenz braucht.
 
 **Danach**, und nach dem Regelwechsel E8 zwingend in dieser Kette:
 
@@ -317,21 +319,31 @@ alphabetB 15/15 · `bf_rayleigh` K=0 (fixedB+scaledB) 40/40 · `bf_ideal`
 40/40 · `bf_analog` **80/80** über alle vier K · `bf_los_digital_ideal`
 20/20 · alle 19 vorhandenen DAC-Ordner je 20/20.
 
-**Block C ist am 2026-10-12 gerechnet** (`QuantizedMimoMI 592f149`, 120
-Kurven, alle **24 DAC-Ordner jetzt vollständig** 20/20). Damit fehlen noch
-**360 Kurven in drei Blöcken:**
+**Block C ist erledigt** (2026-10-12, 120 Kurven) und **Block D zur
+Haelfte**: alle vier `_common`-Ordner tragen K = 0, 3 und 30 vollstaendig
+(60/60 je Stufe). Von Block A kamen am 2026-10-13 sechs der acht Kurven.
+Damit fehlen noch **99 Kurven in drei Blöcken:**
 
 | Block | Ordner | fehlend | Kosten | Treiber |
 |---|---|---|---|---|
-| A | `rule_mux` (MUX, scaledB) | 8: N = 8, 16 × M = 64, 256 × K = 3, 30 | 35,6 h je K | `runQamSweepRiceMux` |
-| B | `bf_rayleigh` (dig. BF, **fixedB**) | 32: N = 2…16 × alle M × K = 3, 30 | < 1 h je K | `runQamSweepRiceBf` |
-| ~~C~~ | ~~`bf_rayleigh_dac{1,2,3}_common`, `bf_los_digital_dac{1,2,3}_common`~~ | **erledigt** 2026-10-12 | 0,96 h | `runQamSweepBfRayleighDac`, `runQamSweepBfLosDigitalDac` |
-| D | `bf_rayleigh_dac{0..3}[_common]`, Dateien mit `_K3`/`_K30` | 320: 16 Kombinationen × 20 | **4,6 h** | `runQamSweepRiceBfDac` |
+| A | `rule_mux` (MUX, `scaledB`) | **2**: 16×16/256-QAM bei K = 3 und 30 | 22,4 h je Kurve | `runQamSweepRiceMuxK3`, `...K30` |
+| B | `bf_rayleigh` (dig. BF, `fixedB`) | **32**: N = 2…16 × alle M × K = 3, 30 | < 2 h zusammen | `runQamSweepRiceBf` |
+| D | `bf_rayleigh_dac{0..3}` (ohne `_common`) | **65**: K = 30, `perAntenna` — dac0 fehlen 5, dac1/2/3 je 20 | ~0,8 h zusammen | `runQamSweepRiceBfDac` |
+
+**Block D war unterbrochen, nicht fehlerhaft.** Der Lauf ging in der
+Reihenfolge, die `f2b4a11` gesetzt hat: K = 3 ganz, dann K = 30 erst alle
+`_common`, dann `perAntenna` — und brach in dac0 bei 15 von 20 ab. Der
+Standardfall ist damit vollständig, liegen bleibt der Vergleichsfall. Ein
+Neustart rechnet nur die 65 fehlenden, fertige Kurven werden anhand der
+Datei übersprungen.
+
+**Block A ist auf die zwei teuersten Kurven geschrumpft.** 8×8/M=64,
+8×8/M=256 und 16×16/M=64 sind da; es fehlt genau 16×16/256-QAM, die mit
+22,4 h teuerste Einzelkurve des ganzen Plans — zweimal, je K.
 
 A und B sind AP1 (Entscheidung E1); Block B ist durch E8 von 16 auf 32
 Kurven gewachsen, weil die BF-Seite unter der neuen Regel bei allen N ≥ 2
-neu gerechnet wird. **Alle drei Treiber sind umgestellt, committet und
-gepusht** (QuantizedMimoMI bis `6c4e8e5`, GearboxPHY-MIMO bis `bcdc949`).
+neu gerechnet wird. Alle Treiber sind umgestellt, committet und gepusht.
 
 Für Block A und B stehen die Treiber auf dem vollen Gitter. **Block A ist
 auf zwei gleichzeitige Jobs aufgeteilt**, je ein Rice-Faktor:
