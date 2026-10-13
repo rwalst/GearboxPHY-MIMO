@@ -6,10 +6,14 @@ entscheiden: Multiplexing, digitales Beamforming oder analoges Beamforming —
 und zwar so, dass die Wahl für jeden Kanal und jede Wandler­annahme
 nachvollziehbar ist.
 
-Stand: 2026-10-12, Entscheidungen E1/E3/E4/E5/E8/E9 getroffen (Abschnitt 5).
-Code-Snapshot für den HPC-Abgleich: **`15762a1cd1cf`** (394 Dateien, beide
-Repos; `codeManifest('diff','15762a1cd1cf')` sagt, was fehlt). Davor
-`a438306f0032` — die ID änderte sich mit dem CPM-Treiber aus `da24c2e`.
+Stand: 2026-10-13, Entscheidungen E1/E3/E4/E5/E8/E9 getroffen (Abschnitt 5).
+
+**Code-Abgleich mit dem HPC: die ID wird erzeugt, nicht hier abgelesen.**
+`codeManifest('snapshot')` am Arbeitsplatz, dann auf dem HPC
+`codeManifest('diff', <id>)`. Eine fest eingetragene ID stand hier zweimal
+(`a438306f0032`, `15762a1cd1cf`) und war beide Male nach dem nächsten
+Commit falsch — das Manifest hasht auch `.md`, dieses Dokument gehört also
+zu seinem eigenen Hash und entwertet jede ID, die man hineinschreibt.
 Dieses Dokument ist der gemeinsame Plan, nicht die
 Dokumentation der Ergebnisse — die steht in `HPC_RUNBOOK_MIMO_VERGLEICH.md`,
 `HPC_RUNBOOK_ANALOG_BF.md` und `HPC_RUNBOOK_DAC.md`.
@@ -94,9 +98,13 @@ Datei übersprungen, eine angefangene setzt am nächsten SNR-Punkt fort.
 ### AP2 — 3a für die fehlenden Varianten *(Gearbox-Seite, mittel)*
 `results/cmp_<variante>_d<d>/` liegt für 7 Varianten je d = 50/500/5000 m
 vollständig vor. Es fehlen: `mux_alphabetB` und alle Rice-Varianten
-(`mux_scaledB_K3/K30/KInf`, `bf_scaledB_K3/K30`) — also 5 Varianten × 3 Distanzen.
-3b (`results/cmp_distance_*.mat`) liegt dagegen für alle 12 Varianten vor, der
-Rate-Sweep ist der Nachzügler. **100 Kerne, 8 h je Lauf.**
+(`mux_scaledB_K3/K30/KInf`, `bf_fixedB_K3/K30`) — also 5 Varianten × 3
+Distanzen. **100 Kerne, 8 h je Lauf.**
+
+3b (`results/cmp_distance_*.mat`) liegt für 12 Varianten vor, aber zwei
+davon sind seit E8 überholt: `bf_scaledB_K3` und `_K30`. An ihre Stelle
+treten `bf_fixedB_K3/_K30`, die es noch nicht gibt — sie entstehen erst
+mit Block B und dem folgenden Export. Lesbar sind also 10 der 12.
 
 ### AP3 — Rice für analoges BF *(Gearbox-Seite, billig)*
 Die Kurven liegen schon als `SE_data_abf_fixedB_K3/_K30/_KInf`. Es fehlt nur
@@ -118,9 +126,14 @@ analogen Varianten. **Beide müssen wiederholt werden** — der Export, weil
 er jetzt deckelt (E4) und die `_common`-Stufen dazukommen; der Sweep, weil
 `E` seit E9 den anderen Fall trägt. Dabei sind zwei Dinge aufgefallen:
 
-**(a) ERLEDIGT am 2026-10-12.** Es fehlten sechs Ordner — die
-`_common`-Stufen +1..+3; sie sind gerechnet (`592f149`), alle 24
-DAC-Ordner sind vollständig. Der Export muss sie noch übersetzen.
+**(a) MI-SEITE ERLEDIGT am 2026-10-12, EXPORT OFFEN.** Es fehlten sechs
+Ordner — die `_common`-Stufen +1..+3; sie sind gerechnet (`592f149`), alle
+24 DAC-Ordner sind vollständig. **Übersetzt sind sie noch nicht:** unter
+`data/` liegen 6 `_common`-Ordner (`bfideal` +0…+3, `bf_fixedB` +0,
+`bflosd` +0), es fehlen `SE_data_bf_fixedB_dac{1,2,3}_common` und
+`SE_data_bflosd_fixedB_dac{1,2,3}_common`. Der nächste Exportlauf schreibt
+also **25 Ordner statt 19** — das ist die Prüfgröße dafür, dass er
+vollständig durchgelaufen ist.
 Ursprünglicher Befund: erwartet waren 25 Ordner, geschrieben 19. Es fehlten
 `SE_data_bf_fixedB_dac{1,2,3}_common` und
 `SE_data_bflosd_fixedB_dac{1,2,3}_common`, weil die MI-Quellen
@@ -316,13 +329,13 @@ Skript mehr gelesen: `data/SE_data_bf_scaledB_K3`/`_K30` und
 sie die Datenbasis der 2,65-%-Aussage sind; löschen wäre reine
 Aufräumarbeit (die Git-Historie trägt sie ohnehin).
 
-**Block C ist eine Zeile je Treiber.** `runQamSweepBfIdealDac` hat
-`DAC_OFFSETS_COMMON = [0 1 2 3]`, die beiden anderen haben dort `0`:
-`runQamSweepBfRayleighDac.m:49` und `runQamSweepBfLosDigitalDac.m:73`. Auf
-`[0 1 2 3]` gesetzt, rechnet der Lauf nur die sechs fehlenden Ordner --
-fertige Kurven werden anhand der Datei übersprungen. Kosten aus den
-vorhandenen `dac0_common`-Zwillingen gemessen: 0,24 h je Rayleigh-Ordner,
-0,08 h je LOS-digital-Ordner.
+**Block C war eine Zeile je Treiber** und ist am 2026-10-12 gerechnet.
+`runQamSweepBfRayleighDac` und `runQamSweepBfLosDigitalDac` trugen
+`DAC_OFFSETS_COMMON = 0`, wo `runQamSweepBfIdealDac` `[0 1 2 3]` hat; auf
+`[0 1 2 3]` gesetzt, rechnete der Lauf genau die sechs fehlenden Ordner,
+weil fertige Kurven anhand der Datei übersprungen werden. Vorab aus den
+`dac0_common`-Zwillingen geschätzt: 0,24 h je Rayleigh-Ordner, 0,08 h je
+LOS-digital-Ordner.
 
 **Eine Namensabweichung, die keine Lücke ist:** `bf_analog` schreibt K = 0
 als `_K0`, überall sonst heißt K = 0 „kein Suffix". Eine Prüfung nach der
@@ -382,8 +395,10 @@ relativ zur idealen DAC-Auflösung ½·log₂M.
 
 Kosten gemessen an den vorhandenen Zwillingen bei +0 bit, die dieselbe
 Arbeit sind: **0,96 h für alle 120.** Auslöser ist eine Zeile je Treiber —
-`runQamSweepBfRayleighDac.m:49` und `runQamSweepBfLosDigitalDac.m:73`
-tragen `DAC_OFFSETS_COMMON = 0`, wo `runQamSweepBfIdealDac` `[0 1 2 3]` hat.
+`runQamSweepBfRayleighDac` und `runQamSweepBfLosDigitalDac` trugen
+`DAC_OFFSETS_COMMON = 0`, wo `runQamSweepBfIdealDac` `[0 1 2 3]` hat. (Hier
+standen Zeilennummern, 49 und 73; meine eigenen Docstring-Ergänzungen haben
+sie auf 65 und 89 verschoben. Deshalb steht jetzt der Variablenname da.)
 
 ### 6.2 Gerechnet, aber nicht exportiert (8 Kurven)
 
