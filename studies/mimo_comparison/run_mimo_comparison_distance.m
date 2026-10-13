@@ -138,9 +138,13 @@ for v = VARIANTS
     fprintf('\n======== %s ========\n', v);
     t0 = tic;
     E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E;
+    % ARBEITSPUNKT JE ZELLE (SE, noetiger SNR). Ohne das stehen im Ergebnis
+    % nur Energien, und die Spektraleffizienz, bei der das Gearbox den Punkt
+    % betreibt, ist nach dem Lauf nicht mehr rekonstruierbar.
+    SE = E; SNRrx_dB = E;
     dists = CFG.distances;
     parfor (di = 1:nD, nWorkers)
-        [e, etx, erx, epa, eadc] = localOneDistance(dists(di), CFG, dataDir, TXF, RXF);
+        [e, etx, erx, epa, eadc, se, snr] = localOneDistance(dists(di), CFG, dataDir, TXF, RXF);
         % PFOUS: checkcode sieht die Verwendung nicht, weil sie unten im
         % save() ueber den Variablennamen als STRING laeuft. Die Arrays
         % sind das Ergebnis der Schleife.
@@ -149,18 +153,21 @@ for v = VARIANTS
         Erx(di,:,:,:)  = reshape(erx,  [1 nR nM nN]);   %#ok<PFOUS>
         Epa(di,:,:,:)  = reshape(epa,  [1 nR nM nN]);   %#ok<PFOUS>
         Eadc(di,:,:,:) = reshape(eadc, [1 nR nM nN]);   %#ok<PFOUS>
+        SE(di,:,:,:)       = reshape(se,  [1 nR nM nN]);   %#ok<PFOUS>
+        SNRrx_dB(di,:,:,:) = reshape(snr, [1 nR nM nN]);   %#ok<PFOUS>
     end
     variant = v;
-    save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'CFG', 'variant');
+    save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'SE', 'SNRrx_dB', 'CFG', 'variant');
     fprintf('%s fertig nach %.1f min -> %s\n', v, toc(t0)/60, outFile);
 end
 end
 
-function [E, Etx, Erx, Epa, Eadc] = localOneDistance(d, CFG, dataDir, TXF, RXF)
+function [E, Etx, Erx, Epa, Eadc, SE, SNRrx_dB] = localOneDistance(d, CFG, dataDir, TXF, RXF)
 %LOCALONEDISTANCE  Alle (Rate, M, N) bei einer Distanz. Laeuft auf einem
 %   Worker; laedt die Kurven dort selbst (kein Broadcast grosser ctx).
 nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
 E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E;
+SE = E; SNRrx_dB = E;
 fc = CFG.fcGHz * 1e9;
 configs = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
 scen = gearboxphy.sweep.makeScenarioConfig('distance', d, 'RVec', CFG.rates, ...
@@ -179,7 +186,9 @@ for mi = 1:nM
         if isempty(ni), continue; end
         ctx = gear.prepare(M, cs, cfgs{c});
         for ri = 1:nR
-            [e, ~, ~, pb] = gearboxphy.sweep.optimizeOnePoint(gear, ctx, CFG.rates(ri), x0, bnds, op);
+            % opPt, nicht op: op ist hier schon die Optimierer-Parameter.
+            [e, ~, ~, pb, opPt] = gearboxphy.sweep.optimizeOnePoint(gear, ctx, CFG.rates(ri), x0, bnds, op);
+            SE(ri, mi, ni) = opPt.SE; SNRrx_dB(ri, mi, ni) = opPt.SNR_rx_dB;
             E(ri, mi, ni) = e;
             if isstruct(pb)
                 Etx(ri, mi, ni)  = sum(cellfun(@(n) pb.(n), TXF));

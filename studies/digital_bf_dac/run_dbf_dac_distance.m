@@ -160,6 +160,7 @@ for ch = CH
 
             R0 = localCase(CFG, v, P.ADC_MODEL, dacModel, nWorkers);
             Eideal = R0.E; EidealDac = R0.Edac; EidealPa = R0.Epa;
+            SEideal = R0.SE; SNRrxideal_dB = R0.SNRrx_dB;
 
             % STANDARD IST DIE GEMEINSAME AUSSTEUERUNG (2026-10-12): E,
             % Ebest und kBest kommen aus den _common-Ordnern. Die
@@ -168,15 +169,17 @@ for ch = CH
             % niemand bezahlt -- sie bleibt als Eper daneben stehen und
             % zeigt, was sie wert waere. Bis 2026-10-12 war es umgekehrt;
             % Dateien ohne das Feld dacScaleStandard stammen von davor.
-            [E, Etx, Erx, Epa, Edac] = localLevels(CFG, v, ch.digBase, levCommon, "_common", P.ADC_MODEL, dacModel, nWorkers);
+            [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localLevels(CFG, v, ch.digBase, levCommon, "_common", P.ADC_MODEL, dacModel, nWorkers);
             [Ebest, kBest, EbestDac, EbestPa] = gearboxphy.sweep.minOverDacLevels(E, Edac, Epa);
             S = struct('E', E, 'Etx', Etx, 'Erx', Erx, 'Epa', Epa, 'Edac', Edac, ...
                        'Eideal', Eideal, 'EidealDac', EidealDac, 'EidealPa', EidealPa, ...
                        'Ebest', Ebest, 'kBest', kBest, 'EbestDac', EbestDac, 'EbestPa', EbestPa, ...
+                       'SE', SE, 'SNRrx_dB', SNRrx_dB, ...
+                       'SEideal', SEideal, 'SNRrxideal_dB', SNRrxideal_dB, ...
                        'dacLevels', levCommon, 'dacLevelsPer', lev, 'dacScaleStandard', "common", ...
                        'CFG', CFG, ...
                        'channel', ch.name, 'lo', P.LO_NAMES(li), 'dacModel', dacModel, 'v', v);
-            [S.Eper, ~, ~, S.EperPa, S.EperDac] = ...
+            [S.Eper, ~, ~, S.EperPa, S.EperDac, S.SEper, S.SNRrxper_dB] = ...
                 localLevels(CFG, v, ch.digBase, lev, "", P.ADC_MODEL, dacModel, nWorkers);
             save(outFile, '-struct', 'S');
             fprintf('fertig nach %.1f min -> %s\n', toc(t0)/60, outFile);
@@ -199,7 +202,7 @@ for ch = CH
             t0 = tic;
             v = struct('name', vname, 'data', ch.anaData, 'mode', ch.anaMode, 'arch', "analog", ...
                        'ps', PS_TYPES(pi_), 'lo', "", 'loPower', NaN);
-            S = localCase(CFG, v, P.ADC_MODEL, dacModel, nWorkers);
+            S = localCase(CFG, v, P.ADC_MODEL, dacModel, nWorkers);   % traegt SE/SNRrx_dB schon als Felder
             S.CFG = CFG; S.variant = vname; S.channel = ch.name; S.dacModel = dacModel; S.v = v;
             S.dacLevels = []; S.dacLevelsCommon = [];
             save(outFile, '-struct', 'S');
@@ -209,17 +212,18 @@ for ch = CH
 end
 end
 
-function [E, Etx, Erx, Epa, Edac] = localLevels(CFG, v, base, levels, suffix, adcModel, dacModel, nWorkers)
+function [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localLevels(CFG, v, base, levels, suffix, adcModel, dacModel, nWorkers)
 %LOCALLEVELS  Dieselbe Variante fuer jede DAC-Stufe; letzte Dimension = Stufe.
 nK = numel(levels);
 sz = [numel(CFG.distances), numel(CFG.rates), numel(CFG.Ms), numel(CFG.Ns)];
-E = nan([sz nK]); Etx = E; Erx = E; Epa = E; Edac = E;
+E = nan([sz nK]); Etx = E; Erx = E; Epa = E; Edac = E; SE = E; SNRrx_dB = E;
 for i = 1:nK
     vk = v; vk.data = sprintf("%s_dac%d%s", base, levels(i), suffix);
     fprintf('  -- DAC-Stufe +%d%s (%s)\n', levels(i), suffix, vk.data);
     R = localCase(CFG, vk, adcModel, dacModel, nWorkers);
     E(:,:,:,:,i) = R.E; Etx(:,:,:,:,i) = R.Etx; Erx(:,:,:,:,i) = R.Erx;
     Epa(:,:,:,:,i) = R.Epa; Edac(:,:,:,:,i) = R.Edac;
+    SE(:,:,:,:,i) = R.SE; SNRrx_dB(:,:,:,:,i) = R.SNRrx_dB;
 end
 end
 
@@ -227,24 +231,31 @@ function R = localCase(CFG, v, adcModel, dacModel, nWorkers)
 %LOCALCASE  Eine Variante ueber alle Distanzen (parfor), Felder [nD nR nM nN].
 nD = numel(CFG.distances); nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
 dataDir = gearboxphy.paths.dataDir(v.data);
-E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E;
+E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E; SE = E; SNRrx = E;
 dists = CFG.distances;
 parfor (di = 1:nD, nWorkers)
-    [e, etx, erx, epa, edac] = localOneDistance(dists(di), CFG, v, dataDir, adcModel, dacModel);
-    E(di,:,:,:)    = reshape(e,    [1 nR nM nN]);
-    Etx(di,:,:,:)  = reshape(etx,  [1 nR nM nN]);
-    Erx(di,:,:,:)  = reshape(erx,  [1 nR nM nN]);
-    Epa(di,:,:,:)  = reshape(epa,  [1 nR nM nN]);
-    Edac(di,:,:,:) = reshape(edac, [1 nR nM nN]);
+    [e, etx, erx, epa, edac, se, snr] = localOneDistance(dists(di), CFG, v, dataDir, adcModel, dacModel);
+    E(di,:,:,:)     = reshape(e,    [1 nR nM nN]);
+    Etx(di,:,:,:)   = reshape(etx,  [1 nR nM nN]);
+    Erx(di,:,:,:)   = reshape(erx,  [1 nR nM nN]);
+    Epa(di,:,:,:)   = reshape(epa,  [1 nR nM nN]);
+    Edac(di,:,:,:)  = reshape(edac, [1 nR nM nN]);
+    SE(di,:,:,:)    = reshape(se,   [1 nR nM nN]);
+    SNRrx(di,:,:,:) = reshape(snr,  [1 nR nM nN]);
 end
-R = struct('E', E, 'Etx', Etx, 'Erx', Erx, 'Epa', Epa, 'Edac', Edac);
+R = struct('E', E, 'Etx', Etx, 'Erx', Erx, 'Epa', Epa, 'Edac', Edac, ...
+           'SE', SE, 'SNRrx_dB', SNRrx);
 end
 
-function [E, Etx, Erx, Epa, Edac] = localOneDistance(d, CFG, v, dataDir, adcModel, dacModel)
+function [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localOneDistance(d, CFG, v, dataDir, adcModel, dacModel)
 %LOCALONEDISTANCE  Alle (Rate, M, N) bei einer Distanz, auf einem Worker.
 %   Wie in run_analog_bf_distance, zusaetzlich der DAC-Anteil.
 nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
 E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E;
+% ARBEITSPUNKT JE ZELLE: wo der Gang diesen Punkt betreibt. Ohne das sind
+% im Ergebnis nur die Energien, nicht die Spektraleffizienz und der noetige
+% SNR -- die waren nach dem Lauf nicht mehr rekonstruierbar.
+SE = E; SNRrx_dB = E;
 fc = CFG.fcGHz * 1e9;
 configs = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
 scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel);
@@ -261,8 +272,10 @@ for mi = 1:nM
         if isempty(ni), continue; end
         ctx = gear.prepare(M, cs, cfgs{c});
         for ri = 1:nR
-            [e, ~, ~, pb] = gearboxphy.sweep.optimizeOnePoint(gear, ctx, CFG.rates(ri), x0, bnds, op);
+            % opPt, nicht op: op ist hier schon die Optimierer-Parameter.
+            [e, ~, ~, pb, opPt] = gearboxphy.sweep.optimizeOnePoint(gear, ctx, CFG.rates(ri), x0, bnds, op);
             E(ri, mi, ni) = e;
+            SE(ri, mi, ni) = opPt.SE; SNRrx_dB(ri, mi, ni) = opPt.SNR_rx_dB;
             if isstruct(pb)
                 Etx(ri, mi, ni)  = sum(cellfun(@(n) pb.(n), TXF));
                 Erx(ri, mi, ni)  = sum(cellfun(@(n) pb.(n), RXF));

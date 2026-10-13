@@ -60,6 +60,10 @@ E    = nan(nD, nR, nG, nC);     % Energie je Bit
 Etx  = nan(nD, nR, nG, nC);     % Sendeseite
 Erx  = nan(nD, nR, nG, nC);     % Empfangsseite
 Epa  = nan(nD, nR, nG, nC);     % nur PA
+% Arbeitspunkt je Zelle: SE und der von der Kurve geforderte SNR. Vorher
+% stand im Ergebnis nur, WAS ein Punkt kostet, nicht WO er betrieben wird.
+SE       = nan(nD, nR, nG, nC);     % bit/s/Hz
+SNRrx_dB = nan(nD, nR, nG, nC);     % dB, empfangsseitig
 
 t0 = tic;
 for di = 1:nD
@@ -80,9 +84,12 @@ for di = 1:nD
         for ci = 1:nC
             ctx = gear.prepare(order, cs, cfgs{ci});
             for ri = 1:nR
-                [e, ~, ~, pb] = gearboxphy.sweep.optimizeOnePoint( ...
+                % opPt, nicht op: op ist hier schon die Optimierer-Parameter.
+                [e, ~, ~, pb, opPt] = gearboxphy.sweep.optimizeOnePoint( ...
                     gear, ctx, CFG.rates(ri), x0, bnds, op);
                 E(di,ri,gi,ci) = e;
+                SE(di,ri,gi,ci) = opPt.SE;
+                SNRrx_dB(di,ri,gi,ci) = opPt.SNR_rx_dB;
                 if isstruct(pb)
                     fn = fieldnames(pb);
                     unknown = setdiff(fn, [TXF RXF]);
@@ -99,5 +106,5 @@ end
 
 gearLabels = string({combos.label});
 N_t = cellfun(@(c) c.N_t, CFG.configs);
-save(CFG.outFile, 'E', 'Etx', 'Erx', 'Epa', 'CFG', 'gearLabels', 'N_t');
+save(CFG.outFile, 'E', 'Etx', 'Erx', 'Epa', 'SE', 'SNRrx_dB', 'CFG', 'gearLabels', 'N_t');
 fprintf('\nfertig nach %.1f min -> %s\n', toc(t0)/60, CFG.outFile);

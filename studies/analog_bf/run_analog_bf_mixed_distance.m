@@ -124,28 +124,34 @@ for lc = LO_CASES
         fprintf('\n======== %s / %s ========\n', v.name, lc.tag);
         t0 = tic;
         E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E; Eps = E;
+        % ARBEITSPUNKT JE ZELLE (SE, noetiger SNR) -- ohne das stehen im
+        % Ergebnis nur Energien.
+        SE = E; SNRrx_dB = E;
         dists = CFG.distances;
         parfor (di = 1:nD, nWorkers)
-            [e, etx, erx, epa, eadc, eps_] = localOneDistance(dists(di), CFG, v, dataDir, ADC_MODEL);
+            [e, etx, erx, epa, eadc, eps_, se, snr] = localOneDistance(dists(di), CFG, v, dataDir, ADC_MODEL);
             E(di,:,:,:)    = reshape(e,    [1 nR nM nN]);   %#ok<PFOUS>
             Etx(di,:,:,:)  = reshape(etx,  [1 nR nM nN]);   %#ok<PFOUS>
             Erx(di,:,:,:)  = reshape(erx,  [1 nR nM nN]);   %#ok<PFOUS>
             Epa(di,:,:,:)  = reshape(epa,  [1 nR nM nN]);   %#ok<PFOUS>
             Eadc(di,:,:,:) = reshape(eadc, [1 nR nM nN]);   %#ok<PFOUS>
             Eps(di,:,:,:)  = reshape(eps_, [1 nR nM nN]);   %#ok<PFOUS>
+            SE(di,:,:,:)       = reshape(se,  [1 nR nM nN]);   %#ok<PFOUS>
+            SNRrx_dB(di,:,:,:) = reshape(snr, [1 nR nM nN]);   %#ok<PFOUS>
         end
         variant = v.name; loTag = lc.tag; adcModel = ADC_MODEL;
-        save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'Eps', 'CFG', 'variant', 'loTag', 'adcModel', 'v');
+        save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'Eps', 'SE', 'SNRrx_dB', 'CFG', 'variant', 'loTag', 'adcModel', 'v');
         fprintf('%s / %s fertig nach %.1f min -> %s\n', v.name, lc.tag, toc(t0)/60, outFile);
     end
 end
 end
 
-function [E, Etx, Erx, Epa, Eadc, Eps] = localOneDistance(d, CFG, v, dataDir, adcModel)
+function [E, Etx, Erx, Epa, Eadc, Eps, SE, SNRrx_dB] = localOneDistance(d, CFG, v, dataDir, adcModel)
 %LOCALONEDISTANCE  Alle (Rate, M, N) bei einer Distanz, auf einem Worker.
 %   Derselbe Rechenweg wie in run_analog_bf_distance.
 nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
 E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E; Eps = E;
+SE = E; SNRrx_dB = E;
 fc = CFG.fcGHz * 1e9;
 configs = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
 scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs);
@@ -162,7 +168,9 @@ for mi = 1:nM
         if isempty(ni), continue; end
         ctx = gear.prepare(M, cs, cfgs{c});
         for ri = 1:nR
-            [e, ~, ~, pb] = gearboxphy.sweep.optimizeOnePoint(gear, ctx, CFG.rates(ri), x0, bnds, op);
+            % opPt, nicht op: op ist hier schon die Optimierer-Parameter.
+            [e, ~, ~, pb, opPt] = gearboxphy.sweep.optimizeOnePoint(gear, ctx, CFG.rates(ri), x0, bnds, op);
+            SE(ri, mi, ni) = opPt.SE; SNRrx_dB(ri, mi, ni) = opPt.SNR_rx_dB;
             E(ri, mi, ni) = e;
             if isstruct(pb)
                 % N = 1 ist in jeder Variante SISO: dann fehlen die PS-Felder nicht,
