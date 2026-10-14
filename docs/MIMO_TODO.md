@@ -53,15 +53,23 @@ Arbeitspunkts je Punkt (AP7: `SE`, `SNR_rx_dB`, `SNR_tx_dB`, `P_t_W`,
 | 16×16, 256-QAM, `scaledB` (B = 11) | Rice K = 3 | 22,4 h |
 | dieselbe | Rice K = 30 | 22,4 h |
 
-```
-salloc --nodes=1 --cpus-per-task=200 --mem=64G --time=24:00:00
-matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepRiceMuxK3"
-# parallel, in eigener Allokation:
-matlab -batch "addpath('<...>/QuantizedMimoMI'); setupPath; runQamSweepRiceMuxK30"
+```matlab
+setenv('GEARBOX_WORKERS','400')          % 400 halbiert die Zeit, 300 bringt nichts
+addpath('<...>\QuantizedMimoMI'); setupPath
+runQamSweepRiceMuxK3
+% in einer ZWEITEN MATLAB-Sitzung, gleichzeitig:
+runQamSweepRiceMuxK30
 ```
 
-Zwei getrennte Allokationen, je 200 Kerne. Die beiden sind die teuersten
-Einzelkurven des Plans und passen einzeln in ein 24-h-Fenster.
+Zwei MATLAB-Sitzungen gleichzeitig; der HPC laeuft Windows, es gibt kein
+`salloc`. Die Poolgroesse kommt aus `GEARBOX_WORKERS`
+(`common/sweepWorkers.m`), ohne die Variable sind es 200.
+
+**Mehr Worker lohnen nur in Stufen:** die Zeit haengt an `ceil(nMC / w)`
+mit `nMC = 400`, also bringen 300 Worker genau so viel wie 200 (zwei
+Wellen), erst 400 halbieren sie auf **11,2 h**. Das gilt je Sitzung — zwei
+Sitzungen mit je 400 brauchen 800 Kerne zusammen; stehen nur 400 zur
+Verfuegung, ist 2 × 200 parallel genauso schnell wie 1 × 400 nacheinander.
 
 **Sie blockieren das N-Raster, nicht die Kette.** Der Export nimmt eine
 Arraygröße nur mit allen vier Modulationsordnungen; ohne diese zwei läuft
