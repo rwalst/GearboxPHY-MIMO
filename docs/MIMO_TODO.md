@@ -53,19 +53,20 @@ Arbeitspunkts je Punkt (AP7: `SE`, `SNR_rx_dB`, `SNR_tx_dB`, `P_t_W`,
 | 16×16, 256-QAM, `scaledB` (B = 11) | Rice K = 3 | 22,4 h |
 | dieselbe | Rice K = 30 | 22,4 h |
 
-Poolgroesse vorher in `common/sweepWorkers.m` setzen — oben `WORKERS = 400;`
-statt `[]`. 400 halbiert die Zeit, 300 bringt nichts (siehe unten).
+Poolgroesse im Treiber setzen (`N_WORKERS` im CONFIG-Block von
+`runQamSweepRiceMux.m`) oder am Aufruf übergeben. 400 halbiert die Zeit,
+300 bringt nichts (siehe unten).
 
 ```matlab
 addpath('<...>\QuantizedMimoMI'); setupPath
-runQamSweepRiceMuxK3
+runQamSweepRiceMuxK3(400)
 % in einer ZWEITEN MATLAB-Sitzung, gleichzeitig:
-runQamSweepRiceMuxK30
+runQamSweepRiceMuxK30(400)
 ```
 
 Zwei MATLAB-Sitzungen gleichzeitig; der HPC laeuft Windows, es gibt kein
-`salloc`. Die Poolgroesse steht in `common/sweepWorkers.m` (`WORKERS`),
-ohne Eintrag sind es 200.
+`salloc`. Die Poolgroesse steht als `N_WORKERS` im CONFIG-Block des
+Treibers und laesst sich am Aufruf uebergeben; ohne Angabe sind es 200.
 
 **Mehr Worker lohnen nur in Stufen:** die Zeit haengt an `ceil(nMC / w)`
 mit `nMC = 400`, also bringen 300 Worker genau so viel wie 200 (zwei
