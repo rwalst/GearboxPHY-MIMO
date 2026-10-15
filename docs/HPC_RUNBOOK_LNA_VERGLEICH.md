@@ -83,7 +83,10 @@ mem=64G, time=12:00:00.
   `STUDIES = "siso"` at the top of the file, then run again with both.
 - The run can be interrupted: finished combos are skipped and point
   checkpoints are reused.
-- Every results folder `results/lna/<study>_<bw>_<model>_d<d>/` carries a
+- Since 2026-10-15 the results root is `results/lna_newhw/` (all other
+  components are the new models; `results/lna/` holds the earlier run with the
+  old set and stays as reference).
+- Every results folder `results/lna_newhw/<study>_<bw>_<model>_d<d>/` carries a
   `lna_stamp.mat`. A folder belonging to a different case is refused, never
   overwritten. This is needed because runSweep's own skip check does not
   know the LNA model.
@@ -95,7 +98,7 @@ out = analyze_lna_comparison();                 % rates 1e4, 1e6, 1e8, 1e9 in th
 out = analyze_lna_comparison(rateTable=[1e5 1e7]);
 ```
 
-Output goes to `results/lna/figures/`, one set per study and distance. Tiles:
+Output goes to `results/lna_newhw/figures/`, one set per study and distance. Tiles:
 bandwidth setting (rows) × carrier (columns).
 
 | File | Content |

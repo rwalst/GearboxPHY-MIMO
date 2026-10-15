@@ -52,8 +52,9 @@ ueberschrieben, sondern fuehrt zu einem Fehler.
 
 ## Ergebnisse
 
-`results/hardware_models/siso_<variante>_d50/` je Fall, Abbildungen in
-`results/hardware_models/figures/`:
+`results/hardware_models_newhw/siso_<variante>_d50/` je Fall, Abbildungen in
+`results/hardware_models_newhw/figures/` (seit 2026-10-15; `results/hardware_models/`
+hält einen Lauf mit dem früheren "new" und bleibt als Referenz liegen):
 
 | Datei | Inhalt |
 |---|---|
