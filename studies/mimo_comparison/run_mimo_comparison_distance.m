@@ -77,7 +77,7 @@ CFG.fcGHz     = 28;
 %
 % Die Dateinamen bekommen das Suffix "_permixer", damit die
 % shared-Ergebnisse stehenbleiben und beides nebeneinander auswertbar ist.
-LO_MODEL      = "shared";               % "shared" | "per_mixer"
+LO_MODEL      = "per_mixer";               % "shared" | "per_mixer"
 CFG.loModel   = LO_MODEL;
 CFG.Ms        = [4 16 64 256];
 % N JE VARIANTE, nicht global. Bis 2026-10-07 stand hier CFG.Ns = [1 2 4]
@@ -176,22 +176,23 @@ for v = VARIANTS
     % sie als fertig -- die Auswertung rechnet dann still auf dem alten
     % Raster weiter. Dieselbe Klasse Fehler wie die Checkpoint-Signatur in
     % QuantizedMimoMI/qam/sweep/runRuleSweep.m.
-    if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) ...
-            && localUpToDate(outFile, dataDir)
-        fprintf('\n======== %s: liegt vor (passende CFG, Kurven aelter), uebersprungen ========\n', v);
-        continue
-    end
     % WIEDERVERWENDEN STATT NEU RECHNEN -- siehe +data/gridFingerprint.m.
     % Der Schluessel deckt jede Zelle des (Distanz, M, N)-Gitters ab; die
     % Form "cmp_distance/v1" sorgt dafuer, dass nur Dateien mit demselben
     % Variablensatz uebernommen werden.
-    oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
     fp = gearboxphy.data.gridFingerprint("cmp_distance/v1", ...
-        @(d) gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', d, 'RVec', CFG.rates, ...
+        @(d) gearboxphy.sweep.makeScenarioConfig('distance', d, 'RVec', CFG.rates, ...
             'fcVec', CFG.fcGHz*1e9, 'antennaMode', "multiplexing", ...
             'qamMimoConfigs', arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, ...
                 'UniformOutput', false), 'dataDir', dataDir, ...
             'loDistributionModel', CFG.loModel), CFG);
+    % Seit 2026-10-15 zaehlt zum Ueberspringen auch der Fingerabdruck: eine
+    % Datei mit anderen Hardwaremodellen gilt als nicht fertig.
+    if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) ...
+            && localUpToDate(outFile, dataDir) && gearboxphy.data.fingerprintMatches(string(outFile), fp)
+        fprintf('\n======== %s: liegt vor (gleicher Schluessel), uebersprungen ========\n', v);
+        continue
+    end
     if gearboxphy.data.fetchFromStore(fp, outFile)
         fprintf('\n======== %s: schon gerechnet (%s), uebernommen ========\n', v, fp);
         continue
@@ -233,8 +234,7 @@ E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E;
 SE = E; SNRrx_dB = E;
 fc = CFG.fcGHz * 1e9;
 configs = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
-oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
-scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', d, 'RVec', CFG.rates, ...
+scen = gearboxphy.sweep.makeScenarioConfig('distance', d, 'RVec', CFG.rates, ...
     'fcVec', fc, 'antennaMode', "multiplexing", 'qamMimoConfigs', configs, ...
     'dataDir', dataDir, 'loDistributionModel', CFG.loModel);
 cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, fc);

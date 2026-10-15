@@ -105,9 +105,6 @@ for fi = 1:numel(scenario.fcVec)
             % that's genuinely still current - see hasAllResults.m.
             key = gearboxphy.data.resultKey(gear.name, order, f_c);
             antennaConfigs = gear.antennaConfigs(order, carrierScenario);
-            if gearboxphy.data.hasAllResults(opts.resultsDir, key, scenario.RVec, scenario.distance, antennaConfigs)
-                continue   % already fully computed with these exact antenna candidates - skip this whole combo
-            end
 
             % ctx is prepared once per combo (not per R) - none of it
             % depends on R.
@@ -117,6 +114,20 @@ for fi = 1:numel(scenario.fcVec)
             end
             x0 = gear.initialGuess(order, carrierScenario);
             bounds = gear.optimizerBounds(order, carrierScenario);
+            comboFp = gearboxphy.data.comboFingerprint(gear.name, order, f_c, ...
+                scenario.RVec, optParams, x0, bounds, ctxList);
+
+            % SKIP ONLY WHAT WAS COMPUTED WITH THESE INPUTS. hasAllResults
+            % compares rates, distance and antenna candidates - not the
+            % hardware models or curves. Since 2026-10-15 the stored
+            % resultFingerprint must match too, so a results directory
+            % reused after a model change is recomputed, never served
+            % stale. Files without a fingerprint (older than it) count as
+            % stale.
+            if gearboxphy.data.hasAllResults(opts.resultsDir, key, scenario.RVec, scenario.distance, antennaConfigs) ...
+                    && gearboxphy.data.fingerprintMatches(fullfile(opts.resultsDir, key + ".mat"), comboFp)
+                continue   % already fully computed with exactly these inputs - skip this whole combo
+            end
 
             % REUSE INSTEAD OF RECOMPUTE. ctx is the complete input of this
             % combo's optimisation (see +data/comboFingerprint.m), so two
@@ -130,8 +141,6 @@ for fi = 1:numel(scenario.fcVec)
             % stay local to the run that wrote them (index-keyed, for
             % resume only). Sharing happens one level up, between finished
             % result FILES.
-            comboFp = gearboxphy.data.comboFingerprint(gear.name, order, f_c, ...
-                scenario.RVec, optParams, x0, bounds, ctxList);
             if gearboxphy.data.fetchFromStore(comboFp, fullfile(opts.resultsDir, key + ".mat"))
                 fprintf('    schon gerechnet (%s) -- aus dem Ergebnisspeicher uebernommen\n', comboFp);
                 % Diese Kombination ist damit fertig, also duerfen ihre
@@ -142,6 +151,10 @@ for fi = 1:numel(scenario.fcVec)
                 gearboxphy.data.clearCheckpoints(opts.resultsDir, key);
                 continue
             end
+
+            % Checkpoints of an interrupted run with OTHER inputs are
+            % discarded, ours are stamped (+data/claimCheckpoints.m).
+            gearboxphy.data.claimCheckpoints(opts.resultsDir, key, comboFp);
 
             n = numel(scenario.RVec);
             nCfg = numel(antennaConfigs);

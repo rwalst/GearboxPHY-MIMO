@@ -89,7 +89,7 @@ P.psPower       = NaN;                  % NaN = Vorgabe aus phaseShifterParams
 P.psLossDb      = NaN;
 P.DAC_LEVELS    = [0 1 2 3];            % Bit ueber 1/2*log2(M)
 P.DAC_MODELS    = ["analytic" "analytic_1V" "survey"];   % auch "hw_new", siehe localHw
-P.ADC_MODEL     = "envelope";
+P.ADC_MODEL     = "quantile5";      % Standard seit 2026-10-15 (vorher "envelope")
 P.CHANNELS      = "";                   % "" = alle; sonst z.B. "losd" oder ["losd" "ray"]
 P.LO_NAMES      = ["loShared" "lo12p5mW"];
 P.LO_POWER      = [NaN 12.5e-3];        % [W] je zusaetzlichem Mischer, NaN = gemeinsamer LO
@@ -215,10 +215,6 @@ for ch = CH
         for li = 1:numel(P.LO_NAMES)
             outFile = gearboxphy.paths.resultsDir(sprintf('%sdbfdac_distance_%s_%s_%s.mat', ...
                 P.RESULT_PREFIX, ch.name, P.LO_NAMES(li), dacModel));
-            if P.SKIP_EXISTING && localDone(outFile, CFG, lev, levCommon)
-                fprintf('\n======== %s liegt vor, uebersprungen ========\n', outFile);
-                continue
-            end
             fprintf('\n======== digital, %s / %s / %s ========\n', ch.name, P.LO_NAMES(li), dacModel);
             t0 = tic;
             v = struct('name', "dbf", 'data', ch.digBase, 'mode', "multiplexing", 'arch', "digital", ...
@@ -234,6 +230,13 @@ for ch = CH
                 arrayfun(@(k) sprintf("%s_dac%d_common", ch.digBase, k), levCommon), ...
                 arrayfun(@(k) sprintf("%s_dac%d", ch.digBase, k), lev)];
             fp = localGridFp("dbfdac_distance_digital/v1", CFG, v, hw, dataNames);
+            % Ueberspringen nur mit passendem Fingerabdruck (seit 2026-10-15):
+            % eine Datei mit anderen Hardwaremodellen gilt als nicht fertig.
+            if P.SKIP_EXISTING && localDone(outFile, CFG, lev, levCommon) ...
+                    && gearboxphy.data.fingerprintMatches(string(outFile), fp)
+                fprintf('\n======== %s liegt vor, uebersprungen ========\n', outFile);
+                continue
+            end
             if gearboxphy.data.fetchFromStore(fp, outFile)
                 fprintf('   schon gerechnet (%s) -- uebernommen\n', fp);
                 continue
@@ -422,17 +425,21 @@ end
 function hw = localHw(name, adcDefault)
 %LOCALHW  Modellsatz zu einem Namen aus P.DAC_MODELS.
 %   "analytic", "analytic_1V", "survey": NUR das DAC-Leistungsmodell wechselt,
-%       LNA und ADC bleiben bei den Modellen der Dissertation (fom_bandwidth,
-%       P.ADC_MODEL). So sind alle bisherigen Ergebnisdateien gerechnet.
+%       LNA und ADC sind die Standards (seit 2026-10-15: LNA fom_floor,
+%       ADC P.ADC_MODEL = quantile5). Ergebnisdateien von vor dem
+%       2026-10-15 sind mit LNA fom_bandwidth, ADC envelope, B_max = 0.1*f_c
+%       und gemeinsamem LO gerechnet; ihr Fingerabdruck passt nicht mehr,
+%       sie werden neu gerechnet.
 %   "hw_new": die survey-gestuetzten Modelle fuer alle drei Komponenten --
-%       LNA "envelope", ADC "quantile5", DAC "survey". Das ist der Satz, den
-%       der Sammelschalter hardwareModel = "new" setzt
-%       (docs/HARDWARE_MODEL_SWITCH.md, Zweig worktree-hardware-model-switch);
-%       hier ueber die drei Einzelschalter, damit es ohne den Zweig laeuft.
-%   PA, LO und Mischer sind in beiden Faellen dieselben.
+%       LNA "envelope", ADC "quantile5", DAC "survey". Seit 2026-10-15 ist
+%       das der Standardsatz mit dem LNA der Survey-Huelle statt fom_floor;
+%       B_max und LO wie bei allen Saetzen (Standard, LO als Achse
+%       P.LO_NAMES). NICHT gleich hardwareModel = "new".
+%   PA, Mischer und P_LO sind in allen Faellen dieselben.
 switch string(name)
     case {"analytic", "analytic_1V", "survey"}
-        hw = struct('name', string(name), 'lna', "fom_bandwidth", 'adc', string(adcDefault), 'dac', string(name));
+        hw = struct('name', string(name), 'lna', gearboxphy.physics.hardwareModelPreset("new").lnaPowerModel, ...
+                    'adc', string(adcDefault), 'dac', string(name));
     case "hw_new"
         hw = struct('name', "hw_new", 'lna', "envelope", 'adc', "quantile5", 'dac', "survey");
     otherwise

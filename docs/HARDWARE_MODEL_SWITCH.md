@@ -33,28 +33,53 @@ Hinweise zu den Festlegungen:
   (digitale Arrays). SISO und analoges Beamforming bleiben unberührt. Der
   Pufferwert lässt sich mit `loDistPowerPerMixer` überschreiben.
 
-## Alte Ergebnisse und bestehende Studien
+## Alle Studien rechnen mit den neuen Modellen (seit 2026-10-15)
 
-Alle Ergebnisse vor dem 2026-10-15 sind mit dem Modellsatz der Dissertation
-gerechnet. Jede Studie, die es zu dem Zeitpunkt gab, baut ihr Szenario
-deshalb mit dem alten Satz, damit ihre gespeicherten Ergebnisse gültig und
-fortsetzbar bleiben:
-
-```matlab
-oldModels = gearboxphy.sweep.oldModelArgs();
-s = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', 50, ...);
-```
-
-`oldModelArgs` steht vorne; bei doppelt übergebenen Namen gilt in
-`makeScenarioConfig` der letzte, sodass die Schalter, die eine Studie selbst
-setzt (z. B. `lnaPowerModel` in der LNA-Studie), weiterhin gewinnen.
-
-Festgenagelt: `run_sweep.m`, `studies/beamforming/*`,
+Nutzerentscheidung: alle Untersuchungen rechnen ausschliesslich mit dem
+neuen Satz. Die rechnenden Treiber (`run_sweep.m`, `studies/beamforming/*`,
 `studies/mimo_comparison/*`, `studies/lna/*`, `studies/common/bf_arch_scenario.m`
-(damit `analog_bf` und `digital_bf_dac`), `studies/dac_power_model/*`, dazu
-die Regressionstests (Golden Master, `GearsTest`, `OperatingPointTest`,
-`ResultStoreTest`). Wer eine dieser Studien mit den neuen Modellen rechnen
-will, entfernt dort `oldModels{:}` und braucht einen neuen Ergebnisordner.
+und damit `analog_bf` und `digital_bf_dac`, `studies/dac_power_model/*`)
+uebergeben keinen alten Modellsatz mehr, und ihre eigenen Rueckfaelle auf
+alte Modelle sind entfernt:
+
+- `bf_arch_scenario`: ohne `dacModel`/`lnaModel`/`adcModel` gilt der
+  Standard (vorher `analytic`/`fom_bandwidth`).
+- `run_dbf_dac_distance`: `P.ADC_MODEL = "quantile5"`, und die Saetze
+  `analytic`/`analytic_1V`/`survey` nehmen den Standard-LNA `fom_floor`.
+  `hw_new` ist dort jetzt „Standard mit LNA `envelope`“, NICHT `"new"`.
+- `run_mimo_comparison_distance`: `LO_MODEL = "per_mixer"` (der gemeinsame
+  LO bleibt als Option).
+- LNA-Studie: der Fall `eta01` setzt `bandwidthModel="eta"` ausdruecklich,
+  sonst waere er still zur Kanalbandbreite geworden.
+
+Was eine Modellvergleichsstudie ausdruecklich variiert (LNA-Modelle in
+`lna`, DAC-Modelle in `dac_power_model` und `digital_bf_dac`, ADC-Modelle in
+`analog_bf`), bleibt so; alles andere ist neu.
+
+**Alte Ergebnisse werden nicht weiterverwendet.** Bis zum 2026-10-15 hielt
+`runSweep` eine Ergebnisdatei fuer fertig, wenn Raten, Distanz und
+Antennenkonfigurationen passten - die Modelle zaehlten nicht, und
+Checkpoints waren nur nach Index geordnet. Ein umgestellter Treiber haette
+in seinem alten Ordner also alte Ergebnisse uebersprungen und halbe alte
+Checkpoints weiterverwendet. Jetzt:
+
+- `runSweep` ueberspringt nur, wenn zusaetzlich der gespeicherte
+  `resultFingerprint` zum aktuellen passt (`+data/fingerprintMatches.m`).
+  Dateien ohne Fingerabdruck gelten als veraltet.
+- Checkpoints sind an den Fingerabdruck ihres Laufs gebunden
+  (`+data/claimCheckpoints.m`); fremde werden mit Warnung verworfen.
+- Die Distanz-Studien (MIMO-Vergleich, analoges BF, gemischtes BF,
+  DAC-Studie) ueberspringen ebenfalls nur bei passendem Fingerabdruck.
+
+Die alten Ergebnisse bleiben in `results/` liegen, bis der neue Lauf sie
+ueberschreibt. Jede Studie muss neu gerechnet werden (HPC).
+
+**Weiter mit dem alten Satz** (`gearboxphy.sweep.oldModelArgs()`), weil sie
+den Code bitgenau gegen gespeicherte alte Ergebnisse pruefen: die
+Regressionstests (Golden Master, `GearsTest`, `OperatingPointTest`,
+`ResultStoreTest`) und die Regressionsteile von `validate_mimo_comparison`
+und `validate_lna_comparison`. Ausserdem `studies/hardware_models/`, die alt
+gegen neu vergleicht.
 
 ## Sammelschalter `hardwareModel`
 
@@ -88,11 +113,11 @@ s = gearboxphy.sweep.makeScenarioConfig('hardwareModel', "old");
 
 ## Stand
 
-- 2026-10-15: Standards umgestellt, bestehende Studien festgenagelt.
-  Unit-Suite 112/112.
+- 2026-10-15: Standards umgestellt; am selben Tag alle rechnenden Studien
+  auf den neuen Satz umgestellt und die Ueberspring-Logik an den
+  Fingerabdruck gebunden.
 - `studies/hardware_models/` vergleicht in der SISO-Gearbox `old` gegen
   `new` und je eine Festlegung allein (`lna_only`, `adc_only`, `dac_only`,
   `bw_only`); der HPC-Lauf steht aus.
-- Der Modellsatz `hw_new` in `studies/digital_bf_dac/` ist älter als diese
-  Entscheidungen (LNA `envelope`, ADC `quantile5`, DAC `survey`, LO als
-  eigene Achse, B_max = 0,1·f_c) und entspricht NICHT `"new"`.
+- Der Modellsatz `hw_new` in `studies/digital_bf_dac/` ist der Standard mit
+  LNA `envelope` statt `fom_floor` und entspricht NICHT `"new"`.

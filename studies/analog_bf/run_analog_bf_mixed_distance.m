@@ -176,10 +176,6 @@ for lc = LO_CASES
         v.lo = lc.model; v.loPower = lc.power;       % bf_arch_scenario liest beides
         dataDir = gearboxphy.paths.dataDir(v.data);
         outFile = gearboxphy.paths.resultsDir(sprintf('%sabfmix_distance_%s_%s.mat', RESULT_PREFIX, v.name, lc.tag));
-        if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) && localUpToDate(outFile, dataDir)
-            fprintf('\n======== %s / %s: liegt vor, uebersprungen ========\n', v.name, lc.tag);
-            continue
-        end
         % WIEDERVERWENDEN STATT NEU RECHNEN -- siehe +data/gridFingerprint.m.
         % Derselbe Variablensatz wie abf_distance, aber eine eigene Form:
         % diese Studie mischt die Architekturen, und v traegt dafuer
@@ -188,6 +184,12 @@ for lc = LO_CASES
         fp = gearboxphy.data.gridFingerprint("abfmix_distance/v1", ...
             @(d) bf_arch_scenario(d, CFG, v, dataDir, ADC_MODEL, ...
                 arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false)), CFG);
+        % Ueberspringen nur mit passendem Fingerabdruck (seit 2026-10-15).
+        if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) && localUpToDate(outFile, dataDir) ...
+                && gearboxphy.data.fingerprintMatches(string(outFile), fp)
+            fprintf('\n======== %s / %s: liegt vor, uebersprungen ========\n', v.name, lc.tag);
+            continue
+        end
         if gearboxphy.data.fetchFromStore(fp, outFile)
             fprintf('\n======== %s / %s: schon gerechnet (%s), uebernommen ========\n', ...
                 v.name, lc.tag, fp);

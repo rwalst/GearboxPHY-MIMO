@@ -32,8 +32,7 @@ for d = distanceVec
     resultsDir = gearboxphy.paths.resultsDir(sprintf('beamforming_d%g_allgears', d));
     fprintf('\n======== d = %g m -> %s ========\n', d, resultsDir);
     t0 = tic;
-    oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
-    scenario = gearboxphy.sweep.makeScenarioConfig(oldModels{:},  ...
+    scenario = gearboxphy.sweep.makeScenarioConfig( ...
         'distance', d, 'RVec', RVec, 'fcVec', fcVec, ...
         'antennaMode', "beamforming", 'beamformingConfigs', configs);
     gearboxphy.sweep.runSweep(scenario, 'resultsDir', resultsDir, 'useParallel', false);
