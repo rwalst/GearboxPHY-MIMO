@@ -38,18 +38,31 @@ nBad = sum([res.Failed]) + sum([res.Incomplete]);
 fprintf('  %d tests, %d failed/incomplete\n', numel(res), nBad);
 fail = fail + (nBad > 0);
 
-%% L2: bit-exact regression of the default ------------------------------
-fprintf('\n=== L2 default LNA model reproduces stored SISO results bit for bit ===\n');
+%% L2: bit-exact regression of the old model set -----------------------
+% REFERENCE: the LNA study's own SISO case with the dissertation LNA and
+% B_max = 0.1*f_c, results/lna/siso_eta01_fom_bandwidth_d50/ - computed with
+% exactly the old model set, versioned in the repo, and kept as reference
+% (results/lna is not archived; the new runs go to results/lna_newhw).
+% Until 2026-10-15 this section named results/<file>.mat, which has not
+% existed since the cleanup of 2026-10-02: all four cases printed [skip]
+% and L2 reported success without comparing anything. Now a missing
+% reference is a FAIL, and zero checked cases is a FAIL.
+fprintf('\n=== L2 old model set reproduces stored SISO results bit for bit ===\n');
+REF = 'lna/siso_eta01_fom_bandwidth_d50';
 CASES = { ...
-  'results/qam_M256_fc28GHz.mat',          gearboxphy.gears.qamGear(),            256,  28e9; ...
-  'results/naqam_M1024_fc2.4GHz.mat',      gearboxphy.gears.naQamGear(),          1024, 2.4e9; ...
-  'results/zxm_M2_fc8GHz.mat',             gearboxphy.gears.zxmGear(),            2,    8e9; ...
-  'results/pulseenergy_M1_fc2.4GHz.mat',   gearboxphy.gears.pulseGear("Energy"),  1,    2.4e9};
+  'qam_M256_fc28GHz.mat',          gearboxphy.gears.qamGear(),            256,  28e9; ...
+  'naqam_M1024_fc2.4GHz.mat',      gearboxphy.gears.naQamGear(),          1024, 2.4e9; ...
+  'zxm_M2_fc8GHz.mat',             gearboxphy.gears.zxmGear(),            2,    8e9; ...
+  'pulseenergy_M1_fc2.4GHz.mat',   gearboxphy.gears.pulseGear("Energy"),  1,    2.4e9};
+nChecked = 0;
 for k = 1:size(CASES, 1)
-    if ~isfile(CASES{k,1})
-        fprintf('  [skip] %s missing on this machine\n', CASES{k,1});
+    file = localRefFile(fullfile(REF, CASES{k,1}));
+    if file == ""
+        fprintf('  [FAIL] %s/%s missing (neither results/_oldhw/ nor results/)\n', REF, CASES{k,1});
+        fail = fail + 1;
         continue
     end
+    CASES{k,1} = char(file);
     S = load(CASES{k,1});
     gear = CASES{k,2}; order = CASES{k,3}; fc = CASES{k,4};
     siso = isfield(S, 'antennaConfigsUsed') && S.antennaConfigsUsed{1}.N_t == 1 ...
@@ -100,8 +113,13 @@ for k = 1:size(CASES, 1)
     same = isequal(E(1, fin), E(2, fin));
     ok = any(fin) && worst < 1e-12 && same;
     fail = fail + ~ok;
+    nChecked = nChecked + any(fin);
     fprintf('  [%s] %-14s %4g GHz  max rel. dev. to stored %.2e, default == explicit: %d (%d points)\n', ...
         tern(ok,' OK ','FAIL'), gear.name, fc/1e9, worst, same, sum(fin));
+end
+if nChecked == 0
+    fprintf('  [FAIL] L2 compared nothing - a regression without a reference is no regression\n');
+    fail = fail + 1;
 end
 
 %% L3: physics per point ------------------------------------------------
@@ -201,4 +219,15 @@ fprintf('\nAll checks passed. Next: run_lna_comparison on the HPC.\n');
 
 function s = tern(c, a, b)
 if c, s = a; else, s = b; end
+end
+
+function file = localRefFile(rel)
+%LOCALREFFILE  A stored reference result: the archive of the old model set
+%   first (results/_oldhw/<rel>, archive_oldhw_results), then the live
+%   results folder. "" if neither exists.
+file = "";
+for cand = [string(fullfile(gearboxphy.paths.resultsDir('_oldhw'), rel)), ...
+            string(fullfile(gearboxphy.paths.resultsDir(''), rel))]
+    if isfile(cand), file = cand; return, end
+end
 end
