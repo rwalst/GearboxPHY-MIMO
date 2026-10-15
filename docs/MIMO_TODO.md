@@ -6,18 +6,51 @@ Multiplexing, digitales Beamforming oder analoges Beamforming — über drei
 Kanäle (LOS, Rice, Rayleigh) und die zugehörigen Wandler- und
 Phasenschiebermodelle.
 
-Stand: 2026-10-13 (`QuantizedMimoMI e1a72e2`, `GearboxPHY-MIMO 1ad2e4c`).
+Stand: 2026-10-15 (`QuantizedMimoMI 12213cc`, `GearboxPHY-MIMO a83809c`).
 Diese Datei ist die Übersicht. Begründungen, Messwerte und Herleitungen
 stehen in den Commits und den Dokumenten aus Abschnitt 6.
+
+> ### ⚠ Jeder Messwert in dieser Datei gehört zum ALTEN Modellsatz
+>
+> Am 2026-10-15 wurden die Hardwaremodelle umgestellt. Alle Zahlen hier —
+> d\*, K\*, die Analog-BF-Schnittdistanzen, die DAC-Prozente, die
+> Gangwahl — sind mit dem **alten** Satz gerechnet:
+>
+> | | alt (diese Datei) | neu (Standard seit 2026-10-15) |
+> |---|---|---|
+> | LNA | `fom_bandwidth` | `fom_floor` |
+> | ADC | `envelope` (0,67 fJ) | `quantile5` (3,17 fJ) |
+> | DAC | `analytic` (3 V) | `survey` |
+> | LO-Verteilung | `shared` | `per_mixer` |
+> | B_max | 0,1·f_c (240 / 800 / 2800 MHz) | ein Kanal (20 / 100 / 400 MHz) |
+>
+> Die Umstellung steckt in `hardwareModelPreset`. PR #2 (`81bd77f`) machte
+> den neuen Satz zur Vorgabe und hielt zunächst jeden Treiber per
+> `oldModelArgs()` auf dem alten; PR #4 (`a83809c`, **gemergt**) hat diesen
+> Pin aus allen rechnenden Studien entfernt. **Alle Gearbox-Ergebnisse
+> müssen damit neu gerechnet werden** — ihr `resultFingerprint` passt nicht
+> mehr, und `runSweep` überspringt eine fertige Datei seit PR #4 nur noch
+> bei passendem Fingerabdruck (Checkpoints ebenso, `+data/claimCheckpoints.m`).
+> Ein Treiber übernimmt also keine alten Ergebnisse mehr als „fertig".
+>
+> **Die Zahlen bleiben trotzdem gültig — als der eine Arm eines Vergleichs.**
+> Nach der Neurechnung liegen zwei vollständige Sätze auf demselben Raster;
+> das ist für die ganze MIMO-Matrix, was `run_hw_comparison` für SISO macht.
+> Verglichen werden darf nur innerhalb eines Satzes. Wer eine Zahl von hier
+> neben eine neu gerechnete stellt, vergleicht zwei Dinge gleichzeitig.
+>
+> Die MI-Kurven in `data/SE_data*` sind **nicht** betroffen — sie sind
+> informationstheoretisch und kennen keine Hardware.
 
 ---
 
 ## 1. Die Auswertungen — was am Ende dasteht
 
 Diese Auswertungen sind der Zweck, die Läufe sind das Mittel. Die Zuordnung
-ist **nicht** eins zu eins: 3a speist sechs Auswertungen, 3b vier, und drei
-Läufe speisen bisher gar keine. Abschnitt 3.4 stellt beide Richtungen
-gegenüber.
+ist **nicht** eins zu eins: 3a speist sechs Auswertungen, 3b vier. Seit dem
+2026-10-15 hat jeder Lauf einen Abnehmer; offen ist die andere Richtung —
+zwei Auswertungen warten noch auf ihre Eingangsdaten. Abschnitt 3.4 stellt
+beide Richtungen gegenüber.
 
 **Gemeinsames Maß.** Alle Auswertungen rechnen in **E_bit [J/bit]** und
 bilden je Zelle das **Minimum über (M, N)** — die Hüllkurve, denn genau das
@@ -58,17 +91,20 @@ drei GF-Folien (34, 36, 37) aus demselben Material neu.
 `results/abfmix_figures/` (Mischformen). Alle Auswertungen sind reine
 Nachbearbeitung — Sekunden, kein Pool, dürfen am Arbeitsplatz laufen.
 
-**Was sie am 2026-10-15 ergeben haben** (alles unter
-`loDistributionModel = "shared"`, siehe Abschnitt 5):
+**Was sie am 2026-10-15 ergeben haben** — **alter Modellsatz** (siehe
+Kasten oben), alles unter `loDistributionModel = "shared"`:
 
 | | |
 |---|---|
 | K\* | **15,2 (11,8 dB)** bei 56 m und 1 Gbit/s |
-| d\* bei 1 Gbit/s | 721 m (K = 0, `fixedB`), 170 m (`alphabetB`), 66 m (K = 3), 51 m (K = 30), 46 m (Rang 1) |
-| d\* bei 1 Mbit/s | keine, außer Rang 1 (1006 m) — darunter wählen beide Modi N = 1 und sind dasselbe System |
+| d\* bei 1 Gbit/s | **667 m** (K = 0, MUX `scaledB` ↔ BF `fixedB` — die Paarung nach E8), 170 m (`alphabetB`), 66 m (K = 3), 51 m (K = 30), 46 m (Rang 1). Gegenprobe mit MUX unter `fixedB`: 721 m |
+| d\* bei 1 Mbit/s | keine, außer Rang 1 (1008 m) — darunter wählen beide Modi N = 1 und sind dasselbe System |
 | ADC-Regel | `scaledB` gegen `fixedB`: Median **+0,00 %**, in 25–36 % der Punkte besser, schlechtester Fall +8,7 % |
 | Gangwahl | bei 5 km nimmt QAM-BF 65 von 88 Ratenpunkten, bei 50 m **gar keinen** |
 | DAC (Teilstand) | endlicher DAC kostet bis **+13,4 %** (`analytic`) bzw. +6,7 % (`analytic_1V`), Kanal `losd` |
+| analoges BF, d\* | **316 m** (1 Mbit/s) bzw. **56 m** (1 Gbit/s) bei passiv kompensiertem Phasenschieber, LOS. Mit **aktivem** Phasenschieber: **nie**, an keiner Distanz, bei keiner Rate, in keinem Kanal |
+| analoges BF, bestes q | 0,39 bei 10 km (1 Mbit/s), 0,56 bei 1,8 km (1 Gbit/s) |
+| LO-Aufschlag auf d\* | **keine Verschiebung** — bei d\* wählt die digitale Seite N = 1…2, und (n−1)·P_buf ist dort null |
 
 **Ein Vorbehalt steckt in fast jeder dieser Zahlen:** bei 1 Gbit/s sitzt ab
 etwa 1 km ein Modus am größten verfügbaren N. Die Auswertung markiert das
@@ -79,6 +115,10 @@ von der Ergebnisseite.
 
 ## 2. Was gerechnet ist
 
+> **Alle Gearbox-Zahlen dieses Abschnitts: alter Modellsatz** (Kasten oben).
+> Die Dateien liegen und sind vollständig, aber sie werden mit der Migration
+> neu gerechnet. Die MI-Kurven sind nicht betroffen.
+
 **MI-Kurven (QuantizedMimoMI, `qam/results/`) — 1 147 Dateien in 31
 Ordnern, vollständig (seit 2026-10-15).**
 
@@ -88,9 +128,9 @@ Ordnern, vollständig (seit 2026-10-15).**
 | MUX | Rayleigh K = 0 | `alphabetB` | 15/15 (5 nicht rechenbar, B = 27…67) |
 | MUX | Rice K = 3, 30 | `scaledB` | **20/20 je K** (die letzten zwei am 2026-10-15) |
 | MUX | Rang 1 (K = ∞) | `scaledB` | 20/20 |
-| digitales BF | Rayleigh K = 0 | `fixedB`, `scaledB` | 36/36 |
+| digitales BF | Rayleigh K = 0 | `fixedB` (die `scaledB`-Kurven liegen noch da, E8) | 36/36 |
 | digitales BF | Rice K = 3, 30 | `fixedB` | 20/20 je K |
-| ideales BF | AWGN + Gewinn | `fixedB`, `scaledB` | 36/36 |
+| ideales BF | AWGN + Gewinn | `fixedB` (wie oben, E8) | 36/36 |
 | analoges BF | alle vier K | `fixedB` | 20/20 je K |
 
 **DAC-Quantisierung am Sender — alle 24 Ordner vollständig.**
@@ -100,15 +140,15 @@ ADC hinter dem Kombinierer, LOS mit einem ADC je Antenne, Rayleigh), beim
 Rayleigh-Fall zusätzlich über K = 3 und 30. Zusammen 480 Rice-Dateien in
 den `bf_rayleigh_dac*`-Familien.
 
-**Gearbox-Seite — 3a und 3b fertig, Schritt 3 und 4 unterwegs.**
+**Gearbox-Seite — 3a, 3b und Schritt 4 fertig, Schritt 3 unterwegs.**
 Stand 2026-10-15, gemessen:
 
 | Lauf | Dateien | Stand |
 |---|---|---|
 | **3b** `cmp_distance_*.mat` | **12 von 12** | ✓ fertig, **0 Löcher** (`findFeasibilityHoles` über alle), `CFG.Ns = [1 2 4 8 16]`, AP7 und `resultFingerprint` vorhanden |
 | **3a** `cmp_<variante>_d<d>/` | **21 von 21** | ✓ fertig (7 Varianten × 3 Distanzen) |
-| Schritt 3 `dbfdac_*` / `abfdac_*` | 4 von 30 / 6 von 36 | läuft; `dacLevels = [0 1 2 3]` — der K=0-Fix wirkt |
-| Schritt 4 `abf_distance_*` | 2 von 20 | läuft |
+| Schritt 3 `dbfdac_*` / `abfdac_*` | 11 von 30 / 9 von 36 | läuft; `dacLevels = [0 1 2 3]` — der K=0-Fix wirkt. Fertig: Kanal `losd` (6/6) und die analogen `abf_*` (9/9); `los` steht bei 5/6, die drei Rice-Kanäle `ray`/`ray3`/`ray30` bei 0 von 18 bzw. 0 von 27 |
+| **Schritt 4** `abf_distance_*` | **38 von 38** | ✓ fertig **mit dem alten Satz**, 19 Varianten × 2 ADC-Modelle. Neu sind es **19** Dateien: `ADC_MODELS` ist seit dem 2026-10-15 nur noch `quantile5`, die `_envelope`-Hälfte entfällt. `analyze_analog_bf` gelaufen, keine Warnung (vorher stand hier „2 von 20" — die 20 war falsch gezählt) |
 | Auswertungen | 11 Abbildungen in `cmp_figures/` | 5 gelaufen, keine Warnung |
 
 Alle Ergebnisse der *vorherigen* Läufe wurden am selben Tag gelöscht (333
@@ -176,7 +216,7 @@ heute:
 | Ordner unter `data/` | N heute | N nach dem Export |
 |---|---|---|
 | `SE_data_mux_scaledB_K3/_K30` | 1, 2, 4 | 1, 2, 4, 8, 16 |
-| `SE_data_bf_scaledB_K3/_K30` | 1, 2, 4 | wird zu `SE_data_bf_fixedB_K3/_K30` (E8), 1…16 |
+| `SE_data_bf_scaledB_K3/_K30` | 1, 2, 4 | wurde zu `SE_data_bf_fixedB_K3/_K30` (E8), 1…16 |
 | `SE_data_abf_fixedB_K3/_K30/_KInf` | 1…16 | unverändert |
 
 **Was das freischaltet:** `analyze_bf_vs_mux_qam` brauchte `capN = 4`, weil
@@ -197,11 +237,11 @@ Dateien zeigen keine solche Verletzung.
 
 | # | Schritt | Was gegen was | Umfang |
 |---|---|---|---|
-| 1 | `export_mimo_comparison_curves` | *vergleicht nichts* — legt die Vergleichsbasis: sechs Kurvenordner MUX / BF / ideales BF × `fixedB` / `scaledB`, dazu fünf Rice-Ordner | **✓ gelaufen 2026-10-15** (`079372c`): 12 Ordner, keine Warnung. `SE_data_mux_scaledB_K3/_K30` von 8 auf 16 Kurven (N bis 16), `SE_data_bf_fixedB_K3/_K30` neu (= Deckelungsreferenz für Schritt 2), `SE_data_bf_scaledB_K3/_K30` gelöscht (vor E8). Alle Kurven nach E12 gedeckelt |
+| 1 | `export_mimo_comparison_curves` | *vergleicht nichts* — legt die Vergleichsbasis: fünf Kurvenordner — MUX × `fixedB`/`scaledB`/`alphabetB`, BF und ideales BF nur `fixedB` (E8) — dazu fünf Rice-Ordner | **✓ gelaufen 2026-10-15** (`079372c`): 12 Ordner, keine Warnung. `SE_data_mux_scaledB_K3/_K30` von 8 auf 16 Kurven (N bis 16), `SE_data_bf_fixedB_K3/_K30` neu (= Deckelungsreferenz für Schritt 2), `SE_data_bf_scaledB_K3/_K30` gelöscht (vor E8). Alle Kurven nach E12 gedeckelt |
 | 2 | `export_dbf_dac_curves` | *vergleicht nichts* — je DAC-Stufe ein Ordner, damit Schritt 3 die Stufen gegeneinander stellen kann | **✓ gelaufen 2026-10-15** (`9ca8ce9`): 41 Ordner, keine Warnung, beide Deckelungen wirksam (E12 an der Alphabetgrenze, E4 gegen die Ideal-DAC-Kurve). Dabei einen Fehler behoben, der **alle 24 K=0-Ordner** bei jedem Lauf übersprang — siehe unten |
-| 3 | `run_dbf_dac_distance` | **idealer DAC gegen 4 endliche Stufen** (plus Minimum über die Stufen), dazu gemeinsame gegen antennenweise Aussteuerung, 3 DAC-Leistungsmodelle, 2 LO-Fälle — über die Distanz. Die analogen Varianten laufen als Referenz mit, weil das DAC-Modell auch sie trifft | 25 Worker; rechnet die 18 vorhandenen Dateien neu (E9) und die Kanäle `ray3`/`ray30` |
-| 4 | `run_analog_bf_distance` | **analoges gegen digitales BF bei gleicher Kurve**: 3 Phasenschieber-Varianten (aktiv / passiv kompensiert / passiv mit Strafe) gegen die digitale Kette mit 4 LO-Fällen (gemeinsam, 4 / 12,5 / 17 mW je Mischer), 2 ADC-Modelle | jetzt mit 9 Rice-Varianten (AP3), ~20 min mehr |
-| 5 | `run_mimo_comparison_distance` (3b) | **BF gegen MUX über die Distanz**, 12 Varianten auf *demselben* Raster: ADC-Regel (`fixedB`/`scaledB`/`alphabetB`) × Kanal (Rayleigh K = 0, Rice 3 / 30, Rang 1), bei 2 Raten und 25 Distanzen | **✓ gelaufen 2026-10-15**, 12 von 12, 0 Löcher. Offen: derselbe Lauf mit `LO_MODEL = "per_mixer"` (Abschnitt 5) |
+| 3 | `run_dbf_dac_distance` | **idealer DAC gegen 4 endliche Stufen** (plus Minimum über die Stufen), dazu gemeinsame gegen antennenweise Aussteuerung, 3 DAC-Leistungsmodelle, 2 LO-Fälle — über die Distanz. Die analogen Varianten laufen als Referenz mit, weil das DAC-Modell auch sie trifft | 25 Worker; rechnet die 18 vorhandenen Dateien neu (E9) und die Kanäle `ray3`/`ray30`. **Stand 20 von 66:** `losd` und die analogen `abf_*` fertig, `los` fast, die drei Rice-Kanäle noch nicht begonnen |
+| 4 | `run_analog_bf_distance` | **analoges gegen digitales BF bei gleicher Kurve**: 3 Phasenschieber-Varianten (aktiv / passiv kompensiert / passiv mit Strafe) gegen die digitale Kette mit 4 LO-Fällen (gemeinsam, 4 / 12,5 / 17 mW je Mischer), 2 ADC-Modelle | **✓ gelaufen 2026-10-15** (`394989d`): 38 von 38, 19 Varianten × 2 ADC-Modelle, `analyze_analog_bf` ohne Warnung. Ergebnis siehe unten |
+| 5 | `run_mimo_comparison_distance` (3b) | **BF gegen MUX über die Distanz**, 12 Varianten auf *demselben* Raster: ADC-Regel (`fixedB`/`scaledB`/`alphabetB`) × Kanal (Rayleigh K = 0, Rice 3 / 30, Rang 1), bei 2 Raten und 25 Distanzen | **gelaufen 2026-10-15**, 12 von 12, 0 Löcher — **aber mit dem alten Modellsatz, also neu zu rechnen** (PR #4 ist durch). `per_mixer` ist dabei kein eigener Lauf mehr, sondern der Standard |
 | 6 | `run_mimo_comparison_sweep` (3a) | ✓ **gelaufen**, 21 von 21 — **dasselbe BF/MUX-Paar über die volle Ratenachse** statt zwei Raten — 100 Ratenpunkte bei 50 / 500 / 5000 m, aber nur K = 0. Hier wird der Gangwechsel sichtbar, nicht in 3b | `mux_alphabetB` (kommt von selbst, sobald exportiert) — 100 Kerne, 8 h je Lauf. **Die 5 Rice-Varianten dagegen nicht:** `run_mimo_comparison_sweep.m:33` trägt eine feste Liste der sechs K = 0-Fälle, nur `mux_alphabetB` kommt bedingt dazu (Zeile 41). Wer 3a heute startet, bekommt keinen Rice-Lauf. Dafür müssen `mux_scaledB_K3/_K30/_KInf` und `bf_fixedB_K3/_K30` in `VARIANTS` — eine Codeänderung, kein Lauf |
 | 7 | `analyze_rice_comparison`, `analyze_bf_vs_mux_qam` | **q = E_bit(BF) / E_bit(MUX)** als Hüllkurve über (M, N) — jeder Modus darf seine beste Konfiguration wählen, q < 1 heißt BF günstiger. Daraus **K\***, der Rice-Faktor, ab dem BF gewinnt | **✓ gelaufen**: K\* = 15,2 bei 56 m; d\* von 721 m (Rayleigh) bis 46 m (Rang 1); das zusätzliche ADC-Bit im Median wertlos. Alles unter `shared` — siehe Abschnitt 5 |
 
@@ -280,7 +320,8 @@ Die **MI-Kurven aus 3.1 bleiben auf Windows**: ihre parallele Achse sind die
 schneller als 104 Kerne eines Barnard-Knotens (4 Wellen) — 22,4 h gegen 45 h.
 `QuantizedMimoMI` ist für den ZIH-Cluster deshalb bewusst nicht angepasst.
 
-**K\* = 15,2 bei 56 m (11,8 dB)** — gemessen am 3b-Lauf vom 2026-10-15,
+**K\* = 15,2 bei 56 m (11,8 dB)** — **alter Modellsatz** (Kasten oben),
+gemessen am 3b-Lauf vom 2026-10-15,
 `analyze_rice_comparison`. Die alte Zahl 16,5 entstand unter BF-`scaledB`
 und hat sich durch E8 wie erwartet zu kleinerem K verschoben.
 
@@ -299,6 +340,45 @@ Zahl ist eine Aussage über eine Distanz, nicht über die Studie.
 
 Und sie gilt unter `loDistributionModel = "shared"` — mit LO-Aufschlag
 verschiebt sich das Bild deutlich, siehe Abschnitt 5.
+
+**Analoges gegen digitales BF (Schritt 4, 2026-10-15).** **Alter
+Modellsatz** (Kasten oben). d\* ist die Distanz,
+ab der analog bis zum Rasterende günstiger bleibt; q = E_bit(analog) /
+E_bit(digital, gemeinsamer LO), beides Hüllkurve über (M, N). ADC-Modell
+`envelope`; `quantile5` weicht um höchstens 18 % ab (ein Fall), meist unter
+2 %.
+
+| Phasenschieber | Kanal | d\* bei 1 Mbit/s | d\* bei 1 Gbit/s | bestes q |
+|---|---|---|---|---|
+| **aktiv** | alle vier K | **keine** | **keine** | 1,00 |
+| passiv + Kompensation | LOS (ideale Kurve) | 316 m | 56 m | 0,39 / 0,56 |
+| passiv, nur Verlust | LOS (ideale Kurve) | 56 m | < 10 m | 0,37 / 0,39 |
+| passiv + Kompensation | Rayleigh K = 0 | 316 m | — (Fenster 316 m) | 0,68 / 0,94 |
+| passiv + Kompensation | Rice K = 3 / 30 / ∞ | 316 m | — (Fenster 56…316 m) | 0,53 / 0,67 |
+| passiv, nur Verlust | Rice K = 3 / 30 / ∞ | 56 m | — (Fenster 10…1778 m) | 0,53 / 0,42 |
+
+**Drei Befunde, und der erste wiegt am schwersten:**
+
+1. **Der aktive Phasenschieber macht die analoge Kette durchweg teurer** —
+   q ≥ 1,00 an jeder Distanz, bei beiden Raten, in jedem Kanal, unter beiden
+   ADC-Modellen. Was die eine Kette spart, verbraucht der Phasenschieber je
+   Element. Der gesamte analoge Vorteil hängt damit an **passiven**
+   Phasenschiebern, also an `PHASE_SHIFTER_POWER_MODEL.md`.
+2. **Bei 1 Gbit/s ist der analoge Vorteil ein Fenster, keine Halbgerade.**
+   In den gerechneten Kurven (Fall 2/AP3) steigt q am Fernende wieder weit
+   über 1 (bis 7,0 bei 10 km): ein Strom trägt die Rate dort nicht mehr,
+   16 Ströme schon. Nur die *idealen* Kurven aus Fall 1 halten analog bis
+   10 km vorn (q = 0,84…0,86).
+3. **Rice verschärft den analogen Fall monoton**, aber nur bis K = 3: bei
+   1 Mbit/s und „passiv, nur Verlust" fällt d\* von 316 m (K = 0) auf 56 m
+   (K = 3), und K = 30 und K = ∞ ändern danach nichts mehr. Das beste q geht
+   von 0,68 auf 0,53.
+
+**Eine Konsistenzprüfung, die der Lauf gratis mitliefert:** bei 1 Mbit/s
+geben Fall 1 (ideale Kurve, analytischer Gewinn N_t·N_r) und AP3 mit K = ∞
+(gerechnete Kurve, Gewinn in der Kurve) **dasselbe** d\* — 316 m bzw. 56 m
+je Phasenschieber. Bei 1 Gbit/s tun sie es nicht, und der Abstand ist groß:
+siehe Abschnitt 5.
 
 ### 3.3 Nach jeder Änderung an Sweep oder Speichern
 
@@ -319,7 +399,7 @@ das ein offener Punkt und keine Auslassung.
 | **3a** `run_mimo_comparison_sweep` | `results/cmp_<variante>_d<d>/` | BF ↔ MUX **über die Rate**; ADC-Regel `fixedB` ↔ `scaledB` | `analyze_mimo_comparison`, `analyze_adc_rule`, `analyze_adc_rule_all`, `analyze_adc_rule_curves`, `analyze_best_gear` (Teil B), `analyze_bf_vs_mux_qam` (Ratenachse) |
 | **3b** `run_mimo_comparison_distance` | `results/cmp_distance_<variante>.mat` | BF ↔ MUX **über Distanz und Kanal** (K = 0 / 3 / 30 / Rang 1) | `analyze_bf_vs_mux_qam` (**Hauptquelle**), `analyze_rice_comparison`, `analyze_best_gear` (Teil A), `analyze_mimo_comparison` (Distanzschnitt) |
 | `run_siso_vs_mimo_scaledB` | `results/cmp_sisomimo_scaledB_d<d>/` | SISO ↔ MIMO, **aufgelöst nach N** statt als Hüllkurve | `analyze_siso_vs_mimo`, `analyze_siso_vs_mimo_gf` |
-| `run_analog_bf_distance` | `results/abf_distance_<variante>_<adc>.mat` | **analoges ↔ digitales BF** bei gleicher Kurve; 3 Phasenschieber, 4 LO-Fälle, 2 ADC-Modelle | `analyze_analog_bf` |
+| `run_analog_bf_distance` | `results/abf_distance_<variante>_<adc>.mat` | **analoges ↔ digitales BF** bei gleicher Kurve; 3 Phasenschieber, 4 LO-Fälle, 2 ADC-Modelle | `analyze_analog_bf` — **✓ gelaufen** (38/38, Ergebnis in 3.2) |
 | `run_analog_bf_mixed_distance` | `results/abfmix_distance_<variante>_<lo>.mat` | gemischte Architekturen (analoger Sender ↔ digitaler Empfänger und umgekehrt) × LO-Fälle | `analyze_analog_bf_mixed` (seit 2026-10-15) — **der Lauf fehlt noch** (0 Dateien) |
 | `run_dbf_dac_distance` | `results/dbfdac_distance_*.mat`, `abfdac_distance_*.mat` | **idealer ↔ endlicher DAC** (4 Stufen), `common` ↔ `perAntenna`, 3 DAC-Leistungsmodelle | `analyze_dbf_dac` (seit 2026-10-15) |
 | `run_dbf_dac_los_newhw` | dieselben Dateinamen, Satz `hw_new` | alte ↔ survey-gestützte Hardwaremodelle im LOS-Fall | `analyze_dbf_dac`, wo `hw_new` als weitere Spalte erscheint |
@@ -330,9 +410,9 @@ fehlt, ist der **Lauf** — und für die Rayleigh-Mischfälle die Kurven
 (`SE_data_abftx_fixedB` und `SE_data_abfrx_fixedB` fehlen beide, es laufen
 also nur die fünf LOS-Varianten × 2 LO-Fälle = 10 Dateien).
 
-**Kein Abnehmer heißt nicht wertlos:** `run_dbf_dac_distance` liefert `Ebest`
-und `kBest` (beste DAC-Stufe je Punkt) schon in der Datei, die Zahlen sind
-also da. Es fehlt die Stelle, die sie zu einer Aussage zusammenzieht.
+**Was jetzt noch offen ist, ist kein Abnehmer, sondern ein Lauf:** die
+Mischformen (0 von 10 Dateien) und die drei Rice-Kanäle von Schritt 3
+(0 von 45). Beide Auswertungen stehen und warten auf Eingangsdaten.
 
 ---
 
@@ -347,10 +427,78 @@ also da. Es fehlt die Stelle, die sie zu einer Aussage zusammenzieht.
 | E3 | DAC-Leistungsmodell als Schalter mit altem Default — war schon gebaut |
 | E4 | DAC-Kurven am Ideal-DAC deckeln; Quantisierung darf nicht helfen |
 | E5 | ZXM / IR / CPM kommen nicht in die MIMO-Matrix |
-| E8 | ADC-Regel je Modus: MUX `scaledB`, digitales BF `fixedB` (ein Strom, kein log₂N) |
+| E8 | ADC-Regel je Modus: MUX `scaledB`, digitales BF `fixedB` (ein Strom, kein log₂N). **`scaledB` existiert für Beamforming nicht** — seit dem 2026-10-15 ist das überall durchgezogen, nicht mehr nur bei den Rice-Zeilen (s. u.) |
 | E9 | Gemeinsame Aussteuerung ist der Standard, `perAntenna` der Vergleich |
 | E10 | DAC-Quantisierung auch über Rice, volles Kreuzprodukt (320 Kurven, 4,6 h) |
 | E12 | MI-Kurven beim Export an der Alphabetgrenze deckeln (wie E4), nicht nur warnen — `log₂M` bei BF, `N_t·log₂M` bei MUX |
+
+**Zu E8: nachgezogen am 2026-10-15.** Die Entscheidung stand seit dem
+2026-10-12, war aber nur auf die Rice-Zeilen angewandt. `bf_scaledB` und
+`bfideal_scaledB` lebten weiter in der K=0- und der Rang-1-Zeile von
+`analyze_bf_vs_mux_qam`, in den Variantenlisten von 3a/3b, im Export und in
+den beiden MI-Treibern. Jetzt gilt in jeder Zeile: **BF trägt `fixedB`**, und
+`rule` bezeichnet durchgehend die MUX-seitige Regel.
+
+| Stelle | vorher | jetzt |
+|---|---|---|
+| `analyze_bf_vs_mux_qam`, K=0/scaledB | `mux_scaledB` ↔ `bf_scaledB` | `mux_scaledB` ↔ **`bf_fixedB`** |
+| `analyze_bf_vs_mux_qam`, Rang 1 | `mux_scaledB_KInf` ↔ `bfideal_scaledB` | `mux_scaledB_KInf` ↔ **`bfideal_fixedB`** |
+| `analyze_adc_rule`, `_all`, `_curves` | `mode ∈ {mux, bf, bfideal}` | **nur `mux`** — die Frage stellt sich sonst nicht |
+| `VARIANTS` in 3a und 3b, `analyze_mimo_comparison` | 6 Varianten | **4** |
+| `export_mimo_comparison_curves` | 7 Zeilen | **5** |
+| `runQamSweepBfIdeal`, `runQamSweepBfRayleigh` | `["fixedB" "scaledB"]` | **`"fixedB"`** |
+
+**Was sich dadurch an den Zahlen ändert** — alle folgenden Werte **alter
+Modellsatz** (Kasten oben); `analyze_bf_vs_mux_qam` nach der
+Umstellung gelaufen, 3b-Dateien unverändert:
+
+| Zeile | vorher | jetzt |
+|---|---|---|
+| K=0, MUX `scaledB` (d\* bei 1 Gbit/s) | 762 m, gegen `bf_scaledB` | **667 m**, gegen `bf_fixedB` |
+| Rang 1 (d\* bei 1 Mbit/s) | 1006 m | 1008 m |
+| K=0 `fixedB`, `alphabetB`, K=3, K=30, Rang 1 bei 1 Gbit/s | 721 / 170 / 66 / 51 / 46 m | **unverändert** |
+
+Die K=0-Zeile unter MUX-`scaledB` ist die, die sich bewegt — sie ist auch die
+einzige, deren BF-Seite getauscht wurde (die Rice-Zeilen trugen `bf_fixedB`
+schon). Sie ist jetzt **die Hauptzeile**: jeder Modus mit seiner Regel. Die
+`fixedB`-Zeile bleibt als Gegenprobe „was, wenn MUX die Bits nicht bekommt".
+
+**Die Kopfzahl geht damit aus zwei Gründen von 721 m auf 667 m**, und beide
+gehören auseinandergehalten: eine **andere Zeile** ist jetzt maßgeblich
+(721 m war die `fixedB`-Gegenprobe und ist unverändert), und diese Zeile hat
+sich **selbst** bewegt (762 → 667 m).
+
+**WARUM sie sich bewegt, nachgemessen an der Zelle, die bei d\* gewinnt
+(BF: M = 4, N = 8).** `scaledB` gibt dieser Zelle 3 ADC-Bit mehr:
+
+| d | SE-Gewinn | ADC-Anteil am Budget | E_bit |
+|---|---|---|---|
+| 422 m | +0,7 % | 0,7 % → **5,2 %** | +4,2 % |
+| 562 m | +1,1 % | 0,6 % → **4,4 %** | +3,5 % |
+| 750 m | +1,1 % | 0,5 % → **3,6 %** | +2,7 % |
+
+Die Bits heben die SE um rund ein Prozent — mehr ist nicht zu holen, es
+kommt EIN Strom an. Der Wandler kostet dafür 2^b, mal N_r Stück: der
+ADC-Anteil versechsfacht sich und E_bit steigt um 3 bis 4 %. Genau das
+zahlte die BF-Seite vorher umsonst.
+
+**Dass daraus 12 % in d\* werden, liegt an der Flachheit von q.** Im Band
+560…750 m ist dln(q)/dln(d) ≈ −0,19: ein Prozent in q ist dort rund fünf
+Prozent in der Distanz. Die (M,N)-Abdeckung ist für beide BF-Varianten
+identisch (gleiches NaN-Muster), die symmetrische Maskierung spielt also
+keine Rolle.
+
+Die Rang-1-Probe bei N = 1 hält weiter, weil dort beide Regeln zusammenfallen:
+beide Dateien liefern dieselbe q-Spanne auf vier Stellen und weichen
+untereinander um 4,2e-4 ab — Optimierer-Rauschen, dieselbe Größenordnung, die
+den 1006 → 1008-m-Versatz erklärt.
+
+**Was dadurch verwaist** (liegt noch da, wird von nichts mehr gelesen):
+`data/SE_data_bf_scaledB`, `data/SE_data_bfideal_scaledB`,
+`results/cmp_distance_bf_scaledB.mat`,
+`results/cmp_distance_bfideal_scaledB.mat` und die sechs 3a-Ordner
+`results/cmp_bf_scaledB_d{50,500,5000}` /
+`cmp_bfideal_scaledB_d{50,500,5000}`.
 
 **Offen.**
 
@@ -380,9 +528,31 @@ bestehenden Ergebnissen.
 - **ADC = Walden-Bestfall** (Median 26× optimistisch) und **DAC = 3 V**
   (rund 6× pessimistisch) — zusammen begünstigen sie digitale Architekturen.
   Schalter: `adcPowerModel = "quantile5"`, `dacPowerModel = "survey"`.
-- **LO-Verteilung im digitalen Zweig nicht berechnet** — begünstigt digital;
-  mit 12,5–17 mW je Mixer gewinnt analog ab 180–240 m. Schalter:
-  `loDistributionModel = "per_mixer"`.
+- **LO-Verteilung im digitalen Zweig nicht berechnet** — begünstigt digital.
+  Schalter: `loDistributionModel = "per_mixer"`.
+
+  **Gemessen am fertigen Schritt-4-Lauf (2026-10-15): der Aufschlag
+  verschiebt d\* NICHT.** Hier stand vorher „mit 12,5–17 mW je Mixer gewinnt
+  analog ab 180–240 m" — eine Schätzung von vor dem Lauf. Alle vier LO-Fälle
+  (gemeinsam, 4 / 12,5 / 17 mW) ergeben auf dem 25-Punkte-Raster **dasselbe**
+  d\*, in jedem geprüften Kanal und bei beiden Raten.
+
+  Der Grund ist nicht, dass der Aufschlag klein wäre, sondern **wo** er
+  greift: er ist (n−1)·P_buf, und bei d\* wählt die digitale Hüllkurve
+  N = 1 bis 2 — dort ist er null. Teuer wird er erst, wo analog ohnehin
+  schon vorn liegt:
+
+  | d | N digital | 4 mW | 12,5 mW | 17 mW |
+  |---|---|---|---|---|
+  | 1 Mbit/s, 316 m (≈ d\*) | 1 | 1,000 | 1,000 | 1,000 |
+  | 1 Mbit/s, 10 km | 8 | 1,204 | **1,442** | 1,566 |
+  | 1 Gbit/s, 56 m (≈ d\*) | 1 | 1,000 | 1,000 | 1,000 |
+  | 1 Gbit/s, 1778 m | 16 | 1,136 | **1,422** | 1,572 |
+
+  **Für BF gegen MUX (3b) gilt das nicht** — dort haben *beide* Seiten N
+  Ketten und wählen bei d\* große, aber verschiedene N. Deshalb bleibt der
+  LO-Fall für 3b wirksam (nächster Absatz) und ist nur für den
+  analog/digital-Vergleich neutral.
 
   **Der Aufschlag trifft nur die digitale Seite**, und zwar von selbst: die
   Formel ist (n_Mischer − 1)·P_buf, und eine analoge Kette hat *einen*
@@ -423,17 +593,31 @@ bestehenden Ergebnissen.
   Optimum beider Modi, der `shared`-Wert 1,127 stimmt mit ihm überein.
 
   **Konsequenz für jede Aussage über d\*:** die Schnittdistanzen aus
-  Abschnitt 1 (721 m bei Rayleigh, 46 m bei Rang 1) gelten unter
+  Abschnitt 1 (667 m bei Rayleigh, 46 m bei Rang 1) gelten unter
   `shared` — also ohne LO-Aufschlag. Mit Aufschlag verschieben sie sich
-  deutlich nach unten. Der vollständige `per_mixer`-Lauf ist vorbereitet
-  (`LO_MODEL` im CONFIG-Block von `run_mimo_comparison_distance`,
-  12 Varianten, 25 Worker, Ausgabe `cmp_distance_<variante>_permixer.mat`)
-  und noch nicht gelaufen.
+  deutlich nach unten.
 
-  Dafür trägt `run_mimo_comparison_distance` jetzt den Schalter `LO_MODEL`
-  im CONFIG-Block; die Ausgabe heißt dann
-  `cmp_distance_<variante>_permixer.mat`, die `shared`-Dateien bleiben
-  stehen und beides ist nebeneinander auswertbar.
+  **`per_mixer` ist seit dem 2026-10-15 kein eigener Lauf mehr**, sondern
+  der Standard: `hardwareModelPreset("new")` enthält
+  `loDistributionModel = "per_mixer"`, und mit PR #4 ist der
+  `oldModelArgs()`-Pin entfallen, der 3b bisher auf `shared` hielt.
+  Der Schalter `LO_MODEL` im CONFIG-Block bleibt, aber mit gedrehter
+  Bedeutung:
+
+  | `LO_MODEL` | Ausgabe |
+  |---|---|
+  | `"per_mixer"` (Standard) | `cmp_distance_<variante>.mat` — **ohne** Suffix |
+  | `"shared"` | `cmp_distance_<variante>_loshared.mat` |
+
+  Das Suffix trägt jetzt der **abweichende** Fall. Bis zum 2026-10-15 war
+  es umgekehrt (`per_mixer` bekam `_permixer`), was den Standardfall als
+  Sonderfall ausgewiesen hätte.
+
+  **Die 12 vorhandenen `cmp_distance_*.mat` werden nicht umbenannt.** Sie
+  sind mit dem *ganzen* alten Modellsatz gerechnet, nicht nur mit
+  gemeinsamem LO — ein Name `_loshared` würde sie als „neue Modelle,
+  gemeinsamer LO" ausgeben. Ihr `resultFingerprint` passt nicht mehr, sie
+  werden also neu gerechnet und überschrieben.
 - **Frequenzflacher Kanal** — ein Tap, keine Verzögerungsachse. Die
   Bandbreite ist frei und liegt am oberen Ratenende zwei bis drei
   Größenordnungen über der Kohärenzbandbreite. *(Richtung unbekannt, kein
@@ -451,6 +635,27 @@ bestehenden Ergebnissen.
   tragen die Felder nicht und sind ungedeckelt.
 - **Phasenquantisierung** `G = 1 + (N−1)·sinc²` ist gegenüber echter Rundung
   leicht pessimistisch (≤ 1,1 dB bei 1 bit) — wirkt gegen analog.
+- **Fall 1 der Analog-Studie rechnet mit den IDEALEN Kurven**
+  (`SE_data_bfideal_fixedB`, die 1×1-Dateien) — und zwar für die digitalen
+  *und* die analogen Varianten. Zwei Vereinfachungen stecken darin, beide
+  zugunsten der digitalen Seite: der Gewinn ist **analytisch** exakt
+  N_t·N_r (für Rang 1 richtig, sonst 0,6–6,8 dB zu großzügig), und
+  kombiniert wird **vor einem ADC** — das ist der *analoge* Empfänger, als
+  digitale Referenz eine Vereinfachung ohne DAC-Drehungsstrafe. Dazu kommt:
+  in diesem Lauf trägt keine Kurve DAC-Quantisierung (`sourceBdac = NaN`).
+
+  **Wie groß das ist, sagt der fertige Lauf selbst**, weil AP3 mit K = ∞
+  denselben Rang-1-Kanal über die *gerechneten* Kurven fährt:
+
+  | R | Fall 1 (ideale Kurve) | AP3, K = ∞ (gerechnet) |
+  |---|---|---|
+  | 1 Mbit/s, d\* | 316 m / 56 m | **316 m / 56 m** — gleich |
+  | 1 Gbit/s, q bei 10 km | 0,86 | **4,65** |
+
+  Bei niedriger Rate stimmen beide Wege überein, bei hoher Rate um den
+  Faktor 5,4 nicht. Jede Aussage über analoges BF bei 1 Gbit/s und großer
+  Distanz muss deshalb die **gerechneten** Kurven nennen, nicht Fall 1.
+  *(Richtung bekannt: Fall 1 begünstigt analog am Fernende.)*
 
 ---
 

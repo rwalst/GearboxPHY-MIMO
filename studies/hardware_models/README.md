@@ -9,7 +9,7 @@ siehe `docs/HARDWARE_MODEL_SWITCH.md`. Hauptergebnisse: der gewählte Gang
 |---|---|---|---|---|
 | `old` | `fom_bandwidth` | `envelope` (0,67 fJ) | `analytic` (3 V) | 0,1·f_c: 240 / 800 / 2800 MHz |
 | `new` (Standard seit 2026-10-15) | `fom_floor` | `quantile5` (3,17 fJ) | `survey` | ein Kanal: 20 / 100 / 400 MHz |
-| `lna_only`, `adc_only`, `dac_only`, `bw_only` | je EINE Festlegung neu, Rest alt | | | |
+| `lna_only`, `adc_only`, `dac_only`, `bw_only` | je EINE Festlegung neu, Rest alt (nicht gerechnet, s. u.) | | | |
 
 PA, Mischer und `P_LO` sind in allen Varianten gleich. `new` rechnet
 zusätzlich einen LO-Puffer je weiterem Mischer (`loDistributionModel =
@@ -39,13 +39,25 @@ run_hw_comparison        % HPC: nodes=1, cpus-per-task=100, mem=64G, time=04:00:
 analyze_hw_comparison
 ```
 
-Standard sind die Varianten `old` und `new`. Fuer die Zuordnung, welches
-Modell das Ergebnis bewegt, vor dem Aufruf setzen:
+Standard sind die Varianten `old` und `new` -- **und dabei bleibt es**
+(Entscheidung 2026-10-15). Gefragt ist die Gesamtwirkung des Modellsatzes,
+nicht der Beitrag jeder einzelnen Festlegung. Die vier Einzelschalter
+`lna_only`, `adc_only`, `dac_only`, `bw_only` bleiben als Moeglichkeit in
+`hw_comparison_config.m` stehen, werden aber **nicht gerechnet**:
 
 ```matlab
-VARIANTS = ["old" "new" "lna_only" "adc_only" "dac_only" "bw_only"];
+VARIANTS = ["old" "new" "lna_only" "adc_only" "dac_only" "bw_only"];   % nur falls doch gebraucht
 run_hw_comparison
 ```
+
+**`VARIANTS` kommt aus dem Basis-Workspace, und das ist eine Falle.**
+`run_hw_comparison` ist ein Skript, und drei andere Studienskripte belegen
+dieselbe Variable mit ihren eigenen Namen
+(`run_mimo_comparison_sweep.m:33`, `run_mimo_comparison_distance.m:42`,
+`analyze_mimo_comparison.m:67` -- alle mit `"mux_fixedB"` und Verwandten).
+Wer eines davon in derselben MATLAB-Sitzung laufen hatte, bekam
+`Unknown variant "mux_fixedB"` aus `hw_comparison_case`. Der Treiber prueft
+das jetzt selbst und nennt die Ursache; `clear VARIANTS` ist die Abhilfe.
 
 Der Lauf ist wiederaufnehmbar; ein Ordner mit fremdem Stempel wird nie
 ueberschrieben, sondern fuehrt zu einem Fehler.

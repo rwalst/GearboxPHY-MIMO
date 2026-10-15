@@ -108,7 +108,8 @@ liegen bei 5–15 dB, der Bereich ist also dort fein genug, wo die Antwort
 erwartet wird.
 
 **K=0 ist bereits gerechnet** — das sind exakt die vorhandenen
-`mux_scaledB`/`bf_scaledB`-Kurven. Neu zu rechnen sind nur K ∈ {3, 10, 30}, also drei
+`mux_scaledB`/`bf_fixedB`-Kurven (die BF-Seite trug damals noch `scaledB`;
+seit E8 nicht mehr). Neu zu rechnen sind nur K ∈ {3, 10, 30}, also drei
 Läufe statt vier. Jeder entspricht im Umfang dem vorhandenen MUX-scaledB-Lauf
 (die BF-Seite ist mit rund 100 s je Kurve vernachlässigbar); ein Job je
 K-Wert bleibt damit im bisherigen Zeitfenster.

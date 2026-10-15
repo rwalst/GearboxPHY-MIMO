@@ -482,7 +482,7 @@ rechnen, wie ihre Kurven reichen.
 
 | Variante | N | Anmerkung |
 |---|---|---|
-| `mux_scaledB`, `bf_fixedB`, `bf_scaledB`, `bfideal_*` | 1…16 | 20/20 Kurven, 3b gerechnet |
+| `mux_scaledB`, `bf_fixedB`, `bfideal_fixedB` | 1…16 | 20/20 Kurven, 3b gerechnet |
 | `mux_fixedB` | 1…16 | 18/20 — M=256 fehlt bei 8×8 und 16×16 |
 | `mux_alphabetB` | 1…16 | 15/20 — B > 20 ist nicht rechenbar (`alphabetGrid`) |
 | `mux_scaledB_KInf` | 1…16 exportiert | 3b noch offen |
