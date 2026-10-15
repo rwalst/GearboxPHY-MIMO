@@ -425,11 +425,12 @@ function hw = localHw(name, adcDefault)
 %       LNA und ADC bleiben bei den Modellen der Dissertation (fom_bandwidth,
 %       P.ADC_MODEL). So sind alle bisherigen Ergebnisdateien gerechnet.
 %   "hw_new": die survey-gestuetzten Modelle fuer alle drei Komponenten --
-%       LNA "envelope", ADC "quantile5", DAC "survey". Das ist der Satz, den
-%       der Sammelschalter hardwareModel = "new" setzt
-%       (docs/HARDWARE_MODEL_SWITCH.md, Zweig worktree-hardware-model-switch);
-%       hier ueber die drei Einzelschalter, damit es ohne den Zweig laeuft.
-%   PA, LO und Mischer sind in beiden Faellen dieselben.
+%       LNA "envelope", ADC "quantile5", DAC "survey"; B_max und LO wie beim
+%       Satz der Dissertation (oldModelArgs, LO als eigene Achse). Aelter
+%       als die Festlegungen vom 2026-10-15 und NICHT gleich dem
+%       Sammelschalter hardwareModel = "new" (LNA fom_floor, B_max ein
+%       Kanal, LO per_mixer; docs/HARDWARE_MODEL_SWITCH.md).
+%   PA, Mischer und P_LO sind in beiden Faellen dieselben.
 switch string(name)
     case {"analytic", "analytic_1V", "survey"}
         hw = struct('name', string(name), 'lna', "fom_bandwidth", 'adc', string(adcDefault), 'dac', string(name));
