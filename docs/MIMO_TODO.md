@@ -36,13 +36,18 @@ wie teuer SISO dort war, wo MIMO gewinnt.
 | `analyze_best_gear` | Welcher Gang und welche Antennenzahl gewinnen wo? | Teil A: gewähltes N über der Distanz je Kanal und Regel (aus 3b). Teil B: Gang-Familie über der Rate, QAM dreifach (SISO / MUX / BF) (aus 3a) | 3a + 3b |
 | `analyze_siso_vs_mimo` | Ab welcher Rate zahlen sich mehrere Ketten aus? | Umschlagpunkt je N, **nicht** als Hüllkurve (s. o.) | `run_siso_vs_mimo_scaledB` |
 | `analyze_analog_bf` | Ab welcher Distanz gewinnt analoges BF, und was kostet der Phasenschieber? | E_bit je Variante über Distanz, dazu `psShare` und `adcShare`; `abf_summary.csv` | `run_analog_bf_distance` |
-| **fehlt** | **Was kostet die endliche DAC-Auflösung?** | — | `run_dbf_dac_distance` (36 Dateien) |
+| `analyze_dbf_dac` | **Was kostet die endliche DAC-Auflösung das digitale BF, und wie stark hängt die Antwort am Leistungsmodell?** | **q = E_bit(endlich) / E_bit(ideal)**, beide als Hüllkurve über (M, N); dazu gewählte Stufe `kBest`, DAC-Anteil, antennenweise gegen gemeinsame Aussteuerung (E9), digital gegen analog | `run_dbf_dac_distance` |
 
-**Die letzte Zeile ist eine echte Lücke, nicht ein vergessener Eintrag.** Für
-`dbfdac_distance_*` und `abfdac_distance_*` gibt es **keine** Auswertung;
-`studies/digital_bf_dac/README.md` führt sie selbst als offenen Punkt. Die 36
-vorhandenen Dateien sind damit gerechnet, aber nicht ausgewertet — und der
-Lauf aus Schritt 3 in 3.2 produziert weitere, ohne dass etwas sie liest.
+**Die DAC-Auswertung gab es bis zum 2026-10-15 nicht** — 36 gerechnete
+Dateien ohne Abnehmer, von der Studie selbst als offener Punkt geführt.
+`analyze_dbf_dac` schließt das: vier Abbildungen je Rate plus `summary.csv`
+in `results/dbfdac_figures/`.
+
+Sie **weist Dateien von vor E9 ab**, und das ist der eigentliche Punkt: dort
+bedeutet `E` die antennenweise Aussteuerung, seit E9 die gemeinsame. Beide
+Formen tragen `Eideal`, `Ebest` und `kBest` — eine Prüfung auf Feldnamen
+allein merkt den Unterschied also nicht, und q wäre stillschweigend die
+Antwort auf die andere Frage. `dacScaleStandard` ist deshalb Pflichtfeld.
 
 **`analyze_siso_vs_mimo_gf`** ist keine eigene Auswertung, sondern baut die
 drei GF-Folien (34, 36, 37) aus demselben Material neu.
@@ -272,15 +277,13 @@ das ein offener Punkt und keine Auslassung.
 | `run_siso_vs_mimo_scaledB` | `results/cmp_sisomimo_scaledB_d<d>/` | SISO ↔ MIMO, **aufgelöst nach N** statt als Hüllkurve | `analyze_siso_vs_mimo`, `analyze_siso_vs_mimo_gf` |
 | `run_analog_bf_distance` | `results/abf_distance_<variante>_<adc>.mat` | **analoges ↔ digitales BF** bei gleicher Kurve; 3 Phasenschieber, 4 LO-Fälle, 2 ADC-Modelle | `analyze_analog_bf` |
 | `run_analog_bf_mixed_distance` | `results/abfmix_distance_<variante>_<lo>.mat` | gemischte Architekturen (analoger Sender ↔ digitaler Empfänger und umgekehrt) × LO-Fälle | **niemand** — noch nie gelaufen (0 Dateien), und es gibt keine Auswertung dafür |
-| `run_dbf_dac_distance` | `results/dbfdac_distance_*.mat`, `abfdac_distance_*.mat` | **idealer ↔ endlicher DAC** (4 Stufen), `common` ↔ `perAntenna`, 3 DAC-Leistungsmodelle | **niemand** — 36 Dateien, keine Auswertung (Abschnitt 1, letzte Zeile) |
-| `run_dbf_dac_los_newhw` | dieselben Dateinamen, Satz `hw_new` | alte ↔ survey-gestützte Hardwaremodelle im LOS-Fall | **niemand** (ruft `run_dbf_dac_distance` mit `CHANNELS = "losd"`) |
+| `run_dbf_dac_distance` | `results/dbfdac_distance_*.mat`, `abfdac_distance_*.mat` | **idealer ↔ endlicher DAC** (4 Stufen), `common` ↔ `perAntenna`, 3 DAC-Leistungsmodelle | `analyze_dbf_dac` (seit 2026-10-15) |
+| `run_dbf_dac_los_newhw` | dieselben Dateinamen, Satz `hw_new` | alte ↔ survey-gestützte Hardwaremodelle im LOS-Fall | `analyze_dbf_dac`, wo `hw_new` als weitere Spalte erscheint |
 
-**Die drei leeren Zellen sind die eigentliche Lücke dieses Dokuments.** Zwei
-Studien (`dbf_dac` mit 36 gerechneten Dateien, `analog_bf_mixed` mit 0)
-erzeugen Ergebnisse, die keine Auswertung liest. Für `dbf_dac` ist die
-Reihenfolge damit unlogisch: Schritt 3 in 3.2 rechnet 18 Dateien neu, ohne
-dass etwas daraus eine Abbildung macht. Entweder kommt die Auswertung dazu,
-oder der Lauf wartet, bis sie es tut.
+**Eine leere Zelle bleibt:** `run_analog_bf_mixed_distance` — nie gelaufen
+(0 Dateien) und ohne Auswertung. Für `dbf_dac` ist die Lücke seit dem
+2026-10-15 geschlossen, die Reihenfolge in 3.2 ist damit schlüssig: Schritt 3
+rechnet, und etwas liest es.
 
 **Kein Abnehmer heißt nicht wertlos:** `run_dbf_dac_distance` liefert `Ebest`
 und `kBest` (beste DAC-Stufe je Punkt) schon in der Datei, die Zahlen sind

@@ -12,6 +12,7 @@ Die analogen Varianten laufen hier nur als Vergleich mit; die Studie dazu ist
 |---|---|
 | `export_dbf_dac_curves.m` | MI-Kurven mit DAC-Quantisierung aus QuantizedMimoMI nach `data/` |
 | `run_dbf_dac_distance.m` | Distanz-Sweep: je Kanal, LO-Fall und DAC-Leistungsmodell; Minimum ueber die DAC-Stufen |
+| `analyze_dbf_dac.m` | Auswertung: q = E_bit(endlich)/E_bit(ideal), gewaehlte Stufe, Aussteuerung, digital gegen analog |
 | `run_dbf_dac_los_newhw.m` | derselbe Sweep, nur Kanal `losd`, fuer zwei Modellsaetze: Dissertation (`analytic`) und survey-gestuetzt (`hw_new`: LNA `envelope`, ADC `quantile5`, DAC `survey`) |
 | `../common/bf_arch_scenario.m` | Szenario einer Variante, gemeinsam mit `analog_bf` |
 
@@ -55,7 +56,7 @@ In QuantizedMimoMI: `qam/core/dacQuantize.m`, `runQamSweepBfLosDigitalDac`,
       uebrigen Eigenmoden, und der Empfaenger im Modell nutzt sie. Zu entscheiden: die
       exportierten Kurven am idealen DAC deckeln oder so lassen. Vor dem Export.
 - [ ] Distanz-Sweep rechnen (`run_dbf_dac_distance`).
-- [ ] Auswertung fuer `dbfdac_distance_*` (gibt es noch nicht).
+- [x] Auswertung fuer `dbfdac_distance_*`: `analyze_dbf_dac.m` (2026-10-15).
 - [ ] Mischform "Sender digital, Empfaenger analog" im Rayleigh-Kanal mit demselben Quantisierer.
 - [ ] BF/MUX-Vergleich an `minOverDacLevels` anschliessen (braucht auch `scaledB`-Kurven).
 - [ ] Ob `survey` Vorgabe des DAC-Leistungsmodells wird, ist nicht entschieden.
