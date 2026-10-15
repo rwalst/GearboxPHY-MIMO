@@ -165,8 +165,8 @@ Dateien zeigen keine solche Verletzung.
 
 | # | Schritt | Was gegen was | Umfang |
 |---|---|---|---|
-| 1 | `export_mimo_comparison_curves` | *vergleicht nichts* — legt die Vergleichsbasis: sechs Kurvenordner MUX / BF / ideales BF × `fixedB` / `scaledB`, dazu fünf Rice-Ordner | erzeugt u. a. `SE_data_bf_fixedB_K3/_K30` — **Deckelungsreferenz für Schritt 2**. Deckelt seit E12 an der Alphabetgrenze. Vorbereitet und probegelaufen am 2026-10-15: `SE_data_mux_scaledB_K3/_K30` wachsen von 8 auf 16 Kurven (N bis 16), `SE_data_bf_fixedB_K3/_K30` entstehen neu; `SE_data_bf_scaledB_K3/_K30` werden zu Waisen (vor E8) |
-| 2 | `export_dbf_dac_curves` | *vergleicht nichts* — je DAC-Stufe ein Ordner, damit Schritt 3 die Stufen gegeneinander stellen kann | 41 Ordner (25 + 16 Rice), deckelt an der Ideal-DAC-Kurve (E4) |
+| 1 | `export_mimo_comparison_curves` | *vergleicht nichts* — legt die Vergleichsbasis: sechs Kurvenordner MUX / BF / ideales BF × `fixedB` / `scaledB`, dazu fünf Rice-Ordner | **✓ gelaufen 2026-10-15** (`079372c`): 12 Ordner, keine Warnung. `SE_data_mux_scaledB_K3/_K30` von 8 auf 16 Kurven (N bis 16), `SE_data_bf_fixedB_K3/_K30` neu (= Deckelungsreferenz für Schritt 2), `SE_data_bf_scaledB_K3/_K30` gelöscht (vor E8). Alle Kurven nach E12 gedeckelt |
+| 2 | `export_dbf_dac_curves` | *vergleicht nichts* — je DAC-Stufe ein Ordner, damit Schritt 3 die Stufen gegeneinander stellen kann | **✓ gelaufen 2026-10-15** (`9ca8ce9`): 41 Ordner, keine Warnung, beide Deckelungen wirksam (E12 an der Alphabetgrenze, E4 gegen die Ideal-DAC-Kurve). Dabei einen Fehler behoben, der **alle 24 K=0-Ordner** bei jedem Lauf übersprang — siehe unten |
 | 3 | `run_dbf_dac_distance` | **idealer DAC gegen 4 endliche Stufen** (plus Minimum über die Stufen), dazu gemeinsame gegen antennenweise Aussteuerung, 3 DAC-Leistungsmodelle, 2 LO-Fälle — über die Distanz. Die analogen Varianten laufen als Referenz mit, weil das DAC-Modell auch sie trifft | 25 Worker; rechnet die 18 vorhandenen Dateien neu (E9) und die Kanäle `ray3`/`ray30` |
 | 4 | `run_analog_bf_distance` | **analoges gegen digitales BF bei gleicher Kurve**: 3 Phasenschieber-Varianten (aktiv / passiv kompensiert / passiv mit Strafe) gegen die digitale Kette mit 4 LO-Fällen (gemeinsam, 4 / 12,5 / 17 mW je Mischer), 2 ADC-Modelle | jetzt mit 9 Rice-Varianten (AP3), ~20 min mehr |
 | 5 | `run_mimo_comparison_distance` (3b) | **BF gegen MUX über die Distanz**, 11 Varianten auf *demselben* Raster: ADC-Regel (`fixedB`/`scaledB`/`alphabetB`) × Kanal (Rayleigh K = 0, Rice 3 / 30, Rang 1), bei 2 Raten und 25 Distanzen | die neuen und umbenannten Varianten |
@@ -189,6 +189,24 @@ BF-`alphabetB`-Lauf wäre bitgleich zu `bf_fixedB`.
 
 Schritt 1 **muss** vor 2 laufen, sonst warnt der Export mit
 `export:noDacCapRef` und schreibt die Rice-DAC-Kurven ungedeckelt.
+
+**Der K=0-Fehler in Schritt 2 (behoben 2026-10-15).** Der erste Lauf schrieb
+nur 17 der 41 Ordner. Ursache war kein fehlendes Datum, sondern der Test „trägt
+die Quelle dieses K überhaupt?": für K = 0 lautete er
+`dir(strrep(pattern, '*.mat', '*[0-9].mat'))` und sollte „endet auf eine
+Ziffer, also kein `_K`-Suffix" heißen. **MATLABs `dir` kennt keine
+Zeichenklassen** — es suchte wörtlich nach `[0-9]`, fand nie etwas, und
+damit wurden **alle 24 K=0-Ordner bei jedem Lauf übersprungen**. Die
+vorhandenen stammten von vor dieser Prüfung.
+
+Was das gekostet hat, über die fehlende E12-Deckelung hinaus:
+`SE_data_bf_fixedB_dac{1,2,3}_common` und
+`SE_data_bflosd_fixedB_dac{1,2,3}_common` waren **nie geschrieben worden**.
+Die gemeinsame Aussteuerung ist seit E9 der Standardfall, und
+`run_dbf_dac_distance` verweigert einen Kanal ohne diese Ordner
+(`commonIncomplete`) — der Standardfall war also nur für Stufe 0 rechenbar.
+Jetzt liegen alle vier Stufen für alle fünf Kanäle vor, je Antenne **und**
+gemeinsam.
 
 **Doppelte Rechnungen fallen jetzt weg (neu, 2026-10-14).** Sieben der elf
 Ergebnisschlüssel je 3a-Ordner hängen nicht an der Variante — die SISO-Gänge
