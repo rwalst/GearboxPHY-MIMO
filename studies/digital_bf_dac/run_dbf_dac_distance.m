@@ -431,11 +431,19 @@ function hw = localHw(name, adcDefault)
 %       und gemeinsamem LO gerechnet; ihr Fingerabdruck passt nicht mehr,
 %       sie werden neu gerechnet.
 %   "hw_new": die survey-gestuetzten Modelle fuer alle drei Komponenten --
+
 %       LNA "envelope", ADC "quantile5", DAC "survey". Seit 2026-10-15 ist
 %       das der Standardsatz mit dem LNA der Survey-Huelle statt fom_floor;
 %       B_max und LO wie bei allen Saetzen (Standard, LO als Achse
 %       P.LO_NAMES). NICHT gleich hardwareModel = "new".
 %   PA, Mischer und P_LO sind in allen Faellen dieselben.
+
+%       LNA "envelope", ADC "quantile5", DAC "survey"; B_max und LO wie beim
+%       Satz der Dissertation (oldModelArgs, LO als eigene Achse). Aelter
+%       als die Festlegungen vom 2026-10-15 und NICHT gleich dem
+%       Sammelschalter hardwareModel = "new" (LNA fom_floor, B_max ein
+%       Kanal, LO per_mixer; docs/HARDWARE_MODEL_SWITCH.md).
+
 switch string(name)
     case {"analytic", "analytic_1V", "survey"}
         hw = struct('name', string(name), 'lna', gearboxphy.physics.hardwareModelPreset("new").lnaPowerModel, ...

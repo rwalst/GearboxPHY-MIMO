@@ -72,8 +72,12 @@ Dissertation und die survey-gestuetzten fuer LNA, ADC und DAC zusammen.
 
 Ergebnis: `results/dbfdac_distance_losd_<lo>_{analytic,hw_new}.mat` und die analogen
 LOS-Varianten `results/abfdac_distance_abf_<ps>_{analytic,hw_new}.mat`. Der Modellsatz `hw_new`
-entspricht `hardwareModel = "new"` des Sammelschalters (Zweig `worktree-hardware-model-switch`),
-hier ueber die drei Einzelschalter gesetzt. PA, LO und Mischer sind in beiden Saetzen gleich.
+setzt LNA `envelope`, ADC `quantile5` und DAC `survey` ueber die drei Einzelschalter, alles
+andere bleibt beim Satz der Dissertation (die Studie baut ihr Szenario mit `oldModelArgs`):
+B_max = 0,1·f_c, LO als eigene Achse `<lo>`. Er ist aelter als die Festlegungen vom 2026-10-15
+und entspricht NICHT `hardwareModel = "new"` (dort LNA `fom_floor`, B_max = ein Kanal, LO
+`per_mixer`; siehe `docs/HARDWARE_MODEL_SWITCH.md`). `..._loShared_analytic` entspricht
+`hardwareModel = "old"`. PA, Mischer und `P_LO` sind in beiden Saetzen gleich.
 
 ## Was die Ergebnisdateien enthalten
 
