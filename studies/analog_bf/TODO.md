@@ -53,10 +53,16 @@ Phasenquantisierung nachgeprueft (beides in `docs/ANALOG_BEAMFORMING.md`).
 
 ## Studie
 
-- [ ] **Mischformen auswerten.** Schalter je Seite (`beamformingArchTx/Rx`), Treiber
-      `run_analog_bf_mixed_distance`, Kurventreiber fuer beide Rayleigh-Mischfaelle und der
-      Export sind gebaut und geprueft, aber nichts davon ist gelaufen. Es fehlt eine
-      Auswertung, die `abfmix_distance_*` neben `abf_distance_*` legt.
+- [ ] **Mischformen rechnen.** Schalter je Seite (`beamformingArchTx/Rx`), Treiber
+      `run_analog_bf_mixed_distance` und der Export sind gebaut und geprueft. Die
+      Auswertung gibt es seit dem 2026-10-15: `analyze_analog_bf_mixed.m` legt
+      `abfmix_distance_*` neben `abf_distance_*` und fragt nicht "wie teuer", sondern ob
+      die Mischform BEIDE reinen Formen schlaegt (q < 1 gegen das Minimum aus rein
+      digital und rein analog, je LO-Fall getrennt). Was fehlt, ist der Lauf -- und fuer
+      die Rayleigh-Mischfaelle die Kurven (`SE_data_abftx_fixedB`, `SE_data_abfrx_fixedB`
+      fehlen beide, damit laufen nur die fuenf LOS-Varianten).
+      Vorablauf auf einem Mini-Raster: `run_analog_bf_mixed_distance` nimmt jetzt ein
+      `over`-struct wie `run_dbf_dac_distance`.
 - [ ] **Asymmetrische Arrays** (N_t ungleich N_r) fehlen weiterhin, siehe naechster Punkt.
 - [ ] **Architektur je Seite und asymmetrische Arrays (urspruenglicher Eintrag).** Bisher sind in jeder Variante BEIDE
       Seiten analog (oder beide digital) und haben gleich viele Antennen (N x N). Nicht

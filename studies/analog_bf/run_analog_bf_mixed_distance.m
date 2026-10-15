@@ -1,4 +1,4 @@
-function run_analog_bf_mixed_distance()
+function run_analog_bf_mixed_distance(over)
 %RUN_ANALOG_BF_MIXED_DISTANCE  Mischformen: eine Seite analog, die andere
 %   digital. Zwei feste Raten, Sweep ueber die Distanz.
 %
@@ -67,7 +67,41 @@ ADC_MODEL     = "envelope";
 LO_CASES      = struct('tag', {"loShared", "lo12p5mW"}, 'model', {"", "per_mixer"}, 'power', {NaN, 12.5e-3});
 USE_PARALLEL  = ~isempty(ver('parallel'));
 SKIP_EXISTING = true;
+RESULT_PREFIX = "";                      % nur fuer Vorablaeufe
+N_WORKERS     = numel(CFG.distances);    % mehr als Distanzen bringt nichts
 %% ===================================================================
+
+% VORABLAEUFE OHNE DATEIAENDERUNG. Wie in run_dbf_dac_distance: ein
+% struct-Argument ueberschreibt einzelne Einstellungen, damit sich die ganze
+% Kette auf einem Mini-Raster pruefen laesst, bevor sie Stunden auf dem
+% Cluster kostet. Fuer den regulaeren Lauf bleibt der Aufruf ohne Argument.
+%
+%   run_analog_bf_mixed_distance(struct('distances', [50 5000], 'Ms', 4, ...
+%       'Ns', [1 2], 'N_WORKERS', 0, 'VARIANTS', "mix_txA_rxD_active", ...
+%       'LO_TAGS', "loShared", 'RESULT_PREFIX', "pre_"))
+%
+% VARIANTS und LO_TAGS filtern die Tabellen unten, alles andere sind
+% Felder von CFG oder die vier Schalter darueber.
+VARIANT_FILTER = strings(1,0); LO_FILTER = strings(1,0);
+if nargin >= 1 && isstruct(over)
+    for f = fieldnames(over).'
+        n = f{1};  val = over.(n);
+        switch n
+            case 'ADC_MODEL',     ADC_MODEL = string(val);
+            case 'SKIP_EXISTING', SKIP_EXISTING = logical(val);
+            case 'RESULT_PREFIX', RESULT_PREFIX = string(val);
+            case 'N_WORKERS',     N_WORKERS = double(val);
+            case 'VARIANTS',      VARIANT_FILTER = string(val);
+            case 'LO_TAGS',       LO_FILTER = string(val);
+            otherwise
+                assert(isfield(CFG, n), 'run_analog_bf_mixed_distance:over', ...
+                    ['Unbekannte Einstellung "%s". Erlaubt sind die Felder von CFG ' ...
+                     'sowie ADC_MODEL, SKIP_EXISTING, RESULT_PREFIX, N_WORKERS, ' ...
+                     'VARIANTS und LO_TAGS.'], n);
+                CFG.(n) = val;
+        end
+    end
+end
 
 D = "SE_data_bfideal_fixedB"; A = "analog"; G = "digital";
 % name, Datenordner, Gearbox-Modus, Architektur Tx / Rx, Phasenschieber
@@ -96,16 +130,30 @@ for k = 1:numel(RAY)
             RAY(k).data, RAY(k).name);
     end
 end
+if ~isempty(VARIANT_FILTER)
+    keep = ismember(string({V.name}), VARIANT_FILTER);
+    assert(any(keep), 'run_analog_bf_mixed_distance:over', ...
+        'VARIANTS = %s trifft keine der Varianten %s.', ...
+        strjoin(VARIANT_FILTER, ','), strjoin(string({V.name}), ','));
+    V = V(keep);
+end
+if ~isempty(LO_FILTER)
+    keep = ismember(string({LO_CASES.tag}), LO_FILTER);
+    assert(any(keep), 'run_analog_bf_mixed_distance:over', ...
+        'LO_TAGS = %s trifft keinen der Faelle %s.', ...
+        strjoin(LO_FILTER, ','), strjoin(string({LO_CASES.tag}), ','));
+    LO_CASES = LO_CASES(keep);
+end
 for k = 1:numel(V)
     assert(isfolder(gearboxphy.paths.dataDir(V(k).data)), 'run_analog_bf_mixed_distance:noData', ...
         '%s fehlt - erst export_mimo_comparison_curves ausfuehren.', V(k).data);
 end
 
-if USE_PARALLEL
+if USE_PARALLEL && N_WORKERS >= 1
     % Profil und Workerzahl kommen aus +sweep, nicht als Literal: dasselbe
     % Skript laeuft auf dem Windows-Cluster und in einem SLURM-Job auf dem
     % ZIH-Cluster, wo es kein Profil "HPCServer" gibt (+sweep/poolProfile.m).
-    nWorkers = gearboxphy.sweep.workerBudget(numel(CFG.distances));
+    nWorkers = gearboxphy.sweep.workerBudget(N_WORKERS);
     if isempty(gcp('nocreate'))
         [cl, profilQuelle] = gearboxphy.sweep.clusterFor();
         fprintf('Pool: Profil "%s" (%s), %d Worker.\n', cl.Profile, profilQuelle, nWorkers);
@@ -127,7 +175,7 @@ for lc = LO_CASES
         v = V(k);
         v.lo = lc.model; v.loPower = lc.power;       % bf_arch_scenario liest beides
         dataDir = gearboxphy.paths.dataDir(v.data);
-        outFile = gearboxphy.paths.resultsDir(sprintf('abfmix_distance_%s_%s.mat', v.name, lc.tag));
+        outFile = gearboxphy.paths.resultsDir(sprintf('%sabfmix_distance_%s_%s.mat', RESULT_PREFIX, v.name, lc.tag));
         if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) && localUpToDate(outFile, dataDir)
             fprintf('\n======== %s / %s: liegt vor, uebersprungen ========\n', v.name, lc.tag);
             continue

@@ -36,6 +36,7 @@ wie teuer SISO dort war, wo MIMO gewinnt.
 | `analyze_best_gear` | Welcher Gang und welche Antennenzahl gewinnen wo? | Teil A: gewähltes N über der Distanz je Kanal und Regel (aus 3b). Teil B: Gang-Familie über der Rate, QAM dreifach (SISO / MUX / BF) (aus 3a) | 3a + 3b |
 | `analyze_siso_vs_mimo` | Ab welcher Rate zahlen sich mehrere Ketten aus? | Umschlagpunkt je N, **nicht** als Hüllkurve (s. o.) | `run_siso_vs_mimo_scaledB` |
 | `analyze_analog_bf` | Ab welcher Distanz gewinnt analoges BF, und was kostet der Phasenschieber? | E_bit je Variante über Distanz, dazu `psShare` und `adcShare`; `abf_summary.csv` | `run_analog_bf_distance` |
+| `analyze_analog_bf_mixed` | **Lohnt es, nur EINE Seite analog zu bauen — und welche?** | **q = E_bit(beste Mischform) / min(rein digital, rein analog)**, je LO-Fall getrennt; q < 1 nur gegen das *beste* Reine ist eine Aussage. Dazu r = Sender-analog / Empfänger-analog | `run_analog_bf_mixed_distance` + die reinen Referenzen aus `run_analog_bf_distance` |
 | `analyze_dbf_dac` | **Was kostet die endliche DAC-Auflösung das digitale BF, und wie stark hängt die Antwort am Leistungsmodell?** | **q = E_bit(endlich) / E_bit(ideal)**, beide als Hüllkurve über (M, N); dazu gewählte Stufe `kBest`, DAC-Anteil, antennenweise gegen gemeinsame Aussteuerung (E9), digital gegen analog | `run_dbf_dac_distance` |
 
 **Die DAC-Auswertung gab es bis zum 2026-10-15 nicht** — 36 gerechnete
@@ -276,14 +277,15 @@ das ein offener Punkt und keine Auslassung.
 | **3b** `run_mimo_comparison_distance` | `results/cmp_distance_<variante>.mat` | BF ↔ MUX **über Distanz und Kanal** (K = 0 / 3 / 30 / Rang 1) | `analyze_bf_vs_mux_qam` (**Hauptquelle**), `analyze_rice_comparison`, `analyze_best_gear` (Teil A), `analyze_mimo_comparison` (Distanzschnitt) |
 | `run_siso_vs_mimo_scaledB` | `results/cmp_sisomimo_scaledB_d<d>/` | SISO ↔ MIMO, **aufgelöst nach N** statt als Hüllkurve | `analyze_siso_vs_mimo`, `analyze_siso_vs_mimo_gf` |
 | `run_analog_bf_distance` | `results/abf_distance_<variante>_<adc>.mat` | **analoges ↔ digitales BF** bei gleicher Kurve; 3 Phasenschieber, 4 LO-Fälle, 2 ADC-Modelle | `analyze_analog_bf` |
-| `run_analog_bf_mixed_distance` | `results/abfmix_distance_<variante>_<lo>.mat` | gemischte Architekturen (analoger Sender ↔ digitaler Empfänger und umgekehrt) × LO-Fälle | **niemand** — noch nie gelaufen (0 Dateien), und es gibt keine Auswertung dafür |
+| `run_analog_bf_mixed_distance` | `results/abfmix_distance_<variante>_<lo>.mat` | gemischte Architekturen (analoger Sender ↔ digitaler Empfänger und umgekehrt) × LO-Fälle | `analyze_analog_bf_mixed` (seit 2026-10-15) — **der Lauf fehlt noch** (0 Dateien) |
 | `run_dbf_dac_distance` | `results/dbfdac_distance_*.mat`, `abfdac_distance_*.mat` | **idealer ↔ endlicher DAC** (4 Stufen), `common` ↔ `perAntenna`, 3 DAC-Leistungsmodelle | `analyze_dbf_dac` (seit 2026-10-15) |
 | `run_dbf_dac_los_newhw` | dieselben Dateinamen, Satz `hw_new` | alte ↔ survey-gestützte Hardwaremodelle im LOS-Fall | `analyze_dbf_dac`, wo `hw_new` als weitere Spalte erscheint |
 
-**Eine leere Zelle bleibt:** `run_analog_bf_mixed_distance` — nie gelaufen
-(0 Dateien) und ohne Auswertung. Für `dbf_dac` ist die Lücke seit dem
-2026-10-15 geschlossen, die Reihenfolge in 3.2 ist damit schlüssig: Schritt 3
-rechnet, und etwas liest es.
+**Keine leere Zelle mehr.** Beide Lücken sind am 2026-10-15 geschlossen
+(`analyze_dbf_dac`, `analyze_analog_bf_mixed`). Was bei den Mischformen noch
+fehlt, ist der **Lauf** — und für die Rayleigh-Mischfälle die Kurven
+(`SE_data_abftx_fixedB` und `SE_data_abfrx_fixedB` fehlen beide, es laufen
+also nur die fünf LOS-Varianten × 2 LO-Fälle = 10 Dateien).
 
 **Kein Abnehmer heißt nicht wertlos:** `run_dbf_dac_distance` liefert `Ebest`
 und `kBest` (beste DAC-Stufe je Punkt) schon in der Datei, die Zahlen sind
