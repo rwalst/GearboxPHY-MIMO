@@ -91,10 +91,29 @@ for k = 0:3
                 % Traegt die Quelle dieses K ueberhaupt? Der K-Filter in
                 % exportToGearboxSEData wuerde sonst ALLE Dateien
                 % verwerfen und einen leeren Ordner anlegen.
+                %
+                % HIER STAND EIN FEHLER (behoben 2026-10-15): fuer K = 0
+                % lautete der Test
+                %   dir(strrep(pattern, '*.mat', '*[0-9].mat'))
+                % und sollte "endet auf eine Ziffer, also kein _K-Suffix"
+                % heissen. MATLABs dir kennt aber KEINE Zeichenklassen --
+                % es suchte woertlich nach der Zeichenfolge "[0-9]" und fand
+                % nie etwas. Damit war hasK fuer K = 0 immer falsch, und
+                % ALLE 24 Ordner der Faelle K = 0 wurden bei jedem Lauf
+                % uebersprungen: die vorhandenen stammen noch von vor dieser
+                % Pruefung und bekamen seither keine Aenderung mehr ab, auch
+                % nicht die Deckelung aus E12.
+                %
+                % Ausserdem haette '*[0-9]' selbst als Glob nicht getaugt:
+                % _K3.mat und _K30.mat enden ebenfalls auf eine Ziffer.
+                % Entschieden wird deshalb am Suffix selbst.
+                f0 = dir(fullfile(src, J(j).pattern));
                 if Kv == 0
-                    hasK = ~isempty(dir(fullfile(src, strrep(J(j).pattern, '*.mat', '*[0-9].mat'))));
+                    hatSuffix = ~cellfun(@isempty, ...
+                        regexp({f0.name}, '_K(\d+|Inf)\.mat$', 'once'));
+                    hasK = any(~hatSuffix);
                 else
-                    hasK = ~isempty(dir(fullfile(src, strrep(J(j).pattern, '.mat', sprintf('_K%g.mat', Kv)))));
+                    hasK = any(endsWith({f0.name}, sprintf('_K%g.mat', Kv)));
                 end
                 if ~hasK
                     fprintf('   %s: keine Quellkurven mit K = %g - uebersprungen.\n', name, Kv);

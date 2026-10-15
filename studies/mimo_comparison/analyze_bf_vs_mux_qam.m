@@ -63,13 +63,17 @@ end
 % Mit capN = 4 rechnet die Funktion alles gleich und liefert die lesbare
 % Reihe; ohne capN nutzt jede Variante, was sie hat.
 %
-% SEIT 2026-10-15 reichen die MI-Kurven ALLER Rice-Familien bis N = 16
-% (MUX, digitales und analoges BF, je 5x4 vollstaendig). Der Grund fuer
-% capN = 4 entfaellt damit, SOBALD export_mimo_comparison_curves neu
-% gelaufen ist: dann stehen alle Kanaele auf demselben Raster, und der
-% Kanaltrend braucht keine Deckelung mehr. Bis dahin tragen die Ordner
-% data/SE_data_mux_scaledB_K3/_K30 noch N <= 4 -- wer vorher auswertet,
-% braucht capN = 4 weiterhin.
+% SEIT 2026-10-15 reichen die MI-Kurven ALLER Rice-Familien bis N = 16, und
+% der Export hat sie auch geschrieben: data/SE_data_mux_scaledB_K3/_K30 und
+% SE_data_bf_fixedB_K3/_K30 tragen jetzt N = 1..16.
+%
+% DIESE FUNKTION LIEST ABER NICHT DIE KURVEN, SONDERN DIE ERGEBNISSE von
+% Schritt 3b. Der Grund fuer capN = 4 entfaellt deshalb erst, wenn 3b auf
+% dem neuen Raster neu gelaufen ist -- die vorhandenen
+% results/cmp_distance_mux_scaledB_K3.mat sind mit N <= 4 gerechnet, weil
+% der Kurvenordner damals nicht mehr hergab. Bis dahin: capN = 4 fuer die
+% lesbare Reihe. Danach ist die Deckelung ueberfluessig, und die Vorgabe
+% Inf nutzt von sich aus das volle Raster.
 
 resDir = gearboxphy.paths.resultsDir('');
 figDir = fullfile(resDir, 'cmp_figures');
