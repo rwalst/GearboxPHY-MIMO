@@ -353,6 +353,57 @@ bestehenden Ergebnissen.
 - **LO-Verteilung im digitalen Zweig nicht berechnet** — begünstigt digital;
   mit 12,5–17 mW je Mixer gewinnt analog ab 180–240 m. Schalter:
   `loDistributionModel = "per_mixer"`.
+
+  **Der Aufschlag trifft nur die digitale Seite**, und zwar von selbst: die
+  Formel ist (n_Mischer − 1)·P_buf, und eine analoge Kette hat *einen*
+  Mischer. Nachgemessen (16×16, 28 GHz): digital 214,4 mW gegen 26,9 mW
+  (Aufschlag 187,5 mW = 15 × 12,5 mW), analog 26,9 mW — Aufschlag **0**.
+
+  **Für BF gegen MUX ist das nicht neutral, aber dort neutral, wo die
+  Aussage am stärksten ist.** Beide Modi haben N Ketten; wo sie dasselbe N
+  wählen, kürzt sich der LO-Anteil im Verhältnis q heraus. Gemessen am
+  3b-Lauf vom 2026-10-15 (R = 1 Gbit/s, K = 0, `fixedB`): nur **12 von 25
+  Distanzen** mit gleichem N.
+
+  | d | N bei MUX | N bei BF | q | LO wirkt |
+  |---|---|---|---|---|
+  | 100 m | 4 | 2 | 1,127 | ja |
+  | 316 m | 16 | 4 | 1,065 | ja |
+  | 750 m | 16 | 8 | 0,991 | ja |
+  | 1000 m | 16 | 16 | 0,872 | nein |
+  | 10 000 m | 16 | 16 | 0,393 | nein |
+
+  Im Fernbereich, wo BF deutlich gewinnt, wählen beide N = 16 — dort ändert
+  der LO-Fall nichts. **Rund um die Schnittdistanz d\* ≈ 721 m** wählt MUX
+  N = 16 und BF N = 8, dort zahlt MUX also mehr: `per_mixer` verschiebt d\*
+  zu **kleineren** Distanzen.
+
+  **Und die Größe ist nicht klein.** Gemessen am 2026-10-15 mit beiden
+  LO-Fällen, K = 0, `fixedB`, R = 1 Gbit/s:
+
+  | d | `shared` | `per_mixer` |
+  |---|---|---|
+  | 100 m | q = 1,127 | q = **0,977** |
+  | 750 m | q = 0,991 | q = 0,932 |
+
+  Bei 100 m kippt q von „BF 12,7 % teurer" auf „BF günstiger" — d\* fällt
+  damit von ≈ 721 m auf **unter 100 m**, also um mindestens den Faktor 7.
+  Die Zahlen sind an zwei Distanzen mit M = 4 gerechnet, und das ist hier
+  keine Einschränkung: im vollen 3b-Lauf ist M = 4 an beiden Stellen das
+  Optimum beider Modi, der `shared`-Wert 1,127 stimmt mit ihm überein.
+
+  **Konsequenz für jede Aussage über d\*:** die Schnittdistanzen aus
+  Abschnitt 1 (721 m bei Rayleigh, 46 m bei Rang 1) gelten unter
+  `shared` — also ohne LO-Aufschlag. Mit Aufschlag verschieben sie sich
+  deutlich nach unten. Der vollständige `per_mixer`-Lauf ist vorbereitet
+  (`LO_MODEL` im CONFIG-Block von `run_mimo_comparison_distance`,
+  12 Varianten, 25 Worker, Ausgabe `cmp_distance_<variante>_permixer.mat`)
+  und noch nicht gelaufen.
+
+  Dafür trägt `run_mimo_comparison_distance` jetzt den Schalter `LO_MODEL`
+  im CONFIG-Block; die Ausgabe heißt dann
+  `cmp_distance_<variante>_permixer.mat`, die `shared`-Dateien bleiben
+  stehen und beides ist nebeneinander auswertbar.
 - **Frequenzflacher Kanal** — ein Tap, keine Verzögerungsachse. Die
   Bandbreite ist frei und liegt am oberen Ratenende zwei bis drei
   Größenordnungen über der Kohärenzbandbreite. *(Richtung unbekannt, kein

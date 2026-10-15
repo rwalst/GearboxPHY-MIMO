@@ -26,7 +26,12 @@ function run_mimo_comparison_distance()
 %   es entstuenden 100 Ordner. Hier: parfor ueber die Distanzen, eine .mat
 %   je Variante.
 %
-%   AUSGABE: results_cmp_distance_<variante>.mat mit
+%   LO-VERTEILUNG ueber LO_MODEL im CONFIG-Block: "shared" (Vorgabe, wie
+%   alle bisherigen Ergebnisse) oder "per_mixer". Letzteres schreibt nach
+%   cmp_distance_<variante>_permixer.mat, die shared-Dateien bleiben also
+%   stehen. Der Aufschlag trifft nur die digitale Seite -- siehe CONFIG.
+%
+%   AUSGABE: results_cmp_distance_<variante>[_permixer].mat mit
 %     E, Etx, Erx, Epa, Eadc   [nD x nR x nM x nN]   J/bit (NaN = unerreichbar)
 %     CFG (distances, rates, Ms, Ns, fcGHz), variant
 
@@ -50,6 +55,30 @@ end
 CFG.rates     = [1e6 1e9];              % niedrig / hoch [bit/s]
 CFG.distances = logspace(1, 4, 25);     % 10 m .. 10 km
 CFG.fcGHz     = 28;
+% LO-VERTEILUNG. "shared" (Vorgabe) heisst: ein LO je Seite, gleich wie
+% viele Mischer -- so sind alle bisherigen Ergebnisse gerechnet.
+% "per_mixer" laesst jeden Mischer UEBER DEN ERSTEN HINAUS einen Puffer
+% zahlen, bei 28 GHz 12.5 mW (+physics/loDistributionPower.m).
+%
+% DER AUFSCHLAG TRIFFT NUR DIE DIGITALE SEITE, und zwar von selbst: die
+% Formel ist (nMischer - 1) * P_buf, und eine analoge Kette hat EINEN
+% Mischer. Nachgemessen am 2026-10-15 bei 16x16 und 28 GHz: digital
+% 214.4 mW gegen 26.9 mW (Aufschlag 187.5 mW = 15 x 12.5 mW), analog
+% 26.9 mW (Aufschlag 0). In DIESER Studie sind ohnehin alle zwoelf
+% Varianten digital -- der Aufschlag trifft also beide Seiten des
+% Vergleichs, nur mit ihrem jeweiligen N.
+%
+% WARUM DAS NICHT NEUTRAL IST: wo MUX und BF dasselbe N waehlen, kuerzt
+% sich der LO-Anteil im Verhaeltnis q heraus. Gemessen bei R = 1 Gbit/s,
+% K = 0, fixedB: nur 12 von 25 Distanzen. Rund um die Schnittdistanz
+% d* ~ 721 m waehlt MUX N = 16 und BF N = 8, dort zahlt MUX also mehr --
+% d* wandert mit per_mixer zu kleineren Distanzen. Richtung bekannt,
+% Groesse nicht; genau dafuer ist dieser Schalter da.
+%
+% Die Dateinamen bekommen das Suffix "_permixer", damit die
+% shared-Ergebnisse stehenbleiben und beides nebeneinander auswertbar ist.
+LO_MODEL      = "shared";               % "shared" | "per_mixer"
+CFG.loModel   = LO_MODEL;
 CFG.Ms        = [4 16 64 256];
 % N JE VARIANTE, nicht global. Bis 2026-10-07 stand hier CFG.Ns = [1 2 4]
 % fuer ALLE Varianten, weil die MUX-Laeufe damals nicht weiter reichten.
@@ -127,7 +156,9 @@ nD = numel(CFG.distances); nR = numel(CFG.rates);
 nM = numel(CFG.Ms);        % nN kommt je Variante aus NS_BY_VARIANT, s. Schleife
 for v = VARIANTS
     dataDir = gearboxphy.paths.dataDir("SE_data_" + v);
-    outFile = gearboxphy.paths.resultsDir(sprintf('cmp_distance_%s.mat', v));
+    loSuffix = "";
+    if CFG.loModel ~= "shared", loSuffix = "_" + erase(CFG.loModel, "_"); end
+    outFile = gearboxphy.paths.resultsDir(sprintf('cmp_distance_%s%s.mat', v, loSuffix));
     % Wiederaufnahme: eine fertige Variante wird nicht neu gerechnet. Die
     % MI-Sweeps machen das seit jeher; hier fehlte es, und ein Abbruch in
     % der achten von zehn Varianten kostete alle sieben davor noch einmal.
@@ -158,7 +189,8 @@ for v = VARIANTS
         @(d) gearboxphy.sweep.makeScenarioConfig('distance', d, 'RVec', CFG.rates, ...
             'fcVec', CFG.fcGHz*1e9, 'antennaMode', "multiplexing", ...
             'qamMimoConfigs', arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, ...
-                'UniformOutput', false), 'dataDir', dataDir), CFG);
+                'UniformOutput', false), 'dataDir', dataDir, ...
+            'loDistributionModel', CFG.loModel), CFG);
     if gearboxphy.data.fetchFromStore(fp, outFile)
         fprintf('\n======== %s: schon gerechnet (%s), uebernommen ========\n', v, fp);
         continue
@@ -202,7 +234,7 @@ fc = CFG.fcGHz * 1e9;
 configs = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
 scen = gearboxphy.sweep.makeScenarioConfig('distance', d, 'RVec', CFG.rates, ...
     'fcVec', fc, 'antennaMode', "multiplexing", 'qamMimoConfigs', configs, ...
-    'dataDir', dataDir);
+    'dataDir', dataDir, 'loDistributionModel', CFG.loModel);
 cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, fc);
 op = struct('tolerance', scen.tolerance, 'maxiters', scen.maxiters, ...
             'numtriesPerOpt', scen.numtriesPerOpt);
