@@ -129,16 +129,56 @@ CH = struct( ...
 PS_NAMES = ["active" "passive_comp" "passive_pen"];
 PS_TYPES = ["active" "passive_compensated" "passive_penalty"];
 
+% ---- VORABPRUEFUNG ALLER KANAELE, VOR DEM POOL ----------------------
+% Vorher stand die Pruefung nur IM Kanaldurchlauf: der Lauf rechnete die
+% ersten Kanaele fertig und brach erst beim vierten an einem fehlenden
+% Ordner ab -- am 2026-10-15 auf dem Cluster passiert, nach einer halben
+% Stunde, weil data/ dort aelter war als der Code (SE_data_bf_fixedB_K3
+% entstand erst beim Export desselben Tages).
+%
+% Jetzt steht hier eine Tabelle: was liegt vor, was wird uebersprungen, was
+% bricht ab -- alles auf einmal, in zwei Sekunden, bevor ein Worker startet.
+% Die Skip-Semantik bleibt: ein Kanal ohne seine _dac-Ordner wird
+% uebersprungen (so gewollt, siehe oben). Abgebrochen wird nur beim
+% WIDERSPRUCH: Stufenordner vorhanden, aber die Basis mit idealem DAC fehlt.
+fprintf('\n---- Kanaele, Vorabpruefung ----\n');
+fprintf('%-7s %-28s %-12s %-12s %s\n', 'Kanal', 'digBase', 'Stufen', 'common', 'Befund');
+abbruch = strings(1,0);
+for ch = CH
+    if ~all(P.CHANNELS == "") && ~any(P.CHANNELS == ch.name), continue; end
+    [lv, lc] = localLevels2(ch, P);
+    hatBasis = isfolder(gearboxphy.paths.dataDir(ch.digBase));
+    hatAna   = isfolder(gearboxphy.paths.dataDir(ch.anaData));
+    if isempty(lv) || isempty(lc)
+        befund = 'wird uebersprungen (Stufenordner fehlen)';
+    elseif ~hatBasis
+        befund = sprintf('ABBRUCH: %s fehlt', ch.digBase);
+        abbruch(end+1) = sprintf('%s (%s)', ch.name, ch.digBase); %#ok<AGROW>
+    elseif ~hatAna
+        befund = sprintf('rechnet, analoge Varianten entfallen (%s fehlt)', ch.anaData);
+    else
+        befund = 'vollstaendig';
+    end
+    fprintf('%-7s %-28s %-12s %-12s %s\n', ch.name, ch.digBase, ...
+        mat2str(lv), mat2str(lc), befund);
+end
+if ~isempty(abbruch)
+    error('run_dbf_dac_distance:noData', ...
+        ['Fuer %s liegen DAC-Stufenordner vor, aber die Basis mit idealem DAC ' ...
+         'fehlt. Das ist ein Widerspruch, kein unvollstaendiger Datenstand -- ' ...
+         'am wahrscheinlichsten ist data/ hier aelter als der Code. Erst ' ...
+         'abgleichen (git pull bzw. data/ kopieren), dann export_dbf_dac_curves ' ...
+         'wiederholen.'], strjoin(abbruch, ', '));
+end
+fprintf('\n');
+
 nWorkers = localPool(P.N_WORKERS);
 
 for ch = CH
     if ~all(P.CHANNELS == "") && ~any(P.CHANNELS == ch.name), continue; end
-    % vorhandene DAC-Stufen dieses Kanals
-    lev = []; levCommon = [];
-    for k = P.DAC_LEVELS
-        if isfolder(gearboxphy.paths.dataDir(sprintf("%s_dac%d", ch.digBase, k))), lev(end+1) = k; end %#ok<AGROW>
-        if isfolder(gearboxphy.paths.dataDir(sprintf("%s_dac%d_common", ch.digBase, k))), levCommon(end+1) = k; end %#ok<AGROW>
-    end
+    % vorhandene DAC-Stufen dieses Kanals (dieselbe Erkennung wie in der
+    % Vorabpruefung oben -- eine Funktion, damit die zwei nicht auseinanderlaufen)
+    [lev, levCommon] = localLevels2(ch, P);
     if isempty(lev)
         fprintf('\n%s: keine Ordner %s_dac<k> -- Kanal uebersprungen (erst export_dbf_dac_curves).\n', ...
                 ch.name, ch.digBase);
@@ -483,4 +523,20 @@ for i = 1:numel(dataNames)
         @(d) bf_arch_scenario(d, CFG, vi, dd, hw.adc, cfgs, hw.dac, hw.lna), CFG);
 end
 fp = gearboxphy.data.fingerprint(shape, parts);
+end
+
+function [lev, levCommon] = localLevels2(ch, P)
+%LOCALLEVELS2  Welche DAC-Stufen dieses Kanals liegen als Ordner vor --
+%   je Aussteuerung getrennt. Eine Stelle, von der Vorabpruefung und dem
+%   Kanaldurchlauf benutzt; liefen die beiden auseinander, wuerde die
+%   Tabelle etwas anderes behaupten als der Lauf tut.
+lev = []; levCommon = [];
+for k = P.DAC_LEVELS
+    if isfolder(gearboxphy.paths.dataDir(sprintf("%s_dac%d", ch.digBase, k)))
+        lev(end+1) = k; %#ok<AGROW>
+    end
+    if isfolder(gearboxphy.paths.dataDir(sprintf("%s_dac%d_common", ch.digBase, k)))
+        levCommon(end+1) = k; %#ok<AGROW>
+    end
+end
 end
