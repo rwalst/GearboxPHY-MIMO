@@ -15,7 +15,7 @@ function out = analyze_rice_comparison(opts)
 %   Eigenmodi tragen. Bei 28 GHz ist das die schwaechste Annahme der
 %   Studie. K* macht daraus eine Zahl statt einer Einschraenkung.
 %
-%   K = 0 IST DER VORHANDENE RAYLEIGH-LAUF. mux_scaledB und bf_scaledB
+%   K = 0 IST DER VORHANDENE RAYLEIGH-LAUF. mux_scaledB und bf_fixedB
 %   sind nicht "auch noch" K = 0, sie SIND es -- deshalb wird hier nichts
 %   doppelt gerechnet.
 %

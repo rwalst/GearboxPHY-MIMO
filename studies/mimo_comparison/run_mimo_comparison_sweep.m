@@ -1,9 +1,27 @@
+function run_mimo_comparison_sweep(variants, distances)
 %RUN_MIMO_COMPARISON_SWEEP  Schritt 3a des BF/MUX-Vergleichs: Gearbox-Sweep
-%   ueber R_eff fuer alle sechs Varianten und drei Distanzen.
+%   ueber R_eff fuer alle Varianten und drei Distanzen.
 %
-%   Aufruf: in gearboxphy_framework/ einfach
-%       run_mimo_comparison_sweep
+%   Aufruf: in GearboxPHY-MIMO/ einfach
+%       run_mimo_comparison_sweep                      % alles, wie bisher
+%       run_mimo_comparison_sweep(["mux_fixedB" "bf_fixedB"])   % Teilmenge
+%       run_mimo_comparison_sweep([], [50 5000])       % nur zwei Distanzen
 %   Vorher: export_mimo_comparison_curves (legt SE_data_mux_fixedB ... an).
+%
+%   WARUM EINE FUNKTION MIT TEILMENGE (seit 2026-10-15). Der Lauf besteht aus
+%   15 unabhaengigen Einheiten (5 Varianten x 3 Distanzen), jede mit 100
+%   Ratenpunkten und damit auf 100 Worker begrenzt. Hintereinander sind das
+%   rund 120 h; auf vier Sitzungen verteilt ein Viertel davon. Vorher war
+%   dies ein SKRIPT mit festem VARIANTS -- eine Teilmenge liess sich nicht
+%   uebergeben, und eine Variable gleichen Namens im Basis-Workspace wurde
+%   von Zeile 38 ohnehin ueberschrieben. Ohne Argumente ist das Verhalten
+%   unveraendert.
+%
+%   Die Einheiten schreiben in GETRENNTE Ergebnisordner (cmp_<variante>_d<d>),
+%   zwei Sitzungen kommen sich also nicht in die Quere -- solange sie
+%   verschiedene Teilmengen bekommen. Dieselbe Teilmenge zweimal zu starten
+%   ist nicht gefaehrlich, nur doppelte Arbeit: runSweep ueberspringt
+%   Fertiges nur bei passendem Fingerabdruck und setzt Checkpoints je Punkt.
 %
 %   RESSOURCEN: 100 Worker, 64 GB, 12 h. Ein Knoten.
 %   (der Pool ist durch die 100 Ratenpunkte auf 100 Worker begrenzt, mehr
@@ -27,10 +45,15 @@
 %   UNTERBRECHBAR: runSweep ueberspringt fertige Kombinationen und nutzt
 %   Punkt-Checkpoints. Nach einem Abbruch einfach erneut starten.
 %
-%   AUSGABE: results_cmp_<variante>_d<d>/ (z.B. results_cmp_bf_scaledB_d5000/)
+%   AUSGABE: results_cmp_<variante>_d<d>/ (z.B. results_cmp_bf_fixedB_d5000/)
 
 %% ===================== CONFIG =====================================
-VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fixedB" "bfideal_scaledB"];
+% scaledB EXISTIERT FUER BEAMFORMING NICHT (Entscheidung 2026-10-15): das
+% +log2(Nt) der Regel bezahlt die Ueberlagerung von Nt Stroemen an jeder
+% Empfangsantenne, und beim Beamforming kommt EIN Strom an. bf_scaledB und
+% bfideal_scaledB sind deshalb aus der Liste heraus; die gerechneten
+% Ergebnisse und Kurvenordner bleiben liegen, werden aber nicht ausgewertet.
+VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bfideal_fixedB"];
 % alphabetB nur, wenn exportiert. Die Regel ist MUX-only -- bei Beamforming
 % kommt EIN Strom an, das beobachtete Alphabet ist M unabhaengig von N_t,
 % adcBitsRule faellt dort mit fixedB zusammen; ein BF-alphabetB-Lauf waere
@@ -41,6 +64,28 @@ if isfolder(gearboxphy.paths.dataDir("SE_data_mux_alphabetB"))
     VARIANTS(end+1) = "mux_alphabetB";
 end
 distanceVec  = [50 500 5000];
+% ---- Teilmenge aus den Argumenten, s. Kopf -------------------------------
+if nargin >= 1 && ~isempty(variants)
+    want    = string(variants);
+    unknown = setdiff(want, VARIANTS);
+    assert(isempty(unknown), 'run_mimo_comparison_sweep:unknownVariant', ...
+        ['Unbekannte Variante(n): %s.\nBekannt sind: %s.\n' ...
+         'Bei bf_scaledB/bfideal_scaledB: die gibt es seit E8 nicht mehr ' ...
+         '(scaledB existiert fuer Beamforming nicht).'], ...
+        strjoin(unknown, ', '), strjoin(VARIANTS, ', '));
+    VARIANTS = want;
+end
+if nargin >= 2 && ~isempty(distances)
+    want    = double(distances);
+    unknown = setdiff(want, distanceVec);
+    assert(isempty(unknown), 'run_mimo_comparison_sweep:unknownDistance', ...
+        'Unbekannte Distanz(en): %s. Bekannt sind: %s.', ...
+        mat2str(unknown), mat2str(distanceVec));
+    distanceVec = want;
+end
+fprintf('3a: %d Varianten x %d Distanzen = %d Laeufe (%s | %s)\n', ...
+    numel(VARIANTS), numel(distanceVec), numel(VARIANTS)*numel(distanceVec), ...
+    strjoin(VARIANTS, ','), strjoin(string(distanceVec), ','));
 fcVec        = 28e9;
 RVec         = logspace(3, 11, 100);
 % N_LIST deckt das volle Raster ab. Bis 2026-10-07 stand hier [1 2 4] mit
@@ -89,3 +134,4 @@ for v = VARIANTS
     end
 end
 fprintf('\nAlle %d Laeufe fertig nach %.1f min.\n', numel(VARIANTS)*numel(distanceVec), toc(tAll)/60);
+end

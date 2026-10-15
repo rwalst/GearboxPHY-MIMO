@@ -4,7 +4,13 @@ function out = analyze_adc_rule_curves(opts)
 %   das Energie pro Bit (dort verschwindet der Effekt wieder).
 %
 %   out = analyze_adc_rule_curves();
-%   out = analyze_adc_rule_curves(mode="bf");
+%
+%   NUR NOCH MULTIPLEXING (Entscheidung 2026-10-15). scaledB existiert fuer
+%   Beamforming nicht: das +log2(Nt) der Regel bezahlt die Ueberlagerung von
+%   Nt Stroemen an jeder Empfangsantenne, und beim Beamforming kommt EIN
+%   Strom an. Die Frage "lohnt das zusaetzliche ADC-Bit" stellt sich damit
+%   allein fuer MUX. Die Modi "bf" und "bfideal" sind deshalb nicht mehr
+%   zulaessig -- der Fehler kommt sofort und nicht erst als leere Abbildung.
 %
 %   Schreibt results/cmp_figures/cmp_adc_rule_se_<modus>.png und
 %   cmp_adc_rule_ebit_<modus>.png.
@@ -27,7 +33,7 @@ function out = analyze_adc_rule_curves(opts)
 %   NUR N > 1: bei N = 1 sind beide Regeln dieselbe Datei, die Kurven
 %   laegen exakt uebereinander und zeigten nichts.
 arguments
-    opts.mode (1,1) string {mustBeMember(opts.mode, ["mux","bf","bfideal"])} = "mux"
+    opts.mode (1,1) string {mustBeMember(opts.mode, "mux")} = "mux"
     opts.Ns (1,:) double = [2 4]
     opts.Ms (1,:) double = [16 64 256]
     opts.distances (1,:) double = [50 500 5000]

@@ -64,10 +64,15 @@ end
 figDir = gearboxphy.paths.resultsDir(opts.figDir);
 if ~isfolder(figDir), mkdir(figDir); end
 
-VARIANTS = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fixedB" "bfideal_scaledB"];
-LABEL    = ["MUX fixedB" "MUX scaledB" "BF fixedB" "BF scaledB" "BF ideal fixedB" "BF ideal scaledB"];
+% scaledB EXISTIERT FUER BEAMFORMING NICHT (Entscheidung 2026-10-15): das
+% +log2(Nt) der Regel bezahlt die Ueberlagerung von Nt Stroemen an jeder
+% Empfangsantenne, und beim Beamforming kommt EIN Strom an. bf_scaledB und
+% bfideal_scaledB sind deshalb aus der Liste heraus; die gerechneten
+% Ergebnisse und Kurvenordner bleiben liegen, werden aber nicht ausgewertet.
+VARIANTS = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bfideal_fixedB"];
+LABEL    = ["MUX fixedB" "MUX scaledB" "BF fixedB" "BF ideal fixedB"];
 C        = lines(3);                % Matlab-Blau (MUX), -Rot (BF), -Gelb (BF ideal)
-COL      = [C(1,:); C(1,:); C(2,:); C(2,:); C(3,:); C(3,:)];
+COL      = [C(1,:); C(1,:); C(2,:); C(3,:)];
 STY      = ["-" "--" "-" "--" "-" "--"];
 INK  = [0.043 0.043 0.043];
 INK2 = [0.322 0.318 0.306];

@@ -83,8 +83,19 @@ if opt.save && ~isfolder(figDir), mkdir(figDir); end
 % 'bfLimit' markiert die Spalte, in der BF nicht Rice, sondern das
 % idealisierte Modell ist (siehe Kopf).
 V = struct('chan',{}, 'rule',{}, 'mux',{}, 'bf',{}, 'bfLimit',{});
+%
+% DIE BF-SEITE TRAEGT IN JEDER ZEILE fixedB, und 'rule' bezeichnet
+% durchgehend die MUX-SEITIGE Regel. scaledB EXISTIERT FUER BEAMFORMING
+% NICHT (Entscheidung 2026-10-15): das +log2(Nt) der Regel bezahlt die
+% Ueberlagerung von Nt Stroemen an jeder Empfangsantenne, und beim
+% Beamforming kommt EIN Strom an. Bis dahin standen hier zwei Zeilen mit
+% bf_scaledB bzw. bfideal_scaledB -- ein Rest aus der Zeit vor dem
+% 2026-10-12, als die Rice-Zeilen schon umgestellt wurden (Begruendung
+% weiter unten) und die K=0- und Rang-1-Zeilen nicht mitgezogen wurden.
+% Nachgerechnet hat der Wechsel die Aussage nicht bewegt: d* bleibt bei
+% 750 m (1 Gbit/s), q(100 m) geht von 1,127 auf 1,109.
 V(end+1) = struct('chan',"K=0",    'rule',"fixedB",  'mux',"mux_fixedB",       'bf',"bf_fixedB",        'bfLimit',false);
-V(end+1) = struct('chan',"K=0",    'rule',"scaledB", 'mux',"mux_scaledB",      'bf',"bf_scaledB",       'bfLimit',false);
+V(end+1) = struct('chan',"K=0",    'rule',"scaledB", 'mux',"mux_scaledB",      'bf',"bf_fixedB",        'bfLimit',false);
 V(end+1) = struct('chan',"K=0",    'rule',"alphabetB",'mux',"mux_alphabetB",    'bf',"bf_fixedB",        'bfLimit',false);
 % alphabetB GEGEN bf_fixedB, und das ist kein Fluechtigkeitsfehler: bei
 % Beamforming kommt EIN Strom an, das beobachtete Alphabet ist M
@@ -100,14 +111,21 @@ V(end+1) = struct('chan',"K=0",    'rule',"alphabetB",'mux',"mux_alphabetB",    
 % MUX-seitige Regel.
 V(end+1) = struct('chan',"K=3",    'rule',"scaledB", 'mux',"mux_scaledB_K3",   'bf',"bf_fixedB_K3",     'bfLimit',false);
 V(end+1) = struct('chan',"K=30",   'rule',"scaledB", 'mux',"mux_scaledB_K30",  'bf',"bf_fixedB_K30",    'bfLimit',false);
-V(end+1) = struct('chan',"Rank 1", 'rule',"scaledB", 'mux',"mux_scaledB_KInf", 'bf',"bfideal_scaledB",  'bfLimit',true);
-% RANG 1 GIBT ES NUR FUER scaledB. Ein fixedB-Rang-1-Lauf auf der
+V(end+1) = struct('chan',"Rank 1", 'rule',"scaledB", 'mux',"mux_scaledB_KInf", 'bf',"bfideal_fixedB",   'bfLimit',true);
+% RANG 1 GIBT ES NUR FUER MUX-scaledB. Ein fixedB-Rang-1-Lauf auf der
 % MUX-Seite existiert nicht (runQamSweepMuxRank1 rechnet scaledB), und
-% mux_fixedB gegen bfideal_fixedB zu stellen waere KEIN Kanalvergleich:
+% mux_fixedB gegen bfideal_* zu stellen waere KEIN Kanalvergleich:
 % links Rayleigh, rechts AWGN. Die Zeile stand hier zunaechst und fiel
 % genau daran auf -- bei N = 1 muessen beide Modi IDENTISCH sein, sie gab
-% aber 0.998. Fuer scaledB stimmt die Probe (q = 1.000 bei N = 1), weil
-% dort beide Seiten denselben Grenzfall meinen: H = 1 deterministisch.
+% aber 0.998. Mit mux_scaledB_KInf stimmt die Probe, weil dort beide
+% Seiten denselben Grenzfall meinen: H = 1 deterministisch.
+%
+% BF-SEITE SEIT 2026-10-15 bfideal_fixedB statt bfideal_scaledB. Bei
+% N = 1 fallen die beiden Regeln per Definition zusammen, die Probe haengt
+% also nicht daran: nachgemessen liefern beide Dateien bei N = 1 dieselbe
+% q-Spanne auf vier Stellen, und untereinander weichen sie um 4,2e-4 ab --
+% Optimierer-Rauschen in der Groessenordnung, die der Golden Master
+% ohnehin zeigt.
 
 % ---- laden und auf das gemeinsame Raster pruefen -----------------------
 [D, ref] = localLoadAll(V, resDir, opt.Ms, opt.capN);
@@ -224,7 +242,7 @@ for k = 1:numel(V)
     keepM = ismember(double(Cm.Ms(:).'), Msel);
     % GEMEINSAME N-MENGE. Seit 3b je Variante so weit rechnet, wie ihre
     % Kurven reichen, koennen die beiden Seiten eines Paares verschiedene
-    % Ns tragen (z.B. mux_scaledB_KInf noch 1..4, bfideal_scaledB schon
+    % Ns tragen (z.B. mux_scaledB_KInf noch 1..4, bfideal_fixedB schon
     % 1..16). Verglichen wird dann ueber den Schnitt -- alles andere waere
     % entweder ein Formfehler oder ein unfairer Vergleich.
     NsM = double(Cm.Ns(:).'); NsB = double(Cb.Ns(:).');

@@ -40,15 +40,20 @@ function run_mimo_comparison_distance()
 %     CFG (distances, rates, Ms, Ns, fcGHz), variant
 
 %% ===================== CONFIG =====================================
-% Die sechs Grundvarianten plus die Rice-Laeufe. K = 0 steckt bereits in
-% den ersten sechs (mux_scaledB/bf_scaledB sind der Rayleigh-Fall), die
+% Die vier Grundvarianten plus die Rice-Laeufe. K = 0 steckt bereits in
+% den ersten vier (mux_scaledB/bf_fixedB sind der Rayleigh-Fall), die
 % K-Varianten kommen dazu. K = 10 wurde bewusst ausgelassen.
-VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" "bfideal_fixedB" "bfideal_scaledB"];
+% scaledB EXISTIERT FUER BEAMFORMING NICHT (Entscheidung 2026-10-15): das
+% +log2(Nt) der Regel bezahlt die Ueberlagerung von Nt Stroemen an jeder
+% Empfangsantenne, und beim Beamforming kommt EIN Strom an. bf_scaledB und
+% bfideal_scaledB sind deshalb aus der Liste heraus; die gerechneten
+% Ergebnisse und Kurvenordner bleiben liegen, werden aber nicht ausgewertet.
+VARIANTS     = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bfideal_fixedB"];
 for Kv = [3 30]
     VARIANTS(end+1) = sprintf("mux_scaledB_K%g", Kv); %#ok<AGROW>
     VARIANTS(end+1) = sprintf("bf_fixedB_K%g", Kv);   %#ok<AGROW>
 end
-% Rang-1-Endpunkt, nur MUX -- fuer BF ist bfideal_scaledB bereits dieser Fall.
+% Rang-1-Endpunkt, nur MUX -- fuer BF ist bfideal_fixedB bereits dieser Fall.
 VARIANTS(end+1) = "mux_scaledB_KInf";
 % alphabetB nur, wenn exportiert -- die Regel ist MUX-only (bei BF kommt EIN
 % Strom an, das beobachtete Alphabet ist M unabhaengig von N_t, alphabetB
@@ -97,7 +102,7 @@ CFG.Ms        = [4 16 64 256];
 % dafuer erst neu laufen.
 %
 % Abdeckung, geprueft an data/SE_data_<variante>/ am 2026-10-07:
-%     mux_scaledB, bf_fixedB, bf_scaledB, bfideal_*   20/20, N bis 16
+%     mux_scaledB, bf_fixedB, bfideal_fixedB          20/20, N bis 16
 %     mux_fixedB      18/20 -- M=256 fehlt bei 8x8 und 16x16
 %     mux_alphabetB   15/20 -- B > 20 ist nicht rechenbar (alphabetGrid)
 %     mux_scaledB_KInf 20/20 nach dem Re-Export (die Kurven kamen nach dem

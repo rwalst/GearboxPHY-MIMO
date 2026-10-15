@@ -1,6 +1,14 @@
 function out = analyze_adc_rule_all(opts)
-%ANALYZE_ADC_RULE_ALL  Die ADC-Regel fuer alle drei Modi in EINER
-%   Abbildung.
+%ANALYZE_ADC_RULE_ALL  Die ADC-Regel, Prozentdifferenz und ADC-Anteil in
+%   EINER Abbildung.
+%
+%   SEIT DEM 2026-10-15 BLEIBT DAVON EINE SPALTE. Der Name sagt "alle drei
+%   Modi", und das war der Zweck der Datei; scaledB existiert fuer
+%   Beamforming aber nicht mehr (s. analyze_adc_rule), also ist MUX der
+%   einzige Modus, fuer den sich die Frage stellt. Die Datei bleibt, weil
+%   sie neben der Prozentdifferenz auch den ADC-Anteil als Begruendung
+%   zeigt -- das tut analyze_adc_rule nicht. Wer nur die Differenz braucht,
+%   nimmt dort die Einzelabbildung.
 %
 %   out = analyze_adc_rule_all();
 %   out = analyze_adc_rule_all(distances=[50 5000]);
@@ -25,8 +33,8 @@ arguments
     opts.figDir (1,1) string = "cmp_figures"
 end
 
-MODES = ["mux" "bf" "bfideal"];
-LABEL = ["MUX" "BF" "BF ideal"];
+MODES = "mux";                 % s. Kopf: BF kennt scaledB nicht
+LABEL = "MUX";
 C     = lines(3);
 INK   = [0.043 0.043 0.043];
 INK2  = [0.322 0.318 0.306];

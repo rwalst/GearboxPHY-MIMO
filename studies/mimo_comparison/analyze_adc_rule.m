@@ -3,17 +3,17 @@ function out = analyze_adc_rule(opts)
 %   Modus.
 %
 %   out = analyze_adc_rule();                  % Multiplexing
-%   out = analyze_adc_rule(mode="bf");         % digitales Eigen-Beamforming
-%   out = analyze_adc_rule(mode="bf", distances=[50 5000]);
+%   out = analyze_adc_rule(distances=[50 5000]);
+%
+%   NUR NOCH MULTIPLEXING (Entscheidung 2026-10-15). scaledB existiert fuer
+%   Beamforming nicht: das +log2(Nt) der Regel bezahlt die Ueberlagerung von
+%   Nt Stroemen an jeder Empfangsantenne, und beim Beamforming kommt EIN
+%   Strom an. Die Frage "lohnt das zusaetzliche ADC-Bit" stellt sich damit
+%   allein fuer MUX. Die Modi "bf" und "bfideal" sind deshalb nicht mehr
+%   zulaessig -- der Fehler kommt sofort und nicht erst als leere Abbildung.
 %
 %   Liest results/cmp_<modus>_<regel>_d<d>/ (Schritt 3a) und schreibt
 %   results/cmp_figures/cmp_adc_rule_<modus>.png.
-%
-%   EIN MODUS JE ABBILDUNG, mit Absicht. Multiplexing und Beamforming
-%   reagieren verschieden auf das zusaetzliche Bit -- MUX detektiert N
-%   Stroeme gemeinsam, BF einen einzigen -- und beides uebereinander zu
-%   legen hat den Vergleich in der Sechs-Varianten-Abbildung eher
-%   verdeckt als gezeigt.
 %
 %   DIE FRAGE: lohnt das zusaetzliche ADC-Bit je Antennenverdopplung?
 %       fixedB    B = 1/2*log2(M) + 3
@@ -36,7 +36,7 @@ function out = analyze_adc_rule(opts)
 %   Oktober 2026 waren es 4). Bei N = 1 sind beide Regeln per Definition
 %   gleich, der Unterschied kann also nur aus N >= 2 kommen.
 arguments
-    opts.mode (1,1) string {mustBeMember(opts.mode, ["mux","bf","bfideal"])} = "mux"
+    opts.mode (1,1) string {mustBeMember(opts.mode, "mux")} = "mux"
     opts.distances (1,:) double = [50 500 5000]
     opts.fcGHz (1,1) double = 28
     opts.Ms (1,:) double = [4 16 64 256]

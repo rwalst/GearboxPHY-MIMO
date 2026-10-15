@@ -188,8 +188,13 @@ classdef ResultStoreTest < matlab.unittest.TestCase
         end
 
         function sisoGaengeSindUeberAlleVariantenEinSchluessel(testCase)
-            V = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bf_scaledB" ...
-                 "bfideal_fixedB" "bfideal_scaledB"];
+            % VIER VARIANTEN, nicht mehr sechs: scaledB existiert fuer
+            % Beamforming nicht (Entscheidung 2026-10-15), bf_scaledB und
+            % bfideal_scaledB sind aus allen Listen heraus. Die Aussage des
+            % Tests aendert sich dadurch nicht -- sie haengt daran, dass die
+            % SISO-Gaenge ueber ALLE Varianten einen Schluessel haben und QAM
+            % ueber alle verschiedene, nicht an deren Anzahl.
+            V = ["mux_fixedB" "mux_scaledB" "bf_fixedB" "bfideal_fixedB"];
             for v = V
                 testCase.assumeTrue(isfolder(gearboxphy.paths.dataDir("SE_data_" + v)), ...
                     'Kurvenordner der 3a-Varianten fehlen.');
@@ -199,11 +204,11 @@ classdef ResultStoreTest < matlab.unittest.TestCase
 
             % ZXM liest in jeder Variante dieselbe Kurve -> EIN Schluessel.
             testCase.verifyNumElements(unique(fpZxm), 1, ...
-                ['Die SISO-Gaenge muessen ueber alle sechs Varianten denselben ' ...
-                 'Schluessel haben -- sonst rechnet 3a sie weiter sechsmal.']);
+                ['Die SISO-Gaenge muessen ueber alle vier Varianten denselben ' ...
+                 'Schluessel haben -- sonst rechnet 3a sie weiter viermal.']);
 
-            % QAM ist der eigentliche Vergleich -> sechs verschiedene.
-            testCase.verifyNumElements(unique(fpQam), 6, ...
+            % QAM ist der eigentliche Vergleich -> vier verschiedene.
+            testCase.verifyNumElements(unique(fpQam), numel(V), ...
                 ['QAM darf NICHT zusammenfallen: das ist der Vergleich, den die ' ...
                  'Studie messen will.']);
         end
