@@ -449,6 +449,16 @@ function tf = localDone(outFile, CFG, lev, levCommon)
 tf = false;
 if ~isfile(outFile), return; end
 try
+    % ERST NACHSEHEN, DANN LADEN. load(file, 'name') WARNT fuer jeden
+    % Namen, den die Datei nicht hat -- und bei den Dateien von vor dem
+    % 2026-10-12 fehlen dacLevelsPer und dacScaleStandard beide. Das gab
+    % zwei Warnungen JE DATEI, also 36 in einem Lauf, fuer einen Fall, der
+    % voellig in Ordnung ist: die Datei ist alt, gilt als nicht fertig und
+    % wird neu gerechnet. Genau so soll es sein -- aber nicht laut.
+    vars = who('-file', outFile);
+    if ~all(ismember({'CFG', 'dacLevels', 'dacLevelsPer', 'dacScaleStandard'}, vars))
+        return
+    end
     T = load(outFile, 'CFG', 'dacLevels', 'dacLevelsPer', 'dacScaleStandard');
 catch
     return
