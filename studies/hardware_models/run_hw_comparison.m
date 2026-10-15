@@ -6,10 +6,14 @@
 %       addpath('<repo>'); setupGearboxPath;
 %       run_hw_comparison
 %
-%   RESOURCES: nodes=1  ntasks=1  cpus-per-task=100  mem=64G  time=04:00:00
+%   RESOURCES: 100 workers, 64 GB, 4 h. One node.
 %   (the pool is capped by the 100 rate points at 100 workers - more
 %   cores do not help, see runSweep.m). The time is an estimate: one case
 %   is the size of one SISO case of the LNA comparison.
+%
+%   ZIH cluster instead of Windows: sbatch hpc/zih/submit_study.sbatch run_hw_comparison
+%   with --cpus-per-task=101 (one for the client). Walk-through and
+%   step 0: docs/HPC_RUNBOOK_ZIH.md.
 %
 %   WHAT IS COMPUTED (hw_comparison_config.m):
 %     one case per variant in VARIANTS, SISO, d = 50 m;

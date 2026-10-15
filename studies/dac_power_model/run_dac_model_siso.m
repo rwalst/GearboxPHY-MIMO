@@ -5,12 +5,16 @@ function run_dac_model_siso(over)
 %   Aufruf: in GearboxPHY-MIMO/ einfach
 %       setupGearboxPath; run_dac_model_siso
 %
-%   RESSOURCEN: nodes=1  ntasks=1  cpus-per-task=100  mem=64G  time=12:00:00
+%   RESSOURCEN: 100 Worker, 64 GB, 12 h. Ein Knoten.
 %   NICHT GEMESSEN. Drei Laeufe wie run_sweep.m, aber NUR SISO (keine
 %   MIMO-Kandidaten) und drei statt vier Traegern, also jeweils deutlich
 %   billiger als results/main. runSweep ueberspringt fertige Kombinationen
 %   und setzt Checkpoints je Ratenpunkt: nach einem Abbruch einfach noch
 %   einmal starten.
+%
+%   ZIH-Cluster statt Windows: sbatch hpc/zih/submit_study.sbatch run_dac_model_siso
+%   mit --cpus-per-task=101 (einer fuer den Client). Anleitung und
+%   Schritt 0: docs/HPC_RUNBOOK_ZIH.md.
 %
 %   WOZU: Leistungsbudget der Komponenten ueber der Rate (wie Abb. 5.7 der
 %   Dissertation) und optimaler Gang ueber der Rate (wie Abb. 5.5), jeweils

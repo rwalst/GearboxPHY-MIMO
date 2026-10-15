@@ -28,9 +28,9 @@ if isempty(p)
     return
 end
 
-isAbs = startsWith(p, '/') || startsWith(p, '\\') || ...
-        (numel(p) >= 2 && isletter(p(1)) && p(2) == ':');
-if ~isAbs
+% The same test lives in +paths/isAbsolutePath.m, which dataDir/resultsDir
+% use. One definition, so the two cannot drift apart.
+if ~gearboxphy.paths.isAbsolutePath(p)
     p = fullfile(pwd, p);
 end
 p = string(p);

@@ -7,10 +7,14 @@ function p = dataDir(name)
 %   Nimmt auch einen bereits absoluten Pfad entgegen und gibt ihn
 %   unveraendert zurueck -- damit koennen Aufrufer (Tests, Exporte) weiter
 %   in temporaere Verzeichnisse zeigen, ohne Sonderfall.
+%
+%   Anders als resultsDir gibt es hier KEINEN Umgebungsschalter: die
+%   Kurvenordner unter data/ sind versioniert und kommen per git auf den
+%   Cluster. Nur die Ergebnisse wandern in einen Workspace.
 arguments
     name (1,1) string = "SE_data"
 end
-if startsWith(name, filesep) || contains(name, ':' + string(filesep))
+if gearboxphy.paths.isAbsolutePath(name)
     p = char(name);  return
 end
 p = fullfile(gearboxphy.paths.root(), 'data', char(name));

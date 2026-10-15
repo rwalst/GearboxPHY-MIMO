@@ -8,10 +8,14 @@ function run_dbf_dac_los_newhw()
 %   SE_data_bflosd_fixedB_dac<k> UND ..._dac<k>_common fuer k = 0..3
 %   vorliegen (die gemeinsame Aussteuerung ist der Standardfall).
 %
-%   RESSOURCEN: nodes=1  ntasks=1  cpus-per-task=25  mem=64G  time=12:00:00
+%   RESSOURCEN: 25 Worker, 64 GB, 12 h. Ein Knoten.
 %   NICHT GEMESSEN. Ein Kanal, zwei Modellsaetze, zwei LO-Faelle; je Datei
 %   neun Kurvensaetze (idealer DAC, vier Stufen gemeinsam, vier je Antenne).
 %   Fertige Dateien werden uebersprungen.
+%
+%   ZIH-Cluster statt Windows: sbatch hpc/zih/submit_study.sbatch run_dbf_dac_los_newhw
+%   mit --cpus-per-task=26 (einer fuer den Client). Anleitung und
+%   Schritt 0: docs/HPC_RUNBOOK_ZIH.md.
 %
 %   Das ist run_dbf_dac_distance, beschraenkt auf
 %     Kanal        "losd" (Rang 1, ein ADC je Empfangsantenne)

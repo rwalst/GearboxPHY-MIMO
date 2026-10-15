@@ -6,9 +6,13 @@
 %   Run validate_lna_comparison FIRST (minutes, no pool) - this file has
 %   not been executed yet.
 %
-%   RESOURCES: nodes=1  ntasks=1  cpus-per-task=100  mem=64G  time=12:00:00
+%   RESOURCES: 100 workers, 64 GB, 12 h. One node.
 %   (the pool is capped by the 100 rate points at 100 workers - more
 %   cores do not help, see runSweep.m)
+%
+%   ZIH cluster instead of Windows: sbatch hpc/zih/submit_study.sbatch run_lna_comparison
+%   with --cpus-per-task=101 (one for the client). Walk-through and
+%   step 0: docs/HPC_RUNBOOK_ZIH.md.
 %
 %   WHAT IS COMPUTED (lna_comparison_config.m):
 %     siso:        2 bandwidth settings x 3 LNA models x d = 50 m        =  6 cases

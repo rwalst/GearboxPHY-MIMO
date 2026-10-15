@@ -4,9 +4,13 @@
 %       addpath('/workspace/GearboxPHY-MIMO'); setupGearboxPath;
 %       run_siso_vs_mimo_scaledB
 %
-%   RESSOURCEN: nodes=1 ntasks=1 cpus-per-task=100 mem=64G time=08:00:00
+%   RESSOURCEN: 100 Worker, 64 GB, 8 h. Ein Knoten.
 %   (wie run_mimo_comparison_sweep: der Pool ist durch die 100
 %   Ratenpunkte begrenzt, mehr Kerne bringen nichts)
+%
+%   ZIH-Cluster statt Windows: sbatch hpc/zih/submit_study.sbatch run_siso_vs_mimo_scaledB
+%   mit --cpus-per-task=101 (einer fuer den Client). Anleitung und
+%   Schritt 0: docs/HPC_RUNBOOK_ZIH.md.
 %
 %   WARUM EIN EIGENER TREIBER, und nicht N_LIST in
 %   run_mimo_comparison_sweep hochgedreht:
