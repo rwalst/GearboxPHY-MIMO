@@ -28,17 +28,34 @@ fail = 0;
 
 %% G1: SISO-Regression --------------------------------------------------
 fprintf('=== G1 SISO-Regression (bitgenau gegen gespeicherte Ergebnisse) ===\n');
+% PFADE RELATIV ZU results/, aufgeloest ueber localRefFile -- nicht relativ
+% zum Arbeitsverzeichnis. Hier stand bis zum 2026-10-15
+%   'results/qam_M256_fc28GHz.mat'  und  'beamforming_d50_allgears/...'
+% und KEINER DER VIER FAELLE TRAF: den ersten zwei fehlte 'main/', den
+% letzten zwei 'results/'. Beides sind Reste des Aufraeumens am 2026-10-02 --
+% seither schreibt run_sweep nach results/main/ statt direkt nach results/.
+% G1 druckte vier [skip] und meldete Erfolg, die bitgenaue Regression gegen
+% den alten Modellsatz war also seit Anfang Oktober wirkungslos. Gefunden am
+% 2026-10-15 beim Archivieren des alten Satzes.
+%
+% Die Referenzen sind ALLE VIER wieder da: results/main/ traegt genau diese
+% Namen (400 Ratenpunkte, d = 50 m; main100 und main200 sind dieselben
+% Faelle mit 100 bzw. 200 Punkten). Zusammen mit der Zaehlung unten kann G1
+% nicht mehr still verstummen.
 CASES = { ...
-  'results/qam_M256_fc28GHz.mat',                             gearboxphy.gears.qamGear(),   256,  "multiplexing"; ...
-  'results/naqam_M1024_fc28GHz.mat',                          gearboxphy.gears.naQamGear(), 1024, "multiplexing"; ...
+  'main/qam_M256_fc28GHz.mat',                        gearboxphy.gears.qamGear(),   256,  "multiplexing"; ...
+  'main/naqam_M1024_fc28GHz.mat',                     gearboxphy.gears.naQamGear(), 1024, "multiplexing"; ...
   'beamforming_d50_allgears/qam_M16_fc28GHz.mat',     gearboxphy.gears.qamGear(),   16,   "beamforming"; ...
   'beamforming_d50_allgears/naqam_M1024_fc28GHz.mat', gearboxphy.gears.naQamGear(), 1024, "beamforming"};
+nChecked = 0;
 for k = 1:size(CASES,1)
-    if ~isfile(CASES{k,1})
-        fprintf('  [skip] %s fehlt auf diesem Rechner\n', CASES{k,1});
+    refFile = localRefFile(CASES{k,1});
+    if refFile == ""
+        fprintf('  [skip] %s nicht gefunden (weder in results/ noch in results/_oldhw/)\n', CASES{k,1});
         continue;
     end
-    S = load(CASES{k,1});
+    nChecked = nChecked + 1;
+    S = load(refFile);
     gear = CASES{k,2}; order = CASES{k,3}; amode = CASES{k,4};
     if amode == "beamforming"
         oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
@@ -68,6 +85,21 @@ for k = 1:size(CASES,1)
     fail = fail + ~ok;
     fprintf('  [%s] %-14s %-13s %d Konfig(s): max rel. Abw. %.2e, Bits 1/2*log2(M): %d\n', ...
         tern(ok,' OK ','FAIL'), gear.name, amode, numel(cfgs), worst, bitsOk);
+end
+
+% NICHTS GEPRUEFT IST EIN FEHLER, KEIN ERFOLG. Ohne diese Zeilen meldete G1
+% vier [skip] und danach "bestanden" -- so war es vom Aufraeumen am
+% 2026-10-02 bis zum 2026-10-15, und niemandem fiel es auf. Eine Regression,
+% die nichts vergleicht, ist schlimmer als keine: sie erzeugt Zutrauen.
+if nChecked == 0
+    fail = fail + 1;
+    fprintf(2, ['  [FAIL] G1 hat KEINEN Fall geprueft. Die Referenzdateien fehlen alle.\n' ...
+                '         Das ist kein Erfolg -- die bitgenaue Regression gegen den alten\n' ...
+                '         Modellsatz existiert dann nicht. Erwartet werden sie in\n' ...
+                '         results/_oldhw/<pfad> oder results/<pfad>; wurde der alte Satz\n' ...
+                '         mit archive_oldhw_results verschoben, muss das Archiv liegen.\n']);
+else
+    fprintf('  %d von %d Faellen geprueft.\n', nChecked, size(CASES,1));
 end
 
 %% G2: Schutz gegen unnormierte MIMO-Kurven -----------------------------
@@ -206,4 +238,23 @@ end
 
 function s = tern(c, a, b)
 if c, s = a; else, s = b; end
+end
+
+function f = localRefFile(relPath)
+%LOCALREFFILE  Referenzdatei suchen: ARCHIV ZUERST, dann der lebende Ordner.
+%   relPath ist relativ zu results/, nie zum Arbeitsverzeichnis -- deshalb
+%   ueber gearboxphy.paths.resultsDir und fullfile, was auf Windows und Posix
+%   gleich faellt.
+%
+%   WARUM DAS ARCHIV ZUERST: archive_oldhw_results.m legt die Ergebnisse des
+%   alten Modellsatzes nach results/_oldhw/, damit die Neurechnung sie nicht
+%   ueberschreibt. Genau diese Dateien sind die Referenz dieser Regression.
+%   Ohne die Archivsuche wuerde sie nach dem Archivieren still ins Leere
+%   greifen -- und mit der Zaehlung oben jetzt laut scheitern.
+f = "";
+cand = [string(fullfile(gearboxphy.paths.resultsDir('_oldhw'), relPath)), ...
+        string(fullfile(gearboxphy.paths.resultsDir(''), relPath))];
+for c = cand
+    if isfile(c), f = c; return; end
+end
 end
