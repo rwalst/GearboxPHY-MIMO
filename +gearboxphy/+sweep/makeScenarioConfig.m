@@ -68,46 +68,52 @@ arguments
     % rather than silently running with P_0=0 (which would make "affine"
     % indistinguishable from "constant").
     opts.P_0 (1,1) double = NaN
-    % Collective switch for the component power models
-    % (docs/HARDWARE_MODEL_SWITCH.md, +physics/hardwareModelPreset.m).
-    %   "custom" (default) - lnaPowerModel, adcPowerModel, dacPowerModel
-    %       and loDistributionModel below are used as given;
-    %       byte-identical to every existing result and call.
+    % DEFAULTS CHANGED ON 2026-10-15 (docs/HARDWARE_MODEL_SWITCH.md): the
+    % component models now default to the decided set, hardwareModel
+    % "new": LNA fom_floor, ADC quantile5, DAC survey, LO per_mixer, B_max
+    % one channel per carrier. Results computed before that date used the
+    % dissertation's set; reproduce them with gearboxphy.sweep.oldModelArgs
+    % (every study driver that existed then does).
+    %
+    % Collective switch for the component models
+    % (+physics/hardwareModelPreset.m).
+    %   "custom" (default) - lnaPowerModel, adcPowerModel, dacPowerModel,
+    %       loDistributionModel and bandwidthModel are used as given (or
+    %       at their defaults, which are the "new" set).
     %   "old" - the dissertation's models: fom_bandwidth / envelope /
-    %       analytic / shared LO, i.e. the defaults of the four switches.
-    %   "new" - the survey-based models: envelope / quantile5 / survey,
-    %       and an LO buffer per additional mixer (per_mixer).
-    % "old" and "new" SET the four switches. Combining them with a single
+    %       analytic / shared LO / eta*f_c.
+    %   "new" - the decided models, identical to the defaults.
+    % "old" and "new" SET the five switches. Combining them with a single
     % switch that asks for something else is an error - use "custom" to
     % mix. P_LO, PA and phase-shifter switches are not touched.
     opts.hardwareModel (1,1) string {mustBeMember(opts.hardwareModel, ["custom","old","new"])} = "custom"
     % LNA power model (LNA_POWER_MODEL.md, +physics/lnaPowerFor.m).
-    %   "fom_bandwidth" (default) - the dissertation's lnaPower.m,
-    %       byte-identical to every existing result.
-    %   "fom_floor"  - same formula, bandwidth floored at lnaBetaMin*f_c
-    %       (an LNA cannot be built narrower than that).
+    %   "fom_bandwidth" - the dissertation's lnaPower.m (default until
+    %       2026-10-15).
+    %   "fom_floor" (default) - same formula, bandwidth floored at
+    %       lnaBetaMin*f_c (an LNA cannot be built narrower than that).
     %   "envelope"   - 5 % lower envelope of the Belostotski LNA survey,
     %       same floor (+physics/lnaPowerEnvelope.m).
-    opts.lnaPowerModel (1,1) string {mustBeMember(opts.lnaPowerModel, ["fom_bandwidth","fom_floor","envelope"])} = "fom_bandwidth"
+    opts.lnaPowerModel (1,1) string {mustBeMember(opts.lnaPowerModel, ["fom_bandwidth","fom_floor","envelope"])} = "fom_floor"
     % Minimum LNA fractional bandwidth for "fom_floor"/"envelope" (the
     % survey's 5th percentile). Ignored by "fom_bandwidth".
     opts.lnaBetaMin (1,1) double {mustBePositive} = 0.05
     % ADC power model (docs/ADC_POWER_MODEL.md, +physics/adcConstant.m).
-    %   "envelope" (default) - c_ADC as given above (0.67 fJ, the survey's
-    %       best-case envelope), byte-identical to every existing result.
-    %   "quantile5" - 3.17 fJ, the survey's 5 % quantile in the band the
-    %       Gearbox uses. It REPLACES c_ADC, so do not combine it with a
-    %       hand-set c_ADC.
-    opts.adcPowerModel (1,1) string {mustBeMember(opts.adcPowerModel, ["envelope","quantile5"])} = "envelope"
+    %   "envelope" - c_ADC as given above (0.67 fJ, the survey's best-case
+    %       envelope; default until 2026-10-15).
+    %   "quantile5" (default) - 3.17 fJ, the survey's 5 % quantile in the
+    %       band the Gearbox uses. It REPLACES c_ADC, so a hand-set c_ADC
+    %       needs adcPowerModel="envelope".
+    opts.adcPowerModel (1,1) string {mustBeMember(opts.adcPowerModel, ["envelope","quantile5"])} = "quantile5"
     % DAC power model (docs/DAC_POWER_MODEL.md, +physics/dacConstants.m).
-    %   "analytic" (default) - DAC_VDD, DAC_I0, DAC_Cp as given above (Cui's
-    %       example values for 0.5 um CMOS), byte-identical to every
-    %       existing result.
+    %   "analytic" - DAC_VDD, DAC_I0, DAC_Cp as given above (Cui's example
+    %       values for 0.5 um CMOS; default until 2026-10-15).
     %   "analytic_1V" - the same with DAC_VDD = 1 V (dissertation ch. 5/6).
-    %   "survey" - 5 % quantile of the Caragiulo/Daigle/Murmann DAC survey
-    %       (1.2 uW per LSB, 0.25 pJ per bit and sample). It REPLACES the
-    %       three constants, so do not combine it with hand-set ones.
-    opts.dacPowerModel (1,1) string {mustBeMember(opts.dacPowerModel, ["analytic","analytic_1V","survey"])} = "analytic"
+    %   "survey" (default) - 5 % quantile of the Caragiulo/Daigle/Murmann
+    %       DAC survey (1.2 uW per LSB, 0.25 pJ per bit and sample). It
+    %       REPLACES the three constants, so hand-set ones need
+    %       dacPowerModel="analytic".
+    opts.dacPowerModel (1,1) string {mustBeMember(opts.dacPowerModel, ["analytic","analytic_1V","survey"])} = "survey"
     % Beamforming architecture (docs/ANALOG_BEAMFORMING.md,
     % +physics/analogBeamformingParams.m). QAM gear only.
     %   "digital" (default) - one converter chain per antenna, as before;
@@ -123,7 +129,9 @@ arguments
     % e.g. beamformingArchTx="analog" with a digital receiver.
     opts.beamformingArchTx (1,1) string {mustBeMember(opts.beamformingArchTx, ["","digital","analog"])} = ""
     opts.beamformingArchRx (1,1) string {mustBeMember(opts.beamformingArchRx, ["","digital","analog"])} = ""
-    % Phase shifter for "analog" (docs/PHASE_SHIFTER_POWER_MODEL.md):
+    % Phase shifter for "analog" (docs/PHASE_SHIFTER_POWER_MODEL.md). No
+    % decided model (2026-10-15): studies keep all three variants; "active"
+    % is only the value a call without psType gets.
     %   "active" - psPower per element, no loss;
     %   "passive_penalty" - no DC power, loss as driver power and noise
     %       penalty (optimistic bound);
@@ -140,19 +148,25 @@ arguments
     opts.psGainLNA (1,1) double {mustBePositive} = 32
     opts.psNoiseFactorLNA (1,1) double {mustBePositive} = 3
     % LO distribution (+physics/loDistributionPower.m).
-    %   "shared" (default) - one LO per side whatever the number of
-    %       mixers; byte-identical to every existing result.
-    %   "per_mixer" - every mixer beyond the first adds an LO buffer of
-    %       loDistPowerPerMixer. Charges digital arrays (N mixers per
-    %       side); analog beamforming has one mixer and is unchanged.
-    opts.loDistributionModel (1,1) string {mustBeMember(opts.loDistributionModel, ["shared","per_mixer"])} = "shared"
-    % [W] per additional mixer; NaN = per-carrier default (3 / 7 / 12.5 mW at
-    % 2.4 / 8 / 28 GHz; other carriers need a value).
+    %   "shared" - one LO per side whatever the number of mixers
+    %       (dissertation; default until 2026-10-15).
+    %   "per_mixer" (default) - every mixer beyond the first adds an LO
+    %       buffer of loDistPowerPerMixer. Charges digital arrays (N mixers
+    %       per side); SISO and analog beamforming have one mixer per side
+    %       and are unchanged.
+    opts.loDistributionModel (1,1) string {mustBeMember(opts.loDistributionModel, ["shared","per_mixer"])} = "per_mixer"
+    % [W] per additional mixer; NaN = per-carrier default (3 / 7 / 12.5 /
+    % 10 mW at 2.4 / 8 / 28 / 60 GHz; other carriers need a value).
     opts.loDistPowerPerMixer (1,1) double = NaN
-    % Per-carrier maximum bandwidth, rows [f_c B_max] in Hz. Empty
-    % (default) keeps B_max = eta*f_c. When given, EVERY carrier in fcVec
-    % must have a row - resolveScenarioForCarrier.m errors otherwise
-    % rather than silently falling back to eta.
+    % Maximum signal bandwidth B_max per carrier (resolveScenarioForCarrier.m).
+    %   "channel" (default) - one standard channel: 20 MHz / 100 MHz /
+    %       400 MHz / 2.16 GHz at 2.4 / 8 / 28 / 60 GHz
+    %       (+physics/channelBandwidth.m); other carriers are an error.
+    %   "eta" - B_max = eta*f_c (dissertation; default until 2026-10-15).
+    opts.bandwidthModel (1,1) string {mustBeMember(opts.bandwidthModel, ["channel","eta"])} = "channel"
+    % Per-carrier maximum bandwidth, rows [f_c B_max] in Hz. Non-empty
+    % OVERRIDES bandwidthModel; then EVERY carrier in fcVec must have a
+    % row - resolveScenarioForCarrier.m errors otherwise.
     opts.B_maxByCarrier (:,2) double = zeros(0, 2)
 end
 anyAnalog = opts.beamformingArch == "analog" || opts.beamformingArchTx == "analog" || opts.beamformingArchRx == "analog";
@@ -169,9 +183,10 @@ end
 % hardwareModel "old"/"new": write the preset into the single switches, so
 % that everything downstream keeps reading only those. A single switch may
 % be left at its default or repeat the preset; anything else contradicts
-% the preset.
+% the preset. The defaults ARE the "new" preset (HardwareModelTest checks
+% that the two never drift apart).
 preset = gearboxphy.physics.hardwareModelPreset(opts.hardwareModel);
-defaults = gearboxphy.physics.hardwareModelPreset("old");
+defaults = gearboxphy.physics.hardwareModelPreset("new");
 for name = string(fieldnames(preset))'
     assert(opts.(name) == preset.(name) || opts.(name) == defaults.(name), ...
         'gearboxphy:hardwareModelConflict', ...

@@ -53,7 +53,9 @@ if isfolder(storeDir), rmdir(storeDir, 's'); end
 gearboxphy.sweep.runSweep(scenario, 'resultsDir', rd, 'useParallel', false);
 assert(isfile(resultFile), 'result should be rebuilt after resuming from checkpoints');
 S_after = gearboxphy.data.loadAllResults(rd, key);
-assert(isequal(S_after.E_per_bit(1:2), S_before.E_per_bit(1:2)), ...
+% isequaln: since B_max is one channel (20 MHz at 2.4 GHz, 2026-10-15)
+% point 2 is infeasible for QAM-4 and stays NaN; point 1 still proves reuse.
+assert(isequaln(S_after.E_per_bit(1:2), S_before.E_per_bit(1:2)), ...
     'resumed points 1-2 should match the checkpointed values exactly (reused, not recomputed)');
 assert(~exist(gearboxphy.data.checkpointDir(rd, key), 'dir'), ...
     'checkpoint folder should be cleaned up after a successful consolidated save');

@@ -112,7 +112,8 @@ classdef OperatingPointTest < matlab.unittest.TestCase
 end
 
 function cs = localScenario()
-base = gearboxphy.sweep.makeScenarioConfig( ...
+oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+base = gearboxphy.sweep.makeScenarioConfig(oldModels{:},  ...
     'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')), ...
     'distance', 500, 'RVec', 1e9, 'fcVec', 28e9);
 cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);

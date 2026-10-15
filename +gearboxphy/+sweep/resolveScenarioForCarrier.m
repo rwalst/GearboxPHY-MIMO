@@ -13,6 +13,10 @@ function carrierScenario = resolveScenarioForCarrier(scenario, f_c)
 %   band's eta override. A non-empty table without a row for f_c is an
 %   error, never a silent fallback to eta.
 %
+%   scenario.bandwidthModel = "channel" (default since 2026-10-15) sets
+%   B_max to one standard channel of the band (+physics/channelBandwidth.m),
+%   also as eta = B_max/f_c; "eta" keeps eta. B_maxByCarrier overrides both.
+%
 %   scenario.adcPowerModel selects the ADC constant c_ADC, see
 %   +physics/adcConstant.m.
 %
@@ -46,5 +50,9 @@ if isfield(scenario, 'B_maxByCarrier') && ~isempty(scenario.B_maxByCarrier)
             'B_maxByCarrier needs exactly one row for f_c = %g GHz (found %d).', f_c/1e9, numel(row));
     end
     carrierScenario.eta = scenario.B_maxByCarrier(row, 2) / f_c;
+elseif isfield(scenario, 'bandwidthModel') && scenario.bandwidthModel == "channel"
+    % One standard channel per carrier (default since 2026-10-15). A
+    % scenario without the field (built by hand) keeps eta.
+    carrierScenario.eta = gearboxphy.physics.channelBandwidth(f_c) / f_c;
 end
 end

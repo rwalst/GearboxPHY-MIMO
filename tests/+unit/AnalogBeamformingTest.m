@@ -121,12 +121,17 @@ classdef AnalogBeamformingTest < matlab.unittest.TestCase
             testCase.verifyEqual(both.quantLoss_dB, 2 * q(8, 2), 'RelTol', 1e-12);
         end
 
-        function loDistributionDefaultIsZero(testCase)
+        function loDistributionDefaultIsPerMixer(testCase)
+            % default since 2026-10-15; the old models and a hand-built
+            % scenario without the field charge nothing
             s = gearboxphy.sweep.makeScenarioConfig();
-            testCase.verifyEqual(s.loDistributionModel, "shared");
+            testCase.verifyEqual(s.loDistributionModel, "per_mixer");
             cs = gearboxphy.sweep.resolveScenarioForCarrier(s, 28e9);
-            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 16), 0);
+            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 16), 15 * 12.5e-3, 'RelTol', 1e-12);
             testCase.verifyEqual(gearboxphy.physics.loDistributionPower(rmfield(cs, 'loDistributionModel'), 16), 0);
+            old = gearboxphy.sweep.oldModelArgs();
+            csOld = gearboxphy.sweep.resolveScenarioForCarrier(gearboxphy.sweep.makeScenarioConfig(old{:}), 28e9);
+            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(csOld, 16), 0);
         end
 
         function loDistributionChargesMixersBeyondTheFirst(testCase)
@@ -135,14 +140,17 @@ classdef AnalogBeamformingTest < matlab.unittest.TestCase
             testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 8), 7 * 12.5e-3, 'RelTol', 1e-12);
             cs.loDistPowerPerMixer = 50e-3;
             testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs, 4), 3 * 50e-3, 'RelTol', 1e-12);
-            % per-carrier defaults at 2.4 and 8 GHz, none at 60 GHz
+            % per-carrier defaults at 2.4, 8 and 60 GHz, none at 120 GHz
             s = gearboxphy.sweep.makeScenarioConfig('loDistributionModel', "per_mixer");
             cs2 = gearboxphy.sweep.resolveScenarioForCarrier(s, 2.4e9);
             cs8 = gearboxphy.sweep.resolveScenarioForCarrier(s, 8e9);
             cs60 = gearboxphy.sweep.resolveScenarioForCarrier(s, 60e9);
             testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs2, 4), 3 * 3e-3, 'RelTol', 1e-12);
             testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs8, 4), 3 * 7e-3, 'RelTol', 1e-12);
-            testCase.verifyError(@() gearboxphy.physics.loDistributionPower(cs60, 4), 'gearboxphy:loDistPower');
+            testCase.verifyEqual(gearboxphy.physics.loDistributionPower(cs60, 4), 3 * 10e-3, 'RelTol', 1e-12);
+            cs120 = gearboxphy.sweep.resolveScenarioForCarrier( ...
+                gearboxphy.sweep.makeScenarioConfig('loDistributionModel', "per_mixer", 'bandwidthModel', "eta"), 120e9);
+            testCase.verifyError(@() gearboxphy.physics.loDistributionPower(cs120, 4), 'gearboxphy:loDistPower');
         end
 
         function loDistributionHitsDigitalNotAnalog(testCase)
@@ -248,7 +256,10 @@ classdef AnalogBeamformingTest < matlab.unittest.TestCase
 end
 
 function cs = localScenario(arch, psType, varargin)
-s = gearboxphy.sweep.makeScenarioConfig('antennaMode', "beamforming", 'beamformingArch', arch, ...
+% Built on the old models, so the LO tests compare per_mixer against an
+% explicit shared LO; every switch passed in varargin still wins.
+old = gearboxphy.sweep.oldModelArgs();
+s = gearboxphy.sweep.makeScenarioConfig(old{:}, 'antennaMode', "beamforming", 'beamformingArch', arch, ...
     'psType', psType, 'distance', 200, varargin{:});
 cs = gearboxphy.sweep.resolveScenarioForCarrier(s, 28e9);
 end

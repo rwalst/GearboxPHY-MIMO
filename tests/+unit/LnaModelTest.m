@@ -34,13 +34,30 @@ classdef LnaModelTest < matlab.unittest.TestCase
             end
         end
 
-        function scenarioDefaultsLeaveEverythingUnchanged(testCase)
+        function defaultsAreFloorAndChannelOldStaysUnchanged(testCase)
+            % defaults since 2026-10-15: fom_floor and one channel as B_max
             s = gearboxphy.sweep.makeScenarioConfig();
-            testCase.verifyEqual(s.lnaPowerModel, "fom_bandwidth");
+            testCase.verifyEqual(s.lnaPowerModel, "fom_floor");
+            testCase.verifyEqual(s.bandwidthModel, "channel");
             testCase.verifyEmpty(s.B_maxByCarrier);
-            cs = gearboxphy.sweep.resolveScenarioForCarrier(s, 28e9);
+            B = [2.4e9 20e6; 8e9 100e6; 28e9 400e6; 60e9 2.16e9];
+            for k = 1:size(B, 1)
+                cs = gearboxphy.sweep.resolveScenarioForCarrier(s, B(k, 1));
+                testCase.verifyEqual(cs.eta * B(k, 1), B(k, 2), 'RelTol', 1e-12);
+            end
+            testCase.verifyEqual(gearboxphy.physics.lnaParams(cs).model, "fom_floor");
+            % no channel bandwidth at other carriers: an error, not eta
+            testCase.verifyError(@() gearboxphy.sweep.resolveScenarioForCarrier(s, 120e9), ...
+                'gearboxphy:channelBandwidth');
+            % the old models: dissertation LNA, B_max = eta*f_c
+            old = gearboxphy.sweep.oldModelArgs();
+            cs = gearboxphy.sweep.resolveScenarioForCarrier(gearboxphy.sweep.makeScenarioConfig(old{:}), 28e9);
             testCase.verifyEqual(cs.eta, 0.1);
             testCase.verifyEqual(gearboxphy.physics.lnaParams(cs).model, "fom_bandwidth");
+            % B_maxByCarrier overrides the channel table
+            cs = gearboxphy.sweep.resolveScenarioForCarrier( ...
+                gearboxphy.sweep.makeScenarioConfig('B_maxByCarrier', [28e9 1e9]), 28e9);
+            testCase.verifyEqual(cs.eta * 28e9, 1e9, 'RelTol', 1e-12);
         end
 
         function floorOnlyActsBelowBetaFc(testCase)

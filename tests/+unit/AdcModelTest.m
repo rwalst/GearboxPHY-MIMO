@@ -17,17 +17,20 @@ classdef AdcModelTest < matlab.unittest.TestCase
     end
 
     methods (Test)
-        function defaultLeavesConstantUnchanged(testCase)
+        function defaultIsQuantile5(testCase)
+            % default since 2026-10-15; the old models keep 0.67 fJ bit for bit
             s = gearboxphy.sweep.makeScenarioConfig();
-            testCase.verifyEqual(s.adcPowerModel, "envelope");
+            testCase.verifyEqual(s.adcPowerModel, "quantile5");
+            old = gearboxphy.sweep.oldModelArgs();
+            sOld = gearboxphy.sweep.makeScenarioConfig(old{:});
             for f_c = s.fcVec
-                cs = gearboxphy.sweep.resolveScenarioForCarrier(s, f_c);
-                testCase.verifyEqual(cs.c_ADC, 0.67e-15);   % bit for bit
+                testCase.verifyEqual(gearboxphy.sweep.resolveScenarioForCarrier(s, f_c).c_ADC, 3.17e-15);
+                testCase.verifyEqual(gearboxphy.sweep.resolveScenarioForCarrier(sOld, f_c).c_ADC, 0.67e-15);
             end
         end
 
         function envelopeKeepsAHandSetConstant(testCase)
-            s = gearboxphy.sweep.makeScenarioConfig('c_ADC', 1.5e-15);
+            s = gearboxphy.sweep.makeScenarioConfig('adcPowerModel', "envelope", 'c_ADC', 1.5e-15);
             cs = gearboxphy.sweep.resolveScenarioForCarrier(s, 28e9);
             testCase.verifyEqual(cs.c_ADC, 1.5e-15);
         end
