@@ -82,16 +82,29 @@ ADC hinter dem Kombinierer, LOS mit einem ADC je Antenne, Rayleigh), beim
 Rayleigh-Fall zusätzlich über K = 3 und 30. Zusammen 480 Rice-Dateien in
 den `bf_rayleigh_dac*`-Familien.
 
-**Gearbox-Seite — gelaufen, aber auf einem überholten Stand.**
-Unter `results/` liegen aus früheren Läufen **dieses Vergleichs**: 68 `.mat`
-(3b 12 Varianten, `analog_bf` 20, `dbf_dac` 36) und 21 Ordner (3a 18,
-`siso_vs_mimo_scaledB` 3). Was in Abschnitt 3.2 als offen steht, ist deshalb
-überwiegend ein **Neurechnen** dieser Dateien, kein erster Lauf — die
-vorhandenen entstanden vor E8 (Rice-BF heißt dort noch `bf_scaledB_K3/_K30`
-statt `bf_fixedB_*`), vor E9 (gemeinsame Aussteuerung) und vor AP7, tragen
-den Arbeitspunkt (`SE`, `SNR_rx_dB`, `SNR_tx_dB`, `P_t_W`, `B_Hz`, `gamma`)
-also **nicht**. Neu gebaut und noch nie gelaufen sind nur die Rice-Spalte des
-analogen Zweigs (AP3) und die DAC-Rice-Fälle.
+**Gearbox-Seite — am 2026-10-15 geleert.** Alle Ergebnisse dieses Vergleichs
+sind aus `results/` **entfernt** worden: 333 Dateien, nämlich 68 `.mat`
+(3b 12, `analog_bf` 20, `dbf_dac` 36), 21 Ordner (3a 18,
+`siso_vs_mimo_scaledB` 3) und die beiden Abbildungsordner.
+
+**Grund:** der Export vom selben Tag hat **jede** exportierte Kurve neu
+geschrieben — E12-Deckelung an der Alphabetgrenze, volles Rice-Raster,
+E8-Namen, dazu die 24 K=0-DAC-Ordner, die ein Fehler nie geschrieben hatte.
+Damit sind die Eingänge sämtlicher Ergebnisse dieses Vergleichs andere als
+beim Lauf. Sie waren ohnehin vor E8, E9 und AP7 entstanden; der Lauf auf dem
+Cluster vom 2026-10-15 hat zusätzlich gezeigt, wohin ungedeckelte Kurven
+führen (q = E_bit(endlich)/E_bit(ideal) bis 0,005 — der endliche DAC
+scheinbar 40-mal billiger als der ideale).
+
+**Was geblieben ist**, weil es Gasts unveränderte `SE_data` liest und
+deshalb reproduzierbar bleibt: `main`, `main100`, `main200`, `lna/`,
+`beamforming_d*`, `beamforming_distance.mat` und `hardware_models/` (der
+SISO-Vergleich alt gegen neu vom Cluster). Nachgeprüft: `data/SE_data` ist
+seit dem gemeinsamen Stand byte-identisch.
+
+Abschnitt 3.2 ist damit kein Neurechnen mehr, sondern wieder ein erster
+Lauf — mit dem Unterschied, dass Kurven, Treiber und Auswertungen jetzt
+vollständig sind.
 
 **Läufe über die RATE bei fester Distanz.** Zwei Bauformen stehen im Repo
 nebeneinander, und die Übersicht in 3.2 betrifft nur die zweite:

@@ -243,7 +243,13 @@ analyze_adc_rule(mode="mux")         % je Modus einzeln, mit E_bit-Kurven
 Die Sechs-Varianten-Abbildungen aus Schritt 4 zeigen `fixedB` und
 `scaledB` nebeneinander, aber nicht *gegeneinander*. Dafür ist diese hier:
 
-![ADC-Regel über alle drei Modi](../results/cmp_figures/cmp_adc_rule_all.png)
+> **Die Abbildung ist am 2026-10-15 entfernt worden**, zusammen mit allen
+> Ergebnissen, deren Eingangskurven sich geändert haben: der Export vom
+> selben Tag hat jede exportierte Kurve neu geschrieben (E12-Deckelung an
+> der Alphabetgrenze, volles Rice-Raster, E8-Namen). Eine Abbildung aus
+> den alten Ergebnissen hier stehenzulassen wäre schlimmer als keine --
+> sie sähe aktuell aus. Sie entsteht neu, sobald 3a, 3b und
+> `analyze_adc_rule_all` gelaufen sind (`MIMO_TODO.md` 3.2).
 
 Oben die Differenz in Prozent, unten der ADC-Anteil am Energiebudget, der
 sie erklärt — durchgezogen `scaledB`, gepunktet `fixedB`.
