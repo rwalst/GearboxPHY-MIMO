@@ -8,10 +8,26 @@ function run_dbf_dac_distance(over)
 %   Vorher: export_dbf_dac_curves (und davor in QuantizedMimoMI
 %   runQamSweepBfIdealDac, spaeter runQamSweepBfRayleighDac).
 %
-%   RESSOURCEN: 25 Worker, 64 GB, 24 h. Ein Knoten.
+%   RESSOURCEN: 25 Worker, 64 GB, 24 h anfordern. Ein Knoten.
 %   parfor ueber die 25 Distanzen; mehr als 25 Worker bringen nichts.
-%   Zeitbedarf NICHT GEMESSEN. Fertige Dateien werden uebersprungen
-%   (SKIP_EXISTING): nach einem Abbruch einfach noch einmal starten.
+%
+%   ZEITBEDARF, hochgerechnet am 2026-10-15 (nicht auf dem Cluster
+%   gemessen): 315 Faelle x 1000 Optimierungen = 315 000, bei 0.169 s je
+%   Optimierung rund 15 Kernstunden, auf 25 Workern etwa 36 min. Die
+%   0.169 s sind an einem Mini-Raster gemessen (2 Distanzen, M = 4/16,
+%   N = 1/2, ein Kanal, ein DAC-Modell, seriell: 336 Optimierungen in
+%   56.9 s) und damit eine OBERE Schranke -- dort verteilt sich der Aufbau
+%   des Szenarios je Distanz auf 4 Zellen statt auf 20.
+%
+%   Die 24 h bleiben als Anforderung stehen: zu wenig Walltime killt den
+%   Job, zu viel kostet nur Warteschlangenpriorität. Laeuft es dagegen
+%   zehnmal laenger als die 36 min, stimmt etwas nicht -- dann zuerst die
+%   Checkpoint- und Dateiebene ansehen, nicht die Optimierung.
+%
+%   Fertige Dateien werden uebersprungen (SKIP_EXISTING): nach einem
+%   Abbruch einfach noch einmal starten. Bei den analogen Varianten
+%   entscheidet seit 2026-10-15 der Fingerabdruck darueber
+%   (+data/fingerprintMatches.m) -- localDone konnte das dort nie.
 %
 %   ZIH-Cluster statt Windows: sbatch hpc/zih/submit_study.sbatch run_dbf_dac_distance
 %   mit --cpus-per-task=26 (einer fuer den Client). Anleitung und

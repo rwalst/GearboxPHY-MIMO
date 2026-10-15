@@ -20,7 +20,7 @@ Probelauf des Studientreibers auf einem Mini-Raster). Kein Kurven- und kein Dist
 | 0 Pruefen | QuantizedMimoMI/qam/validate | `validateBfDac` | unter einer Minute, kein Pool |
 | 1 Kurven | QuantizedMimoMI/qam/sweep | `runQamSweepBfIdealDac` | nodes=1 cpus-per-task=4 mem=8G time=01:00:00, kein Pool (NICHT gemessen) |
 | 2 Export | GearboxPHY-MIMO | `setupGearboxPath; export_dbf_dac_curves` | Sekunden |
-| 3 Sweep | GearboxPHY-MIMO | `setupGearboxPath; run_dbf_dac_distance` | nodes=1 cpus-per-task=25 mem=64G time=24:00:00 (NICHT gemessen) |
+| 3 Sweep | GearboxPHY-MIMO | `setupGearboxPath; run_dbf_dac_distance` | 25 Worker, 64 GB, 24 h anfordern — **erwartet ~36 min** (hochgerechnet, s. u.) |
 
 Schritt 1 schreibt `qam/results/bf_ideal_dac<k>` und `..._dac<k>_common` (k = 0..3) und druckt
 am Ende je Kurve den SNR-Mehrbedarf gegen den idealen DAC. Daran ablesen:
@@ -92,3 +92,99 @@ Eine Auswertung dazu gibt es noch nicht.
   wiederholen.
 - Eine Ergebnisdatei wird neu gerechnet, obwohl sie vorliegt: Raster oder Stufenliste haben
   sich geaendert (zum Beispiel kam der Vergleichsfall dazu). Das ist gewollt.
+
+---
+
+## Schritt 3 für den HPC vorbereitet (2026-10-15)
+
+Alles, was ohne den Sweep prüfbar ist, ist geprüft. Der Treiber startet auf
+beiden Clustern ohne Argument.
+
+### Aufruf
+
+| Cluster | Aufruf |
+|---|---|
+| Windows | in `GearboxPHY-MIMO/`: `setupGearboxPath; run_dbf_dac_distance` |
+| ZIH | `sbatch hpc/zih/submit_study.sbatch run_dbf_dac_distance` (`--cpus-per-task=26`, einer für den Client) |
+
+Die Workerzahl steht als `P.N_WORKERS = 25` im CONFIG-Block des Treibers —
+je Lauf dort anpassen, nicht am Aufruf. Auf dem ZIH deckelt
+`+sweep/workerBudget.m` zusätzlich an `SLURM_CPUS_PER_TASK`.
+
+### Voraussetzungen, geprüft
+
+Alle fünf Kanäle vollständig, je vier DAC-Stufen in **beiden**
+Aussteuerungen:
+
+| Kanal | `digBase` | Stufen | `anaData` |
+|---|---|---|---|
+| `losd` | `SE_data_bflosd_fixedB` | per 0–3, common 0–3 | `SE_data_bfideal_fixedB` |
+| `los` | `SE_data_bfideal_fixedB` | per 0–3, common 0–3 | `SE_data_bfideal_fixedB` |
+| `ray` | `SE_data_bf_fixedB` | per 0–3, common 0–3 | `SE_data_abf_fixedB` |
+| `ray3` | `SE_data_bf_fixedB_K3` | per 0–3, common 0–3 | `SE_data_abf_fixedB_K3` |
+| `ray30` | `SE_data_bf_fixedB_K30` | per 0–3, common 0–3 | `SE_data_abf_fixedB_K30` |
+
+Die `common`-Stufen 1–3 gab es bis zum 2026-10-15 nicht (K=0-Fehler im
+Export, siehe `MIMO_TODO.md` 3.2). **Vorher hätte dieser Lauf den
+Standardfall nur für Stufe 0 gerechnet** und dabei wie ein vollständiger
+Sweep ausgesehen.
+
+### Vorablauf, der die ganze Kette durchfährt
+
+Mini-Raster, seriell, Ergebniswurzel in einem Wegwerfordner — also ohne
+Spuren im Repo. Lief am 2026-10-15 in **56,9 s**, ohne eine Warnung:
+
+```matlab
+setupGearboxPath
+setenv('GEARBOXPHY_RESULTS_ROOT', tempname); mkdir(getenv('GEARBOXPHY_RESULTS_ROOT'))
+run_dbf_dac_distance(struct('RESULT_PREFIX', "pre_", 'distances', [50 5000], ...
+    'Ms', [4 16], 'Ns', [1 2], 'CHANNELS', "losd", 'DAC_MODELS', "analytic", ...
+    'N_WORKERS', 0, 'SKIP_EXISTING', false))
+```
+
+Was er belegt: Kanalerkennung, Stufenerkennung, Szenario, Fingerabdruck und
+Ergebnisspeicher, die Felder `Eadc`/`Eps` der Vereinigung, `minOverDacLevels`
+und das Speichern. Gegengeprüft am Ergebnis: `kBest` nutzt alle vier Stufen
+(1–4), alle Zellen endlich, **kein** `commonIncomplete`.
+
+### Was der Vollauf erzeugt
+
+315 Fälle (5 Kanäle × 3 DAC-Modelle × [2 LO-Fälle × 9 Kurvensätze + 3
+Phasenschieber]) à 1000 Optimierungen = **315 000**. Daraus **66 Dateien**:
+
+| | Dateien | davon neu |
+|---|---|---|
+| digital `dbfdac_distance_<kanal>_<lo>_<modell>.mat` | 30 | 12 (`ray3`, `ray30`) |
+| analog `abfdac_distance_<variante>_<modell>.mat` | 36 | 18 (`abfray3`, `abfray30`) |
+
+Die 36 vorhandenen werden **neu gerechnet**, und zwar zwangsläufig: die
+digitalen tragen `dacLevels = [0]` statt `[0 1 2 3]`, die analogen keinen
+`resultFingerprint`. Beide Prüfungen schlagen damit fehl, und das ist
+richtig — sie stammen aus der Zeit vor E9, E12 und AP7.
+
+**Der Ergebnisspeicher nimmt 9 der 315 Fälle (2,9 %) heraus:** die Kanäle
+`losd` und `los` haben dieselben `anaData`/`anaMode`/`anaPrefix`, ihre
+analogen Dateien sind also dieselbe Rechnung unter demselben Namen.
+
+### Laufzeit
+
+~15 Kernstunden, auf 25 Workern **etwa 36 min**. Hochgerechnet aus dem
+Vorablauf (0,169 s je Optimierung) und damit eine **obere** Schranke: dort
+verteilt sich der Szenario-Aufbau je Distanz auf 4 Zellen statt auf 20.
+Nicht auf dem Cluster gemessen.
+
+Die 24 h bleiben als Anforderung: zu wenig Walltime killt den Job, zu viel
+kostet nur Priorität. Dauert es zehnmal länger, stimmt etwas nicht — dann
+zuerst die Datei- und Checkpoint-Ebene ansehen, nicht die Optimierung.
+
+### Danach prüfen
+
+1. 66 Dateien unter `results/`, keine Warnung im Protokoll — besonders kein
+   `commonIncomplete` und kein `dacCapRef`-Hinweis.
+2. In einer digitalen Datei: `dacLevels` = `[0 1 2 3]`,
+   `dacScaleStandard` = `"common"`, `kBest` nutzt mehr als eine Stufe.
+3. `resultFingerprint` in jeder Datei (sonst trägt sie nichts zum
+   Ergebnisspeicher bei, siehe `RESULT_NAMING.md`).
+4. **Die Auswertung fehlt weiterhin** (`MIMO_TODO.md` 1, letzte Zeile):
+   nach diesem Lauf liegen 66 Dateien da, die niemand liest. Das ist der
+   nächste sinnvolle Schritt, nicht Schritt 4.

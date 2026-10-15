@@ -114,18 +114,40 @@ classdef ResultStoreTest < matlab.unittest.TestCase
 
         % ---------- die gemessenen Befunde, mit echten Daten ----------
         function nutzlastEntscheidetNichtDerDateiinhalt(testCase)
-            a = fullfile(gearboxphy.paths.dataDir('SE_data_mux_fixedB'), 'SE_4_QAM.mat');
-            b = fullfile(gearboxphy.paths.dataDir('SE_data_mux_scaledB'), 'SE_4_QAM.mat');
+            % Die Aussage, auf der der ganze Entwurf beruht: die DATEIEN
+            % unterscheiden sich, die NUTZLAST nicht. Ein Hash ueber die
+            % Datei wuerde deshalb kein einziges echtes Duplikat finden.
+            %
+            % Geprueft wird das an den Bytes und an loadSECurve, nicht an
+            % einem einzelnen Metadatenfeld. Erste Fassung dieses Tests
+            % verglich generatedOn -- das ging schief, sobald beide Ordner
+            % in EINEM Exportlauf entstanden: dann ist der Zeitstempel
+            % gleich, und die Dateien unterscheiden sich stattdessen in
+            % source und srcSnrStep. Der Zeuge war falsch gewaehlt, die
+            % Aussage stimmte.
+            dA = gearboxphy.paths.dataDir('SE_data_mux_fixedB');
+            dB = gearboxphy.paths.dataDir('SE_data_mux_scaledB');
+            a = fullfile(dA, 'SE_4_QAM.mat');
+            b = fullfile(dB, 'SE_4_QAM.mat');
             testCase.assumeTrue(isfile(a) && isfile(b), 'Kurvenordner fehlen.');
 
-            % Die Dateien sind byte-verschieden ...
-            ra = load(a); rb = load(b);
-            testCase.verifyNotEqual(ra.generatedOn, rb.generatedOn);
+            % (1) Die Dateien sind NICHT byte-gleich.
+            testCase.verifyFalse(isequal(localBytesOf(a), localBytesOf(b)), ...
+                ['Die beiden Kurvendateien sind byte-gleich. Dann waere ein ' ...
+                 'Datei-Hash als Schluessel brauchbar, und die Begruendung ' ...
+                 'fuer +data/fingerprint.m haette sich geaendert.']);
 
-            % ... die Nutzlast, die die Optimierung liest, ist identisch.
-            testCase.verifyEqual(ra.SE_vec, rb.SE_vec);
-            testCase.verifyEqual(ra.SNR_vec, rb.SNR_vec);
-            testCase.verifyEqual(ra.sourceB, rb.sourceB);
+            % (2) Was loadSECurve nach aussen gibt -- und nur das sieht die
+            %     Optimierung -- ist identisch.
+            cfg = struct('N_t', 1, 'N_r', 1);
+            seA = gearboxphy.data.loadSECurve("QAM", 4, cfg, dA, "multiplexing");
+            seB = gearboxphy.data.loadSECurve("QAM", 4, cfg, dB, "multiplexing");
+            testCase.verifyEqual(seB, seA, ...
+                'Die Nutzlast muss identisch sein -- sonst ist es kein Duplikat.');
+
+            % (3) Und damit auch der Fingerabdruck darueber.
+            testCase.verifyEqual(gearboxphy.data.fingerprint(seB), ...
+                                 gearboxphy.data.fingerprint(seA));
         end
 
         function analogeVariantenBeiderStudienTeilenDenSchluessel(testCase)
@@ -214,6 +236,13 @@ ctxList = cell(1, numel(acs));
 for ci = 1:numel(acs), ctxList{ci} = gear.prepare(order, cs, acs{ci}); end
 fp = gearboxphy.data.comboFingerprint(gear.name, order, fc, RVec, op, ...
     gear.initialGuess(order, cs), gear.optimizerBounds(order, cs), ctxList);
+end
+
+function b = localBytesOf(file)
+%LOCALBYTESOF  Roher Dateiinhalt, fuer den Byte-Vergleich.
+fid = fopen(file, 'r');
+closeIt = onCleanup(@() fclose(fid)); %#ok<NASGU>
+b = fread(fid, Inf, '*uint8');
 end
 
 function p = frameworkRoot()
