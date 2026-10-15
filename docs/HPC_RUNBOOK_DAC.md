@@ -185,6 +185,14 @@ zuerst die Datei- und Checkpoint-Ebene ansehen, nicht die Optimierung.
    `dacScaleStandard` = `"common"`, `kBest` nutzt mehr als eine Stufe.
 3. `resultFingerprint` in jeder Datei (sonst trägt sie nichts zum
    Ergebnisspeicher bei, siehe `RESULT_NAMING.md`).
+4. **Auf Löcher prüfen** — `gearboxphy.data.findFeasibilityHoles(S.E, S.CFG)`
+   über jede Datei. E_bit wächst monoton mit der Distanz, die erreichbaren
+   Distanzen je (Rate, M, N) müssen also ein Präfix sein. Eine endliche
+   Zelle *hinter* einer NaN-Zelle kann keine Physik sein und zeigt einen
+   verworfenen Antennenkandidaten an (E7). Am 2026-10-15 über alle 68
+   vorhandenen Ergebnisdateien gelaufen: **eine** betroffen
+   (`abfdac_distance_abfray_passive_comp_analytic.mat`, 2 Zellen bei
+   M = 256, N = 2).
 4. **Die Auswertung fehlt weiterhin** (`MIMO_TODO.md` 1, letzte Zeile):
    nach diesem Lauf liegen 66 Dateien da, die niemand liest. Das ist der
    nächste sinnvolle Schritt, nicht Schritt 4.

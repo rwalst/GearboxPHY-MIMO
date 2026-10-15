@@ -309,7 +309,7 @@ also da. Es fehlt die Stelle, die sie zu einer Aussage zusammenzieht.
 | # | Frage | Empfehlung |
 |---|---|---|
 | E6 | N > 16? | nein — `alphabetB` dort nicht rechenbar, Phasenquantisierung verliert ohnehin |
-| E7 | `isfile`-Aussetzer auf dem UNC-Share? | Kandidaten einmal im Client prüfen und ins parfor broadcasten; die fünf betroffenen Läufe neu rechnen |
+| E7 | `isfile`-Aussetzer auf dem UNC-Share? | **entschärft 2026-10-15**: `filterAvailableAntennaConfigs` verwirft einen Kandidaten nur noch, wenn **beide** Prüfungen ihn nicht finden (Verzeichnisliste *und* `isfile`), und die Liste wird je Ordner gecacht — ein Share-Zugriff statt 20 je Aufruf, rund 157 000 je Vollauf von Schritt 3. Dazu `+data/findFeasibilityHoles.m`, das die Folge nachweist statt sie zu vermuten. Befund über alle 68 Ergebnisdateien: eine betroffen, 2 Zellen |
 | E11 | Golden Master belastbar machen? | je Testmethode seeden **und** Toleranz auf die echte Streuung weiten (E_bit ~1e-2, γ ~1e-1) |
 
 Zu **E11**: `qamMatchesOriginal` und `naQamMatchesOriginal` vergleichen zwei
