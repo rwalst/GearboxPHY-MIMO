@@ -13,16 +13,18 @@ function scen = bf_arch_scenario(d, CFG, v, dataDir, adcModel, configs, dacModel
 %                          Ein-Strom-Kurven, deshalb der Schalter
 %                          analogCurvesCarryArrayGain.
 %
-%   dacModel (optional, Vorgabe "analytic"): DAC-Leistungsmodell, siehe
-%   +physics/dacConstants.m. Ohne das Argument bleibt alles wie bisher.
-%   lnaModel (optional, Vorgabe "fom_bandwidth"): LNA-Leistungsmodell, siehe
-%   +physics/lnaPowerFor.m.
-if nargin < 7 || isempty(dacModel), dacModel = "analytic"; end
-if nargin < 8 || isempty(lnaModel), lnaModel = "fom_bandwidth"; end
-args = {'dacPowerModel', dacModel, 'lnaPowerModel', lnaModel, 'distance', d, 'RVec', CFG.rates, 'fcVec', CFG.fcGHz*1e9, 'dataDir', dataDir, ...
-        'adcPowerModel', adcModel, 'antennaMode', v.mode, ...
+%   dacModel, lnaModel (optional): DAC- bzw. LNA-Leistungsmodell, siehe
+%   +physics/dacConstants.m und +physics/lnaPowerFor.m. Leer oder nicht
+%   uebergeben: der Standard von makeScenarioConfig (seit 2026-10-15
+%   survey bzw. fom_floor; vorher fielen beide hier auf die alten Modelle
+%   analytic/fom_bandwidth zurueck). adcModel leer: ebenso der Standard.
+args = {'distance', d, 'RVec', CFG.rates, 'fcVec', CFG.fcGHz*1e9, 'dataDir', dataDir, ...
+        'antennaMode', v.mode, ...
         'beamformingArch', v.arch, 'psType', v.ps, 'psBits', CFG.psBits, ...
         'psPower', CFG.psPower, 'psLossDb', CFG.psLossDb};
+if nargin >= 7 && ~isempty(dacModel) && dacModel ~= "", args = [args, {'dacPowerModel', dacModel}]; end
+if nargin >= 8 && ~isempty(lnaModel) && lnaModel ~= "", args = [args, {'lnaPowerModel', lnaModel}]; end
+if ~isempty(adcModel) && adcModel ~= "", args = [args, {'adcPowerModel', adcModel}]; end
 % LO-Verteilung je Mischer: nur Varianten mit v.lo = "per_mixer"; der
 % Pufferwert steht JE VARIANTE in v.loPower [W] (dbf_ideal_lo4mW usw.).
 if isfield(v, 'lo') && v.lo ~= ""
@@ -38,6 +40,5 @@ if v.mode == "beamforming"
 else
     args = [args, {'qamMimoConfigs', configs, 'analogCurvesCarryArrayGain', anyAnalog}];
 end
-oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
-scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, args{:});
+scen = gearboxphy.sweep.makeScenarioConfig(args{:});
 end

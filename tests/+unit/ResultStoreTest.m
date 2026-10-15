@@ -162,7 +162,9 @@ classdef ResultStoreTest < matlab.unittest.TestCase
             % (Vorgaben fuer DAC- und LNA-Modell), die DAC-Studie mit ACHT
             % (dieselben Modelle, nur ausgeschrieben). Genau das prueft
             % dieser Test: dass die Vorgaben und die ausgeschriebenen Werte
-            % wirklich dasselbe Szenario ergeben.
+            % wirklich dasselbe Szenario ergeben. Seit 2026-10-15 sind die
+            % Vorgaben der neue Satz (DAC survey, LNA fom_floor); vorher
+            % fiel bf_arch_scenario auf analytic/fom_bandwidth zurueck.
             CFG = struct('rates', [1e6 1e9], 'distances', logspace(1,4,5), ...
                 'fcGHz', 28, 'Ms', [4 64], 'Ns', [1 2 4], 'psBits', 6, ...
                 'psPower', NaN, 'psLossDb', NaN);
@@ -178,7 +180,7 @@ classdef ResultStoreTest < matlab.unittest.TestCase
                 @(d) bf_arch_scenario(d, CFG, v, dd, "envelope", cfgs), CFG);
             fpDacStudie = gearboxphy.data.gridFingerprint("abf_analog/v2", ...
                 @(d) bf_arch_scenario(d, CFG, v, dd, "envelope", cfgs, ...
-                    "analytic", "fom_bandwidth"), CFG);
+                    "survey", "fom_floor"), CFG);
 
             testCase.verifyEqual(fpDacStudie, fpAnalogStudie, ...
                 ['Die analogen Varianten der beiden Studien muessen denselben ' ...

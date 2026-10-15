@@ -31,10 +31,12 @@ cfg.lnaBetaMin = 0.05;
 
 cfg.bw(1).name  = "eta01";
 cfg.bw(1).label = "B_{max} = 0.1 f_c";
-cfg.bw(1).B_maxByCarrier = zeros(0, 2);          % -> eta = 0.1 (makeScenarioConfig default)
+cfg.bw(1).B_maxByCarrier = zeros(0, 2);
+cfg.bw(1).bandwidthModel = "eta";                 % -> eta = 0.1 (since 2026-10-15 no longer the default)
 cfg.bw(2).name  = "narrow";
 cfg.bw(2).label = "B_{max} = 20 / 100 / 400 MHz";
 cfg.bw(2).B_maxByCarrier = [2.4e9 20e6; 8e9 100e6; 28e9 400e6];
+cfg.bw(2).bandwidthModel = "channel";             % same values; the table wins anyway
 
 cfg.studies = ["siso" "beamforming"];
 cfg.distances.siso        = 50;

@@ -148,10 +148,6 @@ for adcModel = ADC_MODELS
         v = V(k);
         dataDir = gearboxphy.paths.dataDir(v.data);
         outFile = gearboxphy.paths.resultsDir(sprintf('abf_distance_%s_%s.mat', v.name, adcModel));
-        if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) && localUpToDate(outFile, dataDir)
-            fprintf('\n======== %s / %s: liegt vor, uebersprungen ========\n', v.name, adcModel);
-            continue
-        end
         % WIEDERVERWENDEN STATT NEU RECHNEN. Der Fingerabdruck deckt jede
         % Zelle des (Distanz, M, N)-Gitters ab, gebildet aus genau dem ctx,
         % mit dem sie gerechnet wird (+data/gridFingerprint.m). Hat ein
@@ -167,6 +163,13 @@ for adcModel = ADC_MODELS
         fp = gearboxphy.data.gridFingerprint("abf_analog/v2", ...
             @(d) localScenario(d, CFG, v, dataDir, adcModel, ...
                 arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false)), CFG);
+        % Ueberspringen nur mit passendem Fingerabdruck (seit 2026-10-15):
+        % eine Datei mit anderen Hardwaremodellen gilt als nicht fertig.
+        if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) && localUpToDate(outFile, dataDir) ...
+                && gearboxphy.data.fingerprintMatches(string(outFile), fp)
+            fprintf('\n======== %s / %s: liegt vor, uebersprungen ========\n', v.name, adcModel);
+            continue
+        end
         if gearboxphy.data.fetchFromStore(fp, outFile)
             fprintf('\n======== %s / %s: schon gerechnet (%s), uebernommen ========\n', ...
                 v.name, adcModel, fp);

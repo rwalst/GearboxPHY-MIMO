@@ -31,6 +31,10 @@ assert(isfile(resultFile), 'expected QAM order=4 result to exist after first run
 S_before = gearboxphy.data.loadAllResults(rd, key);
 
 delete(resultFile);
+% The checkpoints of a combo are bound to its input fingerprint
+% (+data/claimCheckpoints.m); hand-made ones need the same stamp, or the
+% resumed run discards them as written with other inputs.
+gearboxphy.data.claimCheckpoints(rd, key, string(S_before.resultFingerprint));
 % Manually recreate checkpoints for points 1 and 2 (of 3) using the
 % previous run's values, to prove they get reused rather than recomputed.
 gearboxphy.data.savePointCheckpoint(rd, key, 1, S_before.E_per_bit(1), ...
