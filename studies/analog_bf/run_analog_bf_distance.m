@@ -61,7 +61,14 @@ CFG.Ns        = [1 2 4 8 16];
 CFG.psBits    = 6;                      % Phasenaufloesung; Inf = kein Quantisierungsverlust
 CFG.psPower   = NaN;                    % NaN = Vorgabe aus phaseShifterParams (28 GHz: 20 mW)
 CFG.psLossDb  = NaN;                    % NaN = Vorgabe aus phaseShifterParams (28 GHz: 7.5 dB)
-ADC_MODELS    = ["envelope" "quantile5"];
+% NUR quantile5 (Nutzerentscheidung 2026-10-15): die Untersuchungen rechnen
+% ausschliesslich mit den neuen Hardwaremodellen. "envelope" ist der ALTE
+% ADC (0,67 fJ, Walden-Bestfall) und war hier als zweiter Arm einer
+% Einfassung angelegt. Die Migration (d6118fa) hat diese Konstante
+% uebersehen -- sie wird explizit an bf_arch_scenario uebergeben und schlug
+% damit die neue Vorgabe. Der alte Arm bleibt ueber die gespeicherten
+% Ergebnisse verfuegbar, nicht als laufende Variante.
+ADC_MODELS    = "quantile5";
 USE_PARALLEL  = ~isempty(ver('parallel'));
 SKIP_EXISTING = true;
 %% ===================================================================

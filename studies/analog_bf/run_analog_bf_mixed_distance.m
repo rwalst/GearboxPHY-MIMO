@@ -45,8 +45,14 @@ function run_analog_bf_mixed_distance(over)
 %   12.5 mW je zusaetzlichem Mischer. Der Aufschlag trifft nur die DIGITALE
 %   Seite (N Mischer); die analoge hat einen.
 %
-%   ADC-MODELL: nur "envelope". In run_analog_bf_distance war der
-%   Unterschied zu "quantile5" nicht sichtbar (ADC-Anteil unter 1 %).
+%   ADC-MODELL: nur "quantile5", der neue ADC (Nutzerentscheidung
+%   2026-10-15). Hier stand "envelope" -- der alte -- mit der Begruendung,
+%   der Unterschied sei in run_analog_bf_distance nicht sichtbar gewesen
+%   (ADC-Anteil unter 1 %). Das bleibt richtig, taugt aber nicht als Grund:
+%   der Wert wird explizit an bf_arch_scenario uebergeben und schlug damit
+%   die neue Vorgabe, dieser Lauf haette also als einziger noch mit dem
+%   alten ADC gerechnet. Die Migration (d6118fa) hat die Konstante
+%   uebersehen.
 %
 %   AUSGABE: results/abfmix_distance_<variante>_<lo>.mat, <lo> = loShared
 %   oder lo12p5mW, mit
@@ -63,7 +69,7 @@ CFG.Ns        = [1 2 4 8 16];
 CFG.psBits    = 6;
 CFG.psPower   = NaN;
 CFG.psLossDb  = NaN;
-ADC_MODEL     = "envelope";
+ADC_MODEL     = "quantile5";
 LO_CASES      = struct('tag', {"loShared", "lo12p5mW"}, 'model', {"", "per_mixer"}, 'power', {NaN, 12.5e-3});
 USE_PARALLEL  = ~isempty(ver('parallel'));
 SKIP_EXISTING = true;
