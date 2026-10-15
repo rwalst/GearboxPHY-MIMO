@@ -54,8 +54,26 @@ Antwort auf die andere Frage. `dacScaleStandard` ist deshalb Pflichtfeld.
 drei GF-Folien (34, 36, 37) aus demselben Material neu.
 
 **Wo die Ergebnisse landen:** `results/cmp_figures/` (MIMO-Vergleich),
-`results/abf_figures/` (analoges BF). Alle Auswertungen sind reine
+`results/abf_figures/` (analoges BF), `results/dbfdac_figures/` (DAC),
+`results/abfmix_figures/` (Mischformen). Alle Auswertungen sind reine
 Nachbearbeitung — Sekunden, kein Pool, dürfen am Arbeitsplatz laufen.
+
+**Was sie am 2026-10-15 ergeben haben** (alles unter
+`loDistributionModel = "shared"`, siehe Abschnitt 5):
+
+| | |
+|---|---|
+| K\* | **15,2 (11,8 dB)** bei 56 m und 1 Gbit/s |
+| d\* bei 1 Gbit/s | 721 m (K = 0, `fixedB`), 170 m (`alphabetB`), 66 m (K = 3), 51 m (K = 30), 46 m (Rang 1) |
+| d\* bei 1 Mbit/s | keine, außer Rang 1 (1006 m) — darunter wählen beide Modi N = 1 und sind dasselbe System |
+| ADC-Regel | `scaledB` gegen `fixedB`: Median **+0,00 %**, in 25–36 % der Punkte besser, schlechtester Fall +8,7 % |
+| Gangwahl | bei 5 km nimmt QAM-BF 65 von 88 Ratenpunkten, bei 50 m **gar keinen** |
+| DAC (Teilstand) | endlicher DAC kostet bis **+13,4 %** (`analytic`) bzw. +6,7 % (`analytic_1V`), Kanal `losd` |
+
+**Ein Vorbehalt steckt in fast jeder dieser Zahlen:** bei 1 Gbit/s sitzt ab
+etwa 1 km ein Modus am größten verfügbaren N. Die Auswertung markiert das
+mit `[R]`; q ist dort eine **Schranke**, nicht der Wert. Das ist E6 (N > 16)
+von der Ergebnisseite.
 
 ---
 
@@ -82,29 +100,24 @@ ADC hinter dem Kombinierer, LOS mit einem ADC je Antenne, Rayleigh), beim
 Rayleigh-Fall zusätzlich über K = 3 und 30. Zusammen 480 Rice-Dateien in
 den `bf_rayleigh_dac*`-Familien.
 
-**Gearbox-Seite — am 2026-10-15 geleert.** Alle Ergebnisse dieses Vergleichs
-sind aus `results/` **entfernt** worden: 333 Dateien, nämlich 68 `.mat`
-(3b 12, `analog_bf` 20, `dbf_dac` 36), 21 Ordner (3a 18,
-`siso_vs_mimo_scaledB` 3) und die beiden Abbildungsordner.
+**Gearbox-Seite — 3a und 3b fertig, Schritt 3 und 4 unterwegs.**
+Stand 2026-10-15, gemessen:
 
-**Grund:** der Export vom selben Tag hat **jede** exportierte Kurve neu
-geschrieben — E12-Deckelung an der Alphabetgrenze, volles Rice-Raster,
-E8-Namen, dazu die 24 K=0-DAC-Ordner, die ein Fehler nie geschrieben hatte.
-Damit sind die Eingänge sämtlicher Ergebnisse dieses Vergleichs andere als
-beim Lauf. Sie waren ohnehin vor E8, E9 und AP7 entstanden; der Lauf auf dem
-Cluster vom 2026-10-15 hat zusätzlich gezeigt, wohin ungedeckelte Kurven
-führen (q = E_bit(endlich)/E_bit(ideal) bis 0,005 — der endliche DAC
-scheinbar 40-mal billiger als der ideale).
+| Lauf | Dateien | Stand |
+|---|---|---|
+| **3b** `cmp_distance_*.mat` | **12 von 12** | ✓ fertig, **0 Löcher** (`findFeasibilityHoles` über alle), `CFG.Ns = [1 2 4 8 16]`, AP7 und `resultFingerprint` vorhanden |
+| **3a** `cmp_<variante>_d<d>/` | **21 von 21** | ✓ fertig (7 Varianten × 3 Distanzen) |
+| Schritt 3 `dbfdac_*` / `abfdac_*` | 4 von 30 / 6 von 36 | läuft; `dacLevels = [0 1 2 3]` — der K=0-Fix wirkt |
+| Schritt 4 `abf_distance_*` | 2 von 20 | läuft |
+| Auswertungen | 11 Abbildungen in `cmp_figures/` | 5 gelaufen, keine Warnung |
 
-**Was geblieben ist**, weil es Gasts unveränderte `SE_data` liest und
-deshalb reproduzierbar bleibt: `main`, `main100`, `main200`, `lna/`,
-`beamforming_d*`, `beamforming_distance.mat` und `hardware_models/` (der
-SISO-Vergleich alt gegen neu vom Cluster). Nachgeprüft: `data/SE_data` ist
-seit dem gemeinsamen Stand byte-identisch.
-
-Abschnitt 3.2 ist damit kein Neurechnen mehr, sondern wieder ein erster
-Lauf — mit dem Unterschied, dass Kurven, Treiber und Auswertungen jetzt
-vollständig sind.
+Alle Ergebnisse der *vorherigen* Läufe wurden am selben Tag gelöscht (333
+Dateien), weil der Export jede Kurve neu geschrieben hatte — E12-Deckelung,
+volles Rice-Raster, E8-Namen, die 24 K=0-DAC-Ordner. Was dabei **blieb**,
+weil es Gasts unveränderte `SE_data` liest: `main`, `main100`, `main200`,
+`lna/`, `beamforming_d*`, `beamforming_distance.mat` und
+`hardware_models/`. Nachgeprüft: `data/SE_data` ist seit dem gemeinsamen
+Stand byte-identisch, und Gasts Kurven liegen nirgends über ihrem Cap.
 
 **Läufe über die RATE bei fester Distanz.** Zwei Bauformen stehen im Repo
 nebeneinander, und die Übersicht in 3.2 betrifft nur die zweite:
@@ -188,9 +201,9 @@ Dateien zeigen keine solche Verletzung.
 | 2 | `export_dbf_dac_curves` | *vergleicht nichts* — je DAC-Stufe ein Ordner, damit Schritt 3 die Stufen gegeneinander stellen kann | **✓ gelaufen 2026-10-15** (`9ca8ce9`): 41 Ordner, keine Warnung, beide Deckelungen wirksam (E12 an der Alphabetgrenze, E4 gegen die Ideal-DAC-Kurve). Dabei einen Fehler behoben, der **alle 24 K=0-Ordner** bei jedem Lauf übersprang — siehe unten |
 | 3 | `run_dbf_dac_distance` | **idealer DAC gegen 4 endliche Stufen** (plus Minimum über die Stufen), dazu gemeinsame gegen antennenweise Aussteuerung, 3 DAC-Leistungsmodelle, 2 LO-Fälle — über die Distanz. Die analogen Varianten laufen als Referenz mit, weil das DAC-Modell auch sie trifft | 25 Worker; rechnet die 18 vorhandenen Dateien neu (E9) und die Kanäle `ray3`/`ray30` |
 | 4 | `run_analog_bf_distance` | **analoges gegen digitales BF bei gleicher Kurve**: 3 Phasenschieber-Varianten (aktiv / passiv kompensiert / passiv mit Strafe) gegen die digitale Kette mit 4 LO-Fällen (gemeinsam, 4 / 12,5 / 17 mW je Mischer), 2 ADC-Modelle | jetzt mit 9 Rice-Varianten (AP3), ~20 min mehr |
-| 5 | `run_mimo_comparison_distance` (3b) | **BF gegen MUX über die Distanz**, 11 Varianten auf *demselben* Raster: ADC-Regel (`fixedB`/`scaledB`/`alphabetB`) × Kanal (Rayleigh K = 0, Rice 3 / 30, Rang 1), bei 2 Raten und 25 Distanzen | die neuen und umbenannten Varianten |
-| 6 | `run_mimo_comparison_sweep` (3a) | **dasselbe BF/MUX-Paar über die volle Ratenachse** statt zwei Raten — 100 Ratenpunkte bei 50 / 500 / 5000 m, aber nur K = 0. Hier wird der Gangwechsel sichtbar, nicht in 3b | `mux_alphabetB` (kommt von selbst, sobald exportiert) — 100 Kerne, 8 h je Lauf. **Die 5 Rice-Varianten dagegen nicht:** `run_mimo_comparison_sweep.m:33` trägt eine feste Liste der sechs K = 0-Fälle, nur `mux_alphabetB` kommt bedingt dazu (Zeile 41). Wer 3a heute startet, bekommt keinen Rice-Lauf. Dafür müssen `mux_scaledB_K3/_K30/_KInf` und `bf_fixedB_K3/_K30` in `VARIANTS` — eine Codeänderung, kein Lauf |
-| 7 | `analyze_rice_comparison`, `analyze_bf_vs_mux_qam` | **q = E_bit(BF) / E_bit(MUX)** als Hüllkurve über (M, N) — jeder Modus darf seine beste Konfiguration wählen, q < 1 heißt BF günstiger. Daraus **K\***, der Rice-Faktor, ab dem BF gewinnt | **K\* neu bestimmen** |
+| 5 | `run_mimo_comparison_distance` (3b) | **BF gegen MUX über die Distanz**, 12 Varianten auf *demselben* Raster: ADC-Regel (`fixedB`/`scaledB`/`alphabetB`) × Kanal (Rayleigh K = 0, Rice 3 / 30, Rang 1), bei 2 Raten und 25 Distanzen | **✓ gelaufen 2026-10-15**, 12 von 12, 0 Löcher. Offen: derselbe Lauf mit `LO_MODEL = "per_mixer"` (Abschnitt 5) |
+| 6 | `run_mimo_comparison_sweep` (3a) | ✓ **gelaufen**, 21 von 21 — **dasselbe BF/MUX-Paar über die volle Ratenachse** statt zwei Raten — 100 Ratenpunkte bei 50 / 500 / 5000 m, aber nur K = 0. Hier wird der Gangwechsel sichtbar, nicht in 3b | `mux_alphabetB` (kommt von selbst, sobald exportiert) — 100 Kerne, 8 h je Lauf. **Die 5 Rice-Varianten dagegen nicht:** `run_mimo_comparison_sweep.m:33` trägt eine feste Liste der sechs K = 0-Fälle, nur `mux_alphabetB` kommt bedingt dazu (Zeile 41). Wer 3a heute startet, bekommt keinen Rice-Lauf. Dafür müssen `mux_scaledB_K3/_K30/_KInf` und `bf_fixedB_K3/_K30` in `VARIANTS` — eine Codeänderung, kein Lauf |
+| 7 | `analyze_rice_comparison`, `analyze_bf_vs_mux_qam` | **q = E_bit(BF) / E_bit(MUX)** als Hüllkurve über (M, N) — jeder Modus darf seine beste Konfiguration wählen, q < 1 heißt BF günstiger. Daraus **K\***, der Rice-Faktor, ab dem BF gewinnt | **✓ gelaufen**: K\* = 15,2 bei 56 m; d\* von 721 m (Rayleigh) bis 46 m (Rang 1); das zusätzliche ADC-Bit im Median wertlos. Alles unter `shared` — siehe Abschnitt 5 |
 
 **Welche Achse welcher Lauf aufspannt** — das ist der Grund, warum es 3a *und*
 3b gibt und keiner von beiden den anderen ersetzt:
