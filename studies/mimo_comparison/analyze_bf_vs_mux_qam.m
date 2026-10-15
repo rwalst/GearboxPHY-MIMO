@@ -57,12 +57,19 @@ arguments
 end
 
 % WOZU capN: die Kanalachse ist nur vergleichbar, wenn alle Kanaele auf
-% DEMSELBEN N-Raster stehen. Heute reichen K = 0 und Rang 1 bis N = 16, die
-% Rice-Laeufe nur bis 4 -- die Reihe der Schnittdistanzen ueber den Kanal
-% mischt also zwei Rasterweiten und ist kein Kanaltrend. Mit capN = 4
-% rechnet die Funktion alles gleich und liefert die lesbare Reihe; ohne
-% capN nutzt jede Variante, was sie hat. Beide Sichten gehoeren in eine
-% Darstellung, und zwar beschriftet.
+% DEMSELBEN N-Raster stehen. Stand bis 2026-10-14 reichten K = 0 und Rang 1
+% bis N = 16, die Rice-Laeufe nur bis 4 -- die Reihe der Schnittdistanzen
+% ueber den Kanal mischte also zwei Rasterweiten und war kein Kanaltrend.
+% Mit capN = 4 rechnet die Funktion alles gleich und liefert die lesbare
+% Reihe; ohne capN nutzt jede Variante, was sie hat.
+%
+% SEIT 2026-10-15 reichen die MI-Kurven ALLER Rice-Familien bis N = 16
+% (MUX, digitales und analoges BF, je 5x4 vollstaendig). Der Grund fuer
+% capN = 4 entfaellt damit, SOBALD export_mimo_comparison_curves neu
+% gelaufen ist: dann stehen alle Kanaele auf demselben Raster, und der
+% Kanaltrend braucht keine Deckelung mehr. Bis dahin tragen die Ordner
+% data/SE_data_mux_scaledB_K3/_K30 noch N <= 4 -- wer vorher auswertet,
+% braucht capN = 4 weiterhin.
 
 resDir = gearboxphy.paths.resultsDir('');
 figDir = fullfile(resDir, 'cmp_figures');
@@ -232,9 +239,15 @@ for k = 1:numel(V)
     % fehlt eine (M,N)-Kombination auf EINER Seite, wird sie auf BEIDEN
     % verworfen. Sonst gewinnt der Modus mit der vollstaendigeren
     % Kurvenmenge allein durch die groessere Auswahl -- genau die
-    % Asymmetrie, gegen die die Studie aufgebaut ist. Betrifft real:
-    % mux_fixedB fehlt M=256 bei 8x8/16x16, mux_alphabetB fehlt alles mit
-    % B > 20, die Rice-Varianten rechnen nur N <= 4.
+    % Asymmetrie, gegen die die Studie aufgebaut ist.
+    %
+    % BETRIFFT REAL (Stand 2026-10-15): nur noch mux_alphabetB, dem alles
+    % mit B > 20 fehlt (N=8 ab M=64, N=16 ab M=16 -- die Regel ist dort
+    % nicht rechenbar). Zwei frueher hier genannte Luecken sind weg:
+    % mux_fixedB hat M=256 inzwischen fuer alle fuenf N, und die
+    % Rice-Kurven reichen bis N=16. Fuer die Rice-Spalten gilt das aber
+    % erst, NACHDEM export_mimo_comparison_curves neu gelaufen ist -- die
+    % Ordner data/SE_data_mux_scaledB_K3/_K30 tragen heute noch N <= 4.
     both = isfinite(Em) & isfinite(Eb);
     Em(~both) = NaN; Eb(~both) = NaN;
     [em, Mm, Nm, im] = localEnv(Em, MsK, NsK);
