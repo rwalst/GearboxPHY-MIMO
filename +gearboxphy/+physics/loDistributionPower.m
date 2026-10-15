@@ -14,8 +14,8 @@ function P = loDistributionPower(cs, nMixers)
 %         (SISO, or analog beamforming with its one mixer) is unchanged.
 %
 %   P_buf is cs.loDistPowerPerMixer; NaN (default) takes the per-carrier
-%   value below: 3 mW at 2.4 GHz, 7 mW at 8 GHz, 12.5 mW at 28 GHz; other
-%   carriers have none and need loDistPowerPerMixer set.
+%   value below: 3 mW at 2.4 GHz, 7 mW at 8 GHz, 12.5 mW at 28 GHz, 10 mW at
+%   60 GHz; other carriers have none and need loDistPowerPerMixer set.
 %   28 GHz: 12.5 mW are the measured LO repeaters
 %   per I/Q downconverter in Khanna et al., JSSC 2026 (25 mW for two
 %   downconverters, four LO phases over 600 um). It is the middle of the
@@ -30,6 +30,11 @@ function P = loDistributionPower(cs, nMixers)
 %   7 mW at 8 GHz is a setting: the three measured values at 5 to 8 GHz
 %   are 1.4, 24 and 29 mW and none is from an array; 2 to 25 mW is the
 %   range to scan.
+%   60 GHz (set 2026-10-15): 10 mW, the measured LO distribution per element
+%   of a 16-element receiver at 65-87 GHz (Naviasky 2023, UC Berkeley
+%   thesis) - the only array evidence in that range. Other data: 3 mW per
+%   local buffer (Tabesh 2011), 21 mW per channel with an LO phase shifter
+%   (Zhang 2022).
 P = 0;
 if ~isfield(cs, 'loDistributionModel') || string(cs.loDistributionModel) == "shared"
     return
@@ -48,9 +53,11 @@ if isnan(P_buf)
         P_buf = 7e-3;
     elseif cs.f_c == 28e9
         P_buf = 12.5e-3;
+    elseif cs.f_c == 60e9
+        P_buf = 10e-3;
     else
         error('gearboxphy:loDistPower', ...
-            ['loDistributionModel="per_mixer" has a default LO-buffer power only at 2.4, 8 and 28 GHz. ' ...
+            ['loDistributionModel="per_mixer" has a default LO-buffer power only at 2.4, 8, 28 and 60 GHz. ' ...
              'Set loDistPowerPerMixer [W] for f_c = %g GHz.'], cs.f_c/1e9);
     end
 end

@@ -19,19 +19,24 @@ classdef DacModelTest < matlab.unittest.TestCase
     end
 
     methods (Test)
-        function defaultLeavesConstantsUnchanged(testCase)
+        function defaultIsSurveyAndOldKeepsTheConstants(testCase)
+            % default since 2026-10-15; the old models keep 3 V bit for bit
             s = gearboxphy.sweep.makeScenarioConfig();
-            testCase.verifyEqual(s.dacPowerModel, "analytic");
+            testCase.verifyEqual(s.dacPowerModel, "survey");
+            old = gearboxphy.sweep.oldModelArgs();
+            sOld = gearboxphy.sweep.makeScenarioConfig(old{:});
             for f_c = s.fcVec
-                cs = gearboxphy.sweep.resolveScenarioForCarrier(s, f_c);
+                cs = gearboxphy.sweep.resolveScenarioForCarrier(sOld, f_c);
                 testCase.verifyEqual(cs.DAC_VDD, 3);            % bit for bit
                 testCase.verifyEqual(cs.DAC_I0, 10e-6);
                 testCase.verifyEqual(cs.DAC_Cp, 1e-12*1/2);
+                csNew = gearboxphy.sweep.resolveScenarioForCarrier(s, f_c);
+                testCase.verifyEqual([csNew.DAC_VDD csNew.DAC_I0 csNew.DAC_Cp], [1 2.4e-6 0.25e-12]);
             end
         end
 
         function analyticKeepsHandSetConstants(testCase)
-            s = gearboxphy.sweep.makeScenarioConfig('DAC_VDD', 1.8, 'DAC_I0', 5e-6);
+            s = gearboxphy.sweep.makeScenarioConfig('dacPowerModel', "analytic", 'DAC_VDD', 1.8, 'DAC_I0', 5e-6);
             cs = gearboxphy.sweep.resolveScenarioForCarrier(s, 28e9);
             testCase.verifyEqual(cs.DAC_VDD, 1.8);
             testCase.verifyEqual(cs.DAC_I0, 5e-6);

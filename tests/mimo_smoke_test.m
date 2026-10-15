@@ -81,7 +81,10 @@ fprintf('QAM order=1024 (no MIMO curve available) correctly stayed SISO\n');
 % ZXM (no MIMO variant at all) must also report N_t=N_r=1 uniformly.
 zxmKey = gearboxphy.data.resultKey("ZXM", 1, 28e9);
 Sz = gearboxphy.data.loadAllResults(rd, zxmKey);
-assert(all(Sz.Optimal_N_t == 1) && all(Sz.Optimal_N_r == 1), 'ZXM should always report N_t=N_r=1');
+% only feasible points: since B_max is one channel (400 MHz at 28 GHz,
+% 2026-10-15) ZXM cannot serve every rate, and an infeasible point is NaN
+okZ = isfinite(Sz.E_per_bit);
+assert(any(okZ) && all(Sz.Optimal_N_t(okZ) == 1) && all(Sz.Optimal_N_r(okZ) == 1), 'ZXM should always report N_t=N_r=1');
 fprintf('ZXM (no MIMO variant) correctly reports N_t=N_r=1\n');
 
 fprintf('MIMO SMOKE TEST PASSED\n');

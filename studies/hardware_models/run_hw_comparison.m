@@ -32,7 +32,7 @@
 %   struct, e.g. fewer rates for a test).
 
 %% ===================== CONFIG =====================================
-if ~exist('VARIANTS', 'var'),     VARIANTS = ["old" "new"]; end   % add "lna_only" "adc_only" "dac_only" to see which model moves the result
+if ~exist('VARIANTS', 'var'),     VARIANTS = ["old" "new"]; end   % add "lna_only" "adc_only" "dac_only" "bw_only" to see which decision moves the result
 if ~exist('USE_PARALLEL', 'var'), USE_PARALLEL = true; end
 if ~exist('HW_CFG', 'var'),       HW_CFG = hw_comparison_config(); end
 %% ===================================================================

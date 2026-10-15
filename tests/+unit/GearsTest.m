@@ -148,7 +148,8 @@ classdef GearsTest < matlab.unittest.TestCase
             % paPowerModel="constant" (the default) must force hw.P_0=0 -
             % "constant" can never be silently undermined by a leftover
             % P_0 (PA_POWER_MODEL_DECISION.md Model A).
-            base = gearboxphy.sweep.makeScenarioConfig( ...
+            oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+            base = gearboxphy.sweep.makeScenarioConfig(oldModels{:},  ...
                 'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')), ...
                 'paPowerModel', "constant", 'P_0', 5);   % P_0 set but should be ignored
             cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);
@@ -158,7 +159,8 @@ classdef GearsTest < matlab.unittest.TestCase
         end
 
         function qamAffineModelWithoutP0Errors(testCase)
-            base = gearboxphy.sweep.makeScenarioConfig( ...
+            oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+            base = gearboxphy.sweep.makeScenarioConfig(oldModels{:},  ...
                 'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')), ...
                 'paPowerModel', "affine");   % P_0 left at its NaN default
             cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);
@@ -172,7 +174,8 @@ classdef GearsTest < matlab.unittest.TestCase
             % else) rather than comparing SISO vs. a different MIMO
             % curve - which would also change the required SNR/P_t and
             % confound the comparison.
-            base = gearboxphy.sweep.makeScenarioConfig( ...
+            oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+            base = gearboxphy.sweep.makeScenarioConfig(oldModels{:},  ...
                 'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')), ...
                 'paPowerModel', "affine", 'P_0', 1e-3);
             cs = gearboxphy.sweep.resolveScenarioForCarrier(base, 28e9);
@@ -204,7 +207,8 @@ classdef GearsTest < matlab.unittest.TestCase
 end
 
 function cs = testScenario(f_c)
-base = gearboxphy.sweep.makeScenarioConfig( ...
+oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+base = gearboxphy.sweep.makeScenarioConfig(oldModels{:},  ...
     'dataDir', string(fullfile(frameworkRoot(), 'data', 'SE_data')));
 cs = gearboxphy.sweep.resolveScenarioForCarrier(base, f_c);
 end

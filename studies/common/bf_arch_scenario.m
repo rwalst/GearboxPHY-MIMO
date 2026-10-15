@@ -38,5 +38,6 @@ if v.mode == "beamforming"
 else
     args = [args, {'qamMimoConfigs', configs, 'analogCurvesCarryArrayGain', anyAnalog}];
 end
-scen = gearboxphy.sweep.makeScenarioConfig(args{:});
+oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, args{:});
 end

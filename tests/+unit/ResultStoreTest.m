@@ -219,7 +219,8 @@ zxm = gears{find(cellfun(@(g) g.name == "ZXM", gears), 1)};
 qam = gears{find(cellfun(@(g) g.name == "QAM", gears), 1)};
 fpZxm = strings(1, numel(V)); fpQam = strings(1, numel(V));
 for i = 1:numel(V)
-    sc = gearboxphy.sweep.makeScenarioConfig('distance', 50, 'RVec', RVec, 'fcVec', fc, ...
+    oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+    sc = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', 50, 'RVec', RVec, 'fcVec', fc, ...
         'antennaMode', "multiplexing", 'qamMimoConfigs', configs, ...
         'dataDir', gearboxphy.paths.dataDir("SE_data_" + V(i)));
     cs = gearboxphy.sweep.resolveScenarioForCarrier(sc, fc);

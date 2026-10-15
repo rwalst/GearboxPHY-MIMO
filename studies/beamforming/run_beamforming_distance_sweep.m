@@ -68,7 +68,8 @@ SNRrx_dB = nan(nD, nR, nG, nC);     % dB, empfangsseitig
 t0 = tic;
 for di = 1:nD
     d = CFG.distances(di);
-    scen = gearboxphy.sweep.makeScenarioConfig('distance', d, ...
+    oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+    scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', d, ...
         'RVec', CFG.rates, 'fcVec', fc, ...
         'antennaMode', "beamforming", 'beamformingConfigs', CFG.configs);
     cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, fc);

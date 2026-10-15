@@ -41,10 +41,12 @@ for k = 1:size(CASES,1)
     S = load(CASES{k,1});
     gear = CASES{k,2}; order = CASES{k,3}; amode = CASES{k,4};
     if amode == "beamforming"
-        scen = gearboxphy.sweep.makeScenarioConfig('distance', S.distance, 'RVec', S.RVec, ...
+        oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+        scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', S.distance, 'RVec', S.RVec, ...
             'fcVec', 28e9, 'antennaMode', "beamforming", 'beamformingConfigs', S.antennaConfigsUsed);
     else
-        scen = gearboxphy.sweep.makeScenarioConfig('distance', S.distance, 'RVec', S.RVec, 'fcVec', 28e9);
+        oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+        scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', S.distance, 'RVec', S.RVec, 'fcVec', 28e9);
     end
     cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, 28e9);
     cfgs = gear.antennaConfigs(order, cs);
@@ -106,7 +108,8 @@ else
         Nt = r.config.Nt; Nr = r.config.Nr; M = r.config.M;
         sd = gearboxphy.data.loadSECurve("QAM", M, struct('N_t',Nt,'N_r',Nr), string(tmpDir), "multiplexing");
         shift = sd.SNR_vec(:) - r.snrDbList(:);
-        scen = gearboxphy.sweep.makeScenarioConfig('distance', 50, 'fcVec', 28e9, ...
+        oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+        scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', 50, 'fcVec', 28e9, ...
             'dataDir', string(tmpDir), 'qamMimoConfigs', {struct('N_t',Nt,'N_r',Nr)});
         cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, 28e9);
         qg = gearboxphy.gears.qamGear();

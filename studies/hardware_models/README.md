@@ -5,11 +5,11 @@ Vergleicht die SISO-Gearbox mit den Bauteilmodellen der Dissertation
 siehe `docs/HARDWARE_MODEL_SWITCH.md`. Hauptergebnisse: der gewählte Gang
 über der Rate und das Leistungsbudget des gewählten Gangs.
 
-| Variante | LNA | ADC | DAC |
-|---|---|---|---|
-| `old` | `fom_bandwidth` | `envelope` (0,67 fJ) | `analytic` (3 V) |
-| `new` | `envelope` | `quantile5` (3,17 fJ) | `survey` |
-| `lna_only`, `adc_only`, `dac_only` | je EIN Modell neu, Rest alt | | |
+| Variante | LNA | ADC | DAC | B_max (2,4 / 8 / 28 GHz) |
+|---|---|---|---|---|
+| `old` | `fom_bandwidth` | `envelope` (0,67 fJ) | `analytic` (3 V) | 0,1·f_c: 240 / 800 / 2800 MHz |
+| `new` (Standard seit 2026-10-15) | `fom_floor` | `quantile5` (3,17 fJ) | `survey` | ein Kanal: 20 / 100 / 400 MHz |
+| `lna_only`, `adc_only`, `dac_only`, `bw_only` | je EINE Festlegung neu, Rest alt | | | |
 
 PA, Mischer und `P_LO` sind in allen Varianten gleich. `new` rechnet
 zusätzlich einen LO-Puffer je weiterem Mischer (`loDistributionModel =
@@ -43,7 +43,7 @@ Standard sind die Varianten `old` und `new`. Fuer die Zuordnung, welches
 Modell das Ergebnis bewegt, vor dem Aufruf setzen:
 
 ```matlab
-VARIANTS = ["old" "new" "lna_only" "adc_only" "dac_only"];
+VARIANTS = ["old" "new" "lna_only" "adc_only" "dac_only" "bw_only"];
 run_hw_comparison
 ```
 

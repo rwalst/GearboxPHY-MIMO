@@ -68,10 +68,12 @@ for k = 1:size(CASES, 1)
     E = NaN(2, numel(idx));
     for explicit = [false true]
         if explicit
-            scen = gearboxphy.sweep.makeScenarioConfig('distance', S.distance, 'RVec', S.RVec, ...
+            oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+            scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', S.distance, 'RVec', S.RVec, ...
                 'fcVec', fc, 'lnaPowerModel', "fom_bandwidth");
         else
-            scen = gearboxphy.sweep.makeScenarioConfig('distance', S.distance, 'RVec', S.RVec, 'fcVec', fc);
+            oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+            scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', S.distance, 'RVec', S.RVec, 'fcVec', fc);
         end
         cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, fc);
         ctx = gear.prepare(order, cs, struct('N_t', 1, 'N_r', 1));
@@ -114,7 +116,8 @@ for b = 1:numel(cfg.bw)
             E = NaN(numel(cfg.models), numel(RTEST));
             okA = true; okB = true;
             for m = 1:numel(cfg.models)
-                scen = gearboxphy.sweep.makeScenarioConfig('distance', 50, 'fcVec', fc, ...
+                oldModels = gearboxphy.sweep.oldModelArgs();   % Modellsatz vor 2026-10-15, damit gespeicherte Ergebnisse gueltig bleiben
+                scen = gearboxphy.sweep.makeScenarioConfig(oldModels{:}, 'distance', 50, 'fcVec', fc, ...
                     'lnaPowerModel', cfg.models(m), 'lnaBetaMin', cfg.lnaBetaMin, ...
                     'B_maxByCarrier', cfg.bw(b).B_maxByCarrier);
                 cs = gearboxphy.sweep.resolveScenarioForCarrier(scen, fc);
