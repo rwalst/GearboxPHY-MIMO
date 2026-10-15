@@ -165,7 +165,7 @@ Dateien zeigen keine solche Verletzung.
 
 | # | Schritt | Was gegen was | Umfang |
 |---|---|---|---|
-| 1 | `export_mimo_comparison_curves` | *vergleicht nichts* — legt die Vergleichsbasis: sechs Kurvenordner MUX / BF / ideales BF × `fixedB` / `scaledB` | erzeugt u. a. `SE_data_bf_fixedB_K3/_K30` — **Deckelungsreferenz für Schritt 2** |
+| 1 | `export_mimo_comparison_curves` | *vergleicht nichts* — legt die Vergleichsbasis: sechs Kurvenordner MUX / BF / ideales BF × `fixedB` / `scaledB`, dazu fünf Rice-Ordner | erzeugt u. a. `SE_data_bf_fixedB_K3/_K30` — **Deckelungsreferenz für Schritt 2**. Deckelt seit E12 an der Alphabetgrenze. Vorbereitet und probegelaufen am 2026-10-15: `SE_data_mux_scaledB_K3/_K30` wachsen von 8 auf 16 Kurven (N bis 16), `SE_data_bf_fixedB_K3/_K30` entstehen neu; `SE_data_bf_scaledB_K3/_K30` werden zu Waisen (vor E8) |
 | 2 | `export_dbf_dac_curves` | *vergleicht nichts* — je DAC-Stufe ein Ordner, damit Schritt 3 die Stufen gegeneinander stellen kann | 41 Ordner (25 + 16 Rice), deckelt an der Ideal-DAC-Kurve (E4) |
 | 3 | `run_dbf_dac_distance` | **idealer DAC gegen 4 endliche Stufen** (plus Minimum über die Stufen), dazu gemeinsame gegen antennenweise Aussteuerung, 3 DAC-Leistungsmodelle, 2 LO-Fälle — über die Distanz. Die analogen Varianten laufen als Referenz mit, weil das DAC-Modell auch sie trifft | 25 Worker; rechnet die 18 vorhandenen Dateien neu (E9) und die Kanäle `ray3`/`ray30` |
 | 4 | `run_analog_bf_distance` | **analoges gegen digitales BF bei gleicher Kurve**: 3 Phasenschieber-Varianten (aktiv / passiv kompensiert / passiv mit Strafe) gegen die digitale Kette mit 4 LO-Fällen (gemeinsam, 4 / 12,5 / 17 mW je Mischer), 2 ADC-Modelle | jetzt mit 9 Rice-Varianten (AP3), ~20 min mehr |
@@ -284,6 +284,7 @@ also da. Es fehlt die Stelle, die sie zu einer Aussage zusammenzieht.
 | E8 | ADC-Regel je Modus: MUX `scaledB`, digitales BF `fixedB` (ein Strom, kein log₂N) |
 | E9 | Gemeinsame Aussteuerung ist der Standard, `perAntenna` der Vergleich |
 | E10 | DAC-Quantisierung auch über Rice, volles Kreuzprodukt (320 Kurven, 4,6 h) |
+| E12 | MI-Kurven beim Export an der Alphabetgrenze deckeln (wie E4), nicht nur warnen — `log₂M` bei BF, `N_t·log₂M` bei MUX |
 
 **Offen.**
 
@@ -324,6 +325,13 @@ bestehenden Ergebnissen.
   6,8 dB gegen N_t·N_r.
 - **MI ist bei N ≥ 4 und M ≥ 64 eine untere Schranke** (7–13 % Schlupf nahe
   der Sättigung) — wirkt gegen MUX.
+- **Die Schätzung überschritt die Alphabetgrenze** am Sättigungsende: BF bis
+  +0,78 %, MUX bis +0,05 %, systematisch steigend mit N (Median je N:
+  0,04 / 0,05 / 0,18 / 0,29 % für N = 2/4/8/16). Das begünstigte BF entlang
+  genau der Achse, die der Vergleich messen soll. **Seit E12 wird gedeckelt**
+  (`QuantizedMimoMI 12213cc`); die Felder `seCapRef`, `seCapPoints` und
+  `seCapMaxRel` je Kurve machen es nachlesbar. Kurven aus früheren Exporten
+  tragen die Felder nicht und sind ungedeckelt.
 - **Phasenquantisierung** `G = 1 + (N−1)·sinc²` ist gegenüber echter Rundung
   leicht pessimistisch (≤ 1,1 dB bei 1 bit) — wirkt gegen analog.
 
