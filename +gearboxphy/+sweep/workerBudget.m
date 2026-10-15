@@ -17,6 +17,15 @@ function [w, cap, source] = workerBudget(wWanted)
 %   a number in the output - only the wall clock.
 %
 %   The cap, first source that answers:
+%     0. GEARBOXPHY_WORKERS - this session's share, applied LAST and only
+%        ever TIGHTENING what the sources below allow. THE KNOB FOR THE
+%        WRAPPERS: whoever starts several studies at once must be able to
+%        hand each session its slice of the cores WITHOUT touching every
+%        driver. On the Windows cluster SLURM_CPUS_PER_TASK is never set,
+%        so without this every session took up to feature('numcores')
+%        workers and four concurrent sessions overbooked the machine
+%        fourfold. Same pattern as GEARBOX_WORKERS in
+%        QuantizedMimoMI/common/sweepWorkers.m.
 %     1. SLURM_CPUS_PER_TASK - the only trustworthy number inside a SLURM
 %        job. feature('numcores') reports the whole NODE there, not the
 %        cores the cgroup lets us use, so asking it would overbook by a
@@ -50,6 +59,22 @@ else
     if ~isfinite(cap)
         cap    = double(feature('numcores'));
         source = "feature('numcores')";
+    end
+end
+
+% GEARBOXPHY_WORKERS TIGHTENS the cap, it never raises it. This matters on
+% the Windows cluster: the real limit there is NumWorkers of the HPCServer
+% profile, and asking parpool for more than that FAILS. A share of 200 on a
+% 104-worker profile must become 104, not 200. Letting the variable replace
+% the cap instead of tightening it was exactly that bug (found 2026-10-15,
+% before the four wrappers ever ran).
+w0 = str2double(getenv('GEARBOXPHY_WORKERS'));
+if isfinite(w0) && w0 >= 1
+    if floor(w0) < cap
+        cap    = floor(w0);
+        source = "GEARBOXPHY_WORKERS";
+    else
+        source = source + " (GEARBOXPHY_WORKERS=" + string(floor(w0)) + " is not tighter)";
     end
 end
 
