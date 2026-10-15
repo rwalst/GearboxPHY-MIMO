@@ -267,8 +267,25 @@ Die **MI-Kurven aus 3.1 bleiben auf Windows**: ihre parallele Achse sind die
 schneller als 104 Kerne eines Barnard-Knotens (4 Wellen) — 22,4 h gegen 45 h.
 `QuantizedMimoMI` ist für den ZIH-Cluster deshalb bewusst nicht angepasst.
 
-**K\* = 16,5 bei 56 m ist überholt** — die Zahl entstand unter BF-`scaledB`
-und verschiebt sich durch E8 zu kleinerem K.
+**K\* = 15,2 bei 56 m (11,8 dB)** — gemessen am 3b-Lauf vom 2026-10-15,
+`analyze_rice_comparison`. Die alte Zahl 16,5 entstand unter BF-`scaledB`
+und hat sich durch E8 wie erwartet zu kleinerem K verschoben.
+
+| d | R | K | MUX | BF | BF/MUX |
+|---|---|---|---|---|---|
+| 56 m | 1 Gbit/s | 0 | 6,40e-11 | 6,96e-11 | 1,087 |
+| | | 3 | 6,46e-11 | 6,70e-11 | 1,037 |
+| | | 30 | 6,63e-11 | 6,52e-11 | 0,984 |
+| | | ∞ | 6,69e-11 | 6,50e-11 | 0,971 |
+
+**K\* gilt nur bei 56 m.** Schon bei 562 m liegt der Schnittpunkt zwischen
+K = 0 und K = 3 und ist damit nicht auflösbar (K = 10 wurde ausgelassen, und
+log₁₀0 existiert nicht); bei 5623 m ist BF **bereits bei Rayleigh**
+günstiger (BF/MUX = 0,412), es gibt dort also keinen Schnittpunkt mehr. Die
+Zahl ist eine Aussage über eine Distanz, nicht über die Studie.
+
+Und sie gilt unter `loDistributionModel = "shared"` — mit LO-Aufschlag
+verschiebt sich das Bild deutlich, siehe Abschnitt 5.
 
 ### 3.3 Nach jeder Änderung an Sweep oder Speichern
 
