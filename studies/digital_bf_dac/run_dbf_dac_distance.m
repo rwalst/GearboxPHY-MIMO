@@ -8,10 +8,14 @@ function run_dbf_dac_distance(over)
 %   Vorher: export_dbf_dac_curves (und davor in QuantizedMimoMI
 %   runQamSweepBfIdealDac, spaeter runQamSweepBfRayleighDac).
 %
-%   RESSOURCEN: nodes=1  ntasks=1  cpus-per-task=25  mem=64G  time=24:00:00
+%   RESSOURCEN: 25 Worker, 64 GB, 24 h. Ein Knoten.
 %   parfor ueber die 25 Distanzen; mehr als 25 Worker bringen nichts.
 %   Zeitbedarf NICHT GEMESSEN. Fertige Dateien werden uebersprungen
 %   (SKIP_EXISTING): nach einem Abbruch einfach noch einmal starten.
+%
+%   ZIH-Cluster statt Windows: sbatch hpc/zih/submit_study.sbatch run_dbf_dac_distance
+%   mit --cpus-per-task=26 (einer fuer den Client). Anleitung und
+%   Schritt 0: docs/HPC_RUNBOOK_ZIH.md.
 %
 %   STUDIE studies/digital_bf_dac: was kostet die endliche DAC-Aufloesung das
 %   digitale Beamforming. Die analogen Varianten laufen nur als Vergleich
@@ -165,6 +169,20 @@ for ch = CH
                        'ps', "active", 'lo', "", 'loPower', NaN);
             if ~isnan(P.LO_POWER(li)), v.lo = "per_mixer"; v.loPower = P.LO_POWER(li); end
 
+            % WIEDERVERWENDEN STATT NEU RECHNEN -- siehe +data/gridFingerprint.m.
+            % Eine Datei deckt hier MEHRERE Kurvenordner ab (idealer DAC und
+            % je Stufe einen), deshalb ein Teil-Fingerabdruck je Ordner und
+            % darueber einer. Die Form steht im Schluessel, damit eine Datei
+            % der digitalen Seite nie fuer eine der analogen gehalten wird.
+            dataNames = [string(ch.digBase), ...
+                arrayfun(@(k) sprintf("%s_dac%d_common", ch.digBase, k), levCommon), ...
+                arrayfun(@(k) sprintf("%s_dac%d", ch.digBase, k), lev)];
+            fp = localGridFp("dbfdac_distance_digital/v1", CFG, v, hw, dataNames);
+            if gearboxphy.data.fetchFromStore(fp, outFile)
+                fprintf('   schon gerechnet (%s) -- uebernommen\n', fp);
+                continue
+            end
+
             R0 = localCase(CFG, v, hw, nWorkers);
             Eideal = R0.E; EidealDac = R0.Edac; EidealPa = R0.Epa;
             SEideal = R0.SE; SNRrxideal_dB = R0.SNRrx_dB;
@@ -188,7 +206,9 @@ for ch = CH
                        'channel', ch.name, 'lo', P.LO_NAMES(li), 'dacModel', dacModel, 'hw', hw, 'v', v);
             [S.Eper, ~, ~, S.EperPa, S.EperDac, S.SEper, S.SNRrxper_dB] = ...
                 localLevels(CFG, v, ch.digBase, lev, "", hw, nWorkers);
+            S.resultFingerprint = fp;
             save(outFile, '-struct', 'S');
+            gearboxphy.data.publishToStore(fp, outFile);
             fprintf('fertig nach %.1f min -> %s\n', toc(t0)/60, outFile);
         end
 
@@ -201,18 +221,49 @@ for ch = CH
             vname = sprintf("%s_%s", ch.anaPrefix, PS_NAMES(pi_));
             outFile = gearboxphy.paths.resultsDir(sprintf('%sabfdac_distance_%s_%s.mat', ...
                 P.RESULT_PREFIX, vname, dacModel));
-            if P.SKIP_EXISTING && localDone(outFile, CFG, [], [])
-                fprintf('\n======== %s liegt vor, uebersprungen ========\n', outFile);
+            % localDone WAR HIER WIRKUNGSLOS: es verlangt die Felder
+            % dacLevelsPer und dacScaleStandard, die eine analoge Datei nie
+            % hatte (sie trug dacLevels/dacLevelsCommon). Die analogen
+            % Varianten wurden deshalb bei JEDEM Lauf neu gerechnet, obwohl
+            % SKIP_EXISTING an war. Der Schluessel ist die bessere Pruefung:
+            % er deckt Raster, Modelle UND Kurveninhalt ab.
+            v = struct('name', vname, 'data', ch.anaData, 'mode', ch.anaMode, 'arch', "analog", ...
+                       'ps', PS_TYPES(pi_), 'lo', "", 'loPower', NaN);
+            % Form "abf_analog/v2": derselbe Variablensatz wie
+            % studies/analog_bf/run_analog_bf_distance.m, damit der
+            % Ergebnisspeicher die Dateien gegeneinander liefern kann --
+            % es ist dieselbe Rechnung (docs/RESULT_NAMING.md, Fall 2).
+            % DIREKT gridFingerprint, nicht localGridFp: der Mehrordner-Weg
+            % hasht erst je Ordner und dann darueber, was einen anderen
+            % Schluessel ergibt als der einstufige Weg in
+            % run_analog_bf_distance. Nur derselbe Weg gibt denselben
+            % Schluessel -- und genau darauf beruht die Wiederverwendung.
+            fp = gearboxphy.data.gridFingerprint("abf_analog/v2", ...
+                @(d) bf_arch_scenario(d, CFG, v, gearboxphy.paths.dataDir(v.data), ...
+                    hw.adc, arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, ...
+                        'UniformOutput', false), hw.dac, hw.lna), CFG);
+            if P.SKIP_EXISTING && gearboxphy.data.fingerprintMatches(string(outFile), fp)
+                fprintf('\n======== %s liegt vor (gleicher Schluessel), uebersprungen ========\n', outFile);
                 continue
             end
             fprintf('\n======== analog, %s / %s ========\n', vname, dacModel);
             t0 = tic;
-            v = struct('name', vname, 'data', ch.anaData, 'mode', ch.anaMode, 'arch', "analog", ...
-                       'ps', PS_TYPES(pi_), 'lo', "", 'loPower', NaN);
-            S = localCase(CFG, v, hw, nWorkers);   % traegt SE/SNRrx_dB schon als Felder
-            S.CFG = CFG; S.variant = vname; S.channel = ch.name; S.dacModel = dacModel; S.hw = hw; S.v = v;
-            S.dacLevels = []; S.dacLevelsCommon = [];
+            if gearboxphy.data.fetchFromStore(fp, outFile)
+                fprintf('   schon gerechnet (%s) -- uebernommen\n', fp);
+                continue
+            end
+            S = localCase(CFG, v, hw, nWorkers);   % traegt SE/SNRrx_dB/Eadc/Eps schon als Felder
+            S.CFG = CFG; S.variant = vname; S.v = v;
+            S.adcModel = hw.adc; S.dacModel = dacModel; S.hw = hw;
+            % channel, dacLevels und dacLevelsCommon stehen hier NICHT mehr.
+            % channel war irrefuehrend: die Kanaele "losd" und "los" haben
+            % dieselben anaData/anaMode/anaPrefix, erzeugen also dieselbe
+            % Datei -- das Feld haette je nach Reihenfolge "losd" oder "los"
+            % enthalten. Die DAC-Stufen sind fuer einen analogen Sender mit
+            % EINEM DAC ohnehin leer.
+            S.resultFingerprint = fp;
             save(outFile, '-struct', 'S');
+            gearboxphy.data.publishToStore(fp, outFile);
             fprintf('fertig nach %.1f min -> %s\n', toc(t0)/60, outFile);
         end
     end
@@ -238,27 +289,29 @@ function R = localCase(CFG, v, hw, nWorkers)
 %LOCALCASE  Eine Variante ueber alle Distanzen (parfor), Felder [nD nR nM nN].
 nD = numel(CFG.distances); nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
 dataDir = gearboxphy.paths.dataDir(v.data);
-E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E; SE = E; SNRrx = E;
+E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E; Eadc = E; Eps = E; SE = E; SNRrx = E;
 dists = CFG.distances;
 parfor (di = 1:nD, nWorkers)
-    [e, etx, erx, epa, edac, se, snr] = localOneDistance(dists(di), CFG, v, dataDir, hw);
+    [e, etx, erx, epa, edac, eadc, eps_, se, snr] = localOneDistance(dists(di), CFG, v, dataDir, hw);
     E(di,:,:,:)     = reshape(e,    [1 nR nM nN]);
     Etx(di,:,:,:)   = reshape(etx,  [1 nR nM nN]);
     Erx(di,:,:,:)   = reshape(erx,  [1 nR nM nN]);
     Epa(di,:,:,:)   = reshape(epa,  [1 nR nM nN]);
     Edac(di,:,:,:)  = reshape(edac, [1 nR nM nN]);
+    Eadc(di,:,:,:)  = reshape(eadc, [1 nR nM nN]);
+    Eps(di,:,:,:)   = reshape(eps_, [1 nR nM nN]);
     SE(di,:,:,:)    = reshape(se,   [1 nR nM nN]);
     SNRrx(di,:,:,:) = reshape(snr,  [1 nR nM nN]);
 end
 R = struct('E', E, 'Etx', Etx, 'Erx', Erx, 'Epa', Epa, 'Edac', Edac, ...
-           'SE', SE, 'SNRrx_dB', SNRrx);
+           'Eadc', Eadc, 'Eps', Eps, 'SE', SE, 'SNRrx_dB', SNRrx);
 end
 
-function [E, Etx, Erx, Epa, Edac, SE, SNRrx_dB] = localOneDistance(d, CFG, v, dataDir, hw)
+function [E, Etx, Erx, Epa, Edac, Eadc, Eps, SE, SNRrx_dB] = localOneDistance(d, CFG, v, dataDir, hw)
 %LOCALONEDISTANCE  Alle (Rate, M, N) bei einer Distanz, auf einem Worker.
 %   Wie in run_analog_bf_distance, zusaetzlich der DAC-Anteil.
 nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
-E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E;
+E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Edac = E; Eadc = E; Eps = E;
 % ARBEITSPUNKT JE ZELLE: wo der Gang diesen Punkt betreibt. Ohne das sind
 % im Ergebnis nur die Energien, nicht die Spektraleffizienz und der noetige
 % SNR -- die waren nach dem Lauf nicht mehr rekonstruierbar.
@@ -292,6 +345,18 @@ for mi = 1:nM
                 end
                 Epa(ri, mi, ni)  = pb.PA;
                 Edac(ri, mi, ni) = pb.DAC;
+                % Eadc und Eps gehoeren mit in die Datei: die analogen
+                % Varianten dieser Studie sind dieselbe Rechnung wie
+                % studies/analog_bf (docs/RESULT_NAMING.md, Fall 2), und
+                % austauschbar sind zwei Dateien nur mit demselben
+                % Variablensatz. Fuer die digitale Seite kostet es nichts --
+                % die Zahlen stehen beide in pb.
+                Eadc(ri, mi, ni) = pb.ADC;
+                if isfield(pb, 'PS_Tx')
+                    Eps(ri, mi, ni) = pb.PS_Tx + pb.PS_Rx;
+                else
+                    Eps(ri, mi, ni) = 0;
+                end
             end
         end
     end
@@ -320,17 +385,25 @@ end
 end
 
 function nWorkers = localPool(nWanted)
-%LOCALPOOL  Vorhandenen Pool nutzen (nie schliessen), sonst einen mit genau
+%LOCALPOOL  Vorhandenen Pool nutzen (nie schliessen), sonst einen mit
 %   nWanted Workern oeffnen; gelingt das nicht, seriell rechnen.
+%
+%   nWanted wird an das gedeckelt, was die Maschine hergibt
+%   (+sweep/workerBudget.m), und das Profil kommt aus +sweep/clusterFor.m --
+%   P.N_WORKERS ist auf den Windows-Cluster gemuenzt und laege auf einem
+%   ZIH-Knoten ueber der Kernzahl.
 nWorkers = 0;
 if isempty(ver('parallel')) || nWanted < 1
     fprintf('Kein Pool -- parfor laeuft seriell.\n');
     return
 end
+nWanted = gearboxphy.sweep.workerBudget(nWanted);
 pool = gcp('nocreate');
 if isempty(pool)
     try
-        pool = parpool("HPCServer", nWanted);
+        [cl, profilQuelle] = gearboxphy.sweep.clusterFor();
+        fprintf('Pool: Profil "%s" (%s).\n', cl.Profile, profilQuelle);
+        pool = parpool(cl, nWanted);
     catch err
         fprintf('Pool liess sich nicht oeffnen (%s) -- parfor laeuft seriell.\n', err.message);
         return
@@ -368,4 +441,20 @@ if ~isfield(T, 'CFG') || ~isfield(T, 'dacLevels') || ~isfield(T, 'dacLevelsPer')
         || ~isfield(T, 'dacScaleStandard'), return; end
 tf = isequaln(T.CFG, CFG) && string(T.dacScaleStandard) == "common" ...
      && isequal(T.dacLevels(:), levCommon(:)) && isequal(T.dacLevelsPer(:), lev(:));
+end
+
+function fp = localGridFp(shape, CFG, v, hw, dataNames)
+%LOCALGRIDFP  Fingerabdruck EINER Ergebnisdatei dieser Studie.
+%   Eine Datei deckt mehrere Kurvenordner ab, deshalb je Ordner ein
+%   Teil-Fingerabdruck und darueber einer. shape traegt den Variablensatz
+%   (digital/analog) -- siehe +data/gridFingerprint.m, warum das noetig ist.
+cfgs = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
+parts = strings(1, numel(dataNames));
+for i = 1:numel(dataNames)
+    vi = v; vi.data = dataNames(i);
+    dd = gearboxphy.paths.dataDir(vi.data);
+    parts(i) = gearboxphy.data.gridFingerprint("dbfdac_case/v1", ...
+        @(d) bf_arch_scenario(d, CFG, vi, dd, hw.adc, cfgs, hw.dac, hw.lna), CFG);
+end
+fp = gearboxphy.data.fingerprint(shape, parts);
 end

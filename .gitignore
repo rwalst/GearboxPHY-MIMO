@@ -4,6 +4,19 @@
 **/checkpoints/
 **/.checkpoints/
 
+# Der Ergebnisspeicher (results/_store/) ist eine KOPIE: jeder Eintrag
+# entstand aus einer Ergebnisdatei, die selbst versioniert ist, und wird nur
+# dazu gehalten, dass ein spaeterer Lauf dieselbe Rechnung nicht noch einmal
+# anstellt (docs/RESULT_NAMING.md). Versioniert wuerde er die 73 MB unter
+# results/ schlicht verdoppeln.
+#
+# Nach einem frischen Clone ist er leer, und der erste Lauf rechnet wieder
+# alles. Das kostet Zeit, nie Richtigkeit -- und
+# gearboxphy.data.rebuildStore() baut ihn aus den vorhandenen
+# Ergebnisdateien in Sekunden wieder auf, weil jede ihren eigenen
+# Schluessel im Feld resultFingerprint traegt.
+**/_store/
+
 # Abbildungen sind aus den Ergebnissen in Sekunden neu erzeugt (die
 # plot_*.m und +report/*.m im Framework). Sie machen rund ein Drittel des
 # Datenvolumens aus und aendern sich bei jeder Layout-Korrektur, ohne dass

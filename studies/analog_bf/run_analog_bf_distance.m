@@ -7,10 +7,14 @@ function run_analog_bf_distance()
 %       setupGearboxPath; run_analog_bf_distance
 %   Vorher: validate_analog_bf.
 %
-%   RESSOURCEN: nodes=1  ntasks=1  cpus-per-task=32  mem=64G  time=12:00:00
+%   RESSOURCEN: 25 Worker, 64 GB, 12 h. Ein Knoten.
 %   (parfor ueber die 25 Distanzen; mehr als 25 Worker bringen nichts.
 %   Zeitbedarf NICHT GEMESSEN -- aus run_mimo_comparison_distance
 %   uebernommen, das bei aehnlich vielen Varianten dieselbe Schleife hat.)
+%
+%   ZIH-Cluster statt Windows: sbatch hpc/zih/submit_study.sbatch run_analog_bf_distance
+%   mit --cpus-per-task=26 (einer fuer den Client). Anleitung und
+%   Schritt 0: docs/HPC_RUNBOOK_ZIH.md.
 %
 %   FALL 1 (laeuft sofort, Kurven liegen vor): Rang-1-Kanal (LOS), ideale
 %   Phasen. Nach dem analogen Kombinieren bleibt ein skalarer AWGN-Kanal
@@ -118,14 +122,21 @@ for k = 1:numel(V)
 end
 
 if USE_PARALLEL
-    fprintf('Parallel Computing Toolbox vorhanden -- Pool mit %d Workern.\n', numel(CFG.distances));
+    % Profil und Workerzahl kommen aus +sweep, nicht als Literal: dasselbe
+    % Skript laeuft auf dem Windows-Cluster und in einem SLURM-Job auf dem
+    % ZIH-Cluster, wo es kein Profil "HPCServer" gibt (+sweep/poolProfile.m).
+    nWorkers = gearboxphy.sweep.workerBudget(numel(CFG.distances));
     if isempty(gcp('nocreate'))
-        parpool("HPCServer", numel(CFG.distances));
+        [cl, profilQuelle] = gearboxphy.sweep.clusterFor();
+        fprintf('Pool: Profil "%s" (%s), %d Worker.\n', cl.Profile, profilQuelle, nWorkers);
+        parpool(cl, nWorkers);
+    else
+        nWorkers = min(nWorkers, gcp('nocreate').NumWorkers);
+        fprintf('Vorhandener Pool -- genutzt werden %d Worker.\n', nWorkers);
     end
     % Worker erben das Arbeitsverzeichnis des Clients NICHT (siehe runSweep.m)
     wait(parfevalOnAll(@addpath, 0, gearboxphy.paths.root()));
     wait(parfevalOnAll(@setupGearboxPath, 0));    % Studienordner, u.a. studies/common
-    nWorkers = numel(CFG.distances);
 else
     fprintf('Keine Parallel Computing Toolbox -- parfor laeuft seriell.\n');
     nWorkers = 0;
@@ -141,36 +152,71 @@ for adcModel = ADC_MODELS
             fprintf('\n======== %s / %s: liegt vor, uebersprungen ========\n', v.name, adcModel);
             continue
         end
+        % WIEDERVERWENDEN STATT NEU RECHNEN. Der Fingerabdruck deckt jede
+        % Zelle des (Distanz, M, N)-Gitters ab, gebildet aus genau dem ctx,
+        % mit dem sie gerechnet wird (+data/gridFingerprint.m). Hat ein
+        % anderer Lauf dasselbe schon gerechnet -- etwa unter einem anderen
+        % Variantennamen oder in einem anderen Ergebnisordner -- wird seine
+        % Datei uebernommen. Die Form "abf_distance/v1" steht im Schluessel:
+        % nur Dateien mit demselben Variablensatz sind austauschbar.
+        % Ein Szenario nur zum ABLESEN der Modellnamen, die in die Datei
+        % gehoeren. Billig (kein Kurvenzugriff), und es haelt die
+        % Vorgabewerte an EINER Stelle: in makeScenarioConfig.
+        cfgsFp = arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false);
+        scen0 = localScenario(CFG.distances(1), CFG, v, dataDir, adcModel, cfgsFp);
+        fp = gearboxphy.data.gridFingerprint("abf_analog/v2", ...
+            @(d) localScenario(d, CFG, v, dataDir, adcModel, ...
+                arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false)), CFG);
+        if gearboxphy.data.fetchFromStore(fp, outFile)
+            fprintf('\n======== %s / %s: schon gerechnet (%s), uebernommen ========\n', ...
+                v.name, adcModel, fp);
+            continue
+        end
         fprintf('\n======== %s / %s ========\n', v.name, adcModel);
         t0 = tic;
-        E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E; Eps = E;
+        E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E; Edac = E; Eps = E;
         % ARBEITSPUNKT JE ZELLE: wo der Gang diesen Punkt betreibt. Ohne das
         % stehen im Ergebnis nur Energien -- Spektraleffizienz und noetiger SNR
         % waren nach dem Lauf nicht mehr rekonstruierbar.
         SE = E; SNRrx_dB = E;
         dists = CFG.distances;
         parfor (di = 1:nD, nWorkers)
-            [e, etx, erx, epa, eadc, eps_, se, snr] = localOneDistance(dists(di), CFG, v, dataDir, adcModel);
+            [e, etx, erx, epa, eadc, edac, eps_, se, snr] = localOneDistance(dists(di), CFG, v, dataDir, adcModel);
             E(di,:,:,:)    = reshape(e,    [1 nR nM nN]);   %#ok<PFOUS>
             Etx(di,:,:,:)  = reshape(etx,  [1 nR nM nN]);   %#ok<PFOUS>
             Erx(di,:,:,:)  = reshape(erx,  [1 nR nM nN]);   %#ok<PFOUS>
             Epa(di,:,:,:)  = reshape(epa,  [1 nR nM nN]);   %#ok<PFOUS>
             Eadc(di,:,:,:) = reshape(eadc, [1 nR nM nN]);   %#ok<PFOUS>
+            Edac(di,:,:,:) = reshape(edac, [1 nR nM nN]);   %#ok<PFOUS>
             Eps(di,:,:,:)  = reshape(eps_, [1 nR nM nN]);   %#ok<PFOUS>
             SE(di,:,:,:)       = reshape(se,  [1 nR nM nN]);   %#ok<PFOUS>
             SNRrx_dB(di,:,:,:) = reshape(snr, [1 nR nM nN]);   %#ok<PFOUS>
         end
         variant = v.name;
-        save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'Eps', 'SE', 'SNRrx_dB', 'CFG', 'variant', 'adcModel', 'v');
+        resultFingerprint = fp;
+        % VEREINIGTER VARIABLENSATZ (docs/RESULT_NAMING.md, Fall 2): genau
+        % diese Felder schreibt studies/digital_bf_dac fuer dieselben
+        % analogen Varianten. Nur so kann der Ergebnisspeicher die eine
+        % Datei fuer die andere liefern, statt sie doppelt zu rechnen.
+        % hw und dacModel kommen aus dem Szenario, nicht aus Konstanten --
+        % diese Studie variiert die Modelle nicht, benutzt also die
+        % Vorgaben, und die sollen auch so dokumentiert sein.
+        hw = struct('name', scen0.dacPowerModel, 'lna', scen0.lnaPowerModel, ...
+                    'adc', scen0.adcPowerModel, 'dac', scen0.dacPowerModel);
+        dacModel = scen0.dacPowerModel;
+        save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'Edac', 'Eps', ...
+            'SE', 'SNRrx_dB', 'CFG', 'variant', 'v', 'adcModel', 'dacModel', 'hw', ...
+            'resultFingerprint');
+        gearboxphy.data.publishToStore(fp, outFile);
         fprintf('%s / %s fertig nach %.1f min -> %s\n', v.name, adcModel, toc(t0)/60, outFile);
     end
 end
 end
 
-function [E, Etx, Erx, Epa, Eadc, Eps, SE, SNRrx_dB] = localOneDistance(d, CFG, v, dataDir, adcModel)
+function [E, Etx, Erx, Epa, Eadc, Edac, Eps, SE, SNRrx_dB] = localOneDistance(d, CFG, v, dataDir, adcModel)
 %LOCALONEDISTANCE  Alle (Rate, M, N) bei einer Distanz, auf einem Worker.
 nR = numel(CFG.rates); nM = numel(CFG.Ms); nN = numel(CFG.Ns);
-E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E; Eps = E;
+E = nan(nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E; Edac = E; Eps = E;
 % ARBEITSPUNKT JE ZELLE: wo der Gang diesen Punkt betreibt. Ohne das
 % stehen im Ergebnis nur Energien -- Spektraleffizienz und noetiger SNR
 % waren nach dem Lauf nicht mehr rekonstruierbar.
@@ -207,6 +253,12 @@ for mi = 1:nM
                 end
                 Epa(ri, mi, ni)  = pb.PA;
                 Eadc(ri, mi, ni) = pb.ADC;
+                % Edac gehoert mit in die Datei, auch wenn DIESE Studie das
+                % DAC-Modell nicht variiert: dieselbe Rechnung entsteht in
+                % studies/digital_bf_dac als abfdac_distance_*_analytic, und
+                % austauschbar sind zwei Dateien nur mit demselben
+                % Variablensatz (docs/RESULT_NAMING.md, Fall 2).
+                Edac(ri, mi, ni) = pb.DAC;
             end
         end
     end

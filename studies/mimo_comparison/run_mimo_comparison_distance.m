@@ -10,8 +10,12 @@ function run_mimo_comparison_distance()
 %       run_mimo_comparison_distance
 %   Vorher: export_mimo_comparison_curves.
 %
-%   RESSOURCEN: nodes=1  ntasks=1  cpus-per-task=32  mem=64G  time=06:00:00
+%   RESSOURCEN: 25 Worker, 64 GB, 6 h. Ein Knoten.
 %   (parfor ueber die 25 Distanzen; mehr als 25 Worker bringen nichts)
+%
+%   ZIH-Cluster statt Windows: sbatch hpc/zih/submit_study.sbatch run_mimo_comparison_distance
+%   mit --cpus-per-task=26 (einer fuer den Client). Anleitung und
+%   Schritt 0: docs/HPC_RUNBOOK_ZIH.md.
 %
 %   Gegenstueck zu run_beamforming_distance_sweep.m, aber nur QAM mit
 %   M in {4,16,64,256} (nur dort gibt es Rayleigh-Kurven fuer alle
@@ -51,8 +55,12 @@ CFG.Ms        = [4 16 64 256];
 % fuer ALLE Varianten, weil die MUX-Laeufe damals nicht weiter reichten.
 % Inzwischen liegen die Kurven bis N = 16 vor -- aber nicht fuer jede
 % Variante, und ein globales Ns waere jetzt die schlechteste Wahl: bei den
-% Rice-Varianten liefe es ins Leere (die MI-Laeufe dort rechnen nur N <= 4,
-% runQamSweepRiceMux/Bf), bei den uebrigen wuerde es Daten verschenken.
+% Rice-Varianten liefe es ins Leere, bei den uebrigen wuerde es Daten
+% verschenken. SEIT 2026-10-15 rechnen die Rice-Laeufe bis N = 16 (die
+% letzten zwei Kurven, 16x16/M=256 bei K=3 und K=30, sind da) -- je Variante
+% zu bestimmen bleibt es trotzdem, denn welches Raster wirklich vorliegt,
+% entscheidet der Ordner unter data/ und nicht die Quelle: der Export muss
+% dafuer erst neu laufen.
 %
 % Abdeckung, geprueft an data/SE_data_<variante>/ am 2026-10-07:
 %     mux_scaledB, bf_fixedB, bf_scaledB, bfideal_*   20/20, N bis 16
@@ -96,13 +104,20 @@ for v = VARIANTS
 end
 
 if USE_PARALLEL
-    fprintf('Parallel Computing Toolbox vorhanden -- Pool mit %d Workern.\n', numel(CFG.distances));
+    % Profil und Workerzahl kommen aus +sweep, nicht als Literal: dasselbe
+    % Skript laeuft auf dem Windows-Cluster und in einem SLURM-Job auf dem
+    % ZIH-Cluster, wo es kein Profil "HPCServer" gibt (+sweep/poolProfile.m).
+    nWorkers = gearboxphy.sweep.workerBudget(numel(CFG.distances));
     if isempty(gcp('nocreate'))
-        parpool("HPCServer", numel(CFG.distances));
+        [cl, profilQuelle] = gearboxphy.sweep.clusterFor();
+        fprintf('Pool: Profil "%s" (%s), %d Worker.\n', cl.Profile, profilQuelle, nWorkers);
+        parpool(cl, nWorkers);
+    else
+        nWorkers = min(nWorkers, gcp('nocreate').NumWorkers);
+        fprintf('Vorhandener Pool -- genutzt werden %d Worker.\n', nWorkers);
     end
     % Worker erben das Arbeitsverzeichnis des Clients NICHT (siehe runSweep.m)
     wait(parfevalOnAll(@addpath, 0, gearboxphy.paths.root()));
-    nWorkers = numel(CFG.distances);
 else
     fprintf('Keine Parallel Computing Toolbox -- parfor laeuft seriell.\n');
     nWorkers = 0;
@@ -135,6 +150,19 @@ for v = VARIANTS
         fprintf('\n======== %s: liegt vor (passende CFG, Kurven aelter), uebersprungen ========\n', v);
         continue
     end
+    % WIEDERVERWENDEN STATT NEU RECHNEN -- siehe +data/gridFingerprint.m.
+    % Der Schluessel deckt jede Zelle des (Distanz, M, N)-Gitters ab; die
+    % Form "cmp_distance/v1" sorgt dafuer, dass nur Dateien mit demselben
+    % Variablensatz uebernommen werden.
+    fp = gearboxphy.data.gridFingerprint("cmp_distance/v1", ...
+        @(d) gearboxphy.sweep.makeScenarioConfig('distance', d, 'RVec', CFG.rates, ...
+            'fcVec', CFG.fcGHz*1e9, 'antennaMode', "multiplexing", ...
+            'qamMimoConfigs', arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, ...
+                'UniformOutput', false), 'dataDir', dataDir), CFG);
+    if gearboxphy.data.fetchFromStore(fp, outFile)
+        fprintf('\n======== %s: schon gerechnet (%s), uebernommen ========\n', v, fp);
+        continue
+    end
     fprintf('\n======== %s ========\n', v);
     t0 = tic;
     E = nan(nD, nR, nM, nN); Etx = E; Erx = E; Epa = E; Eadc = E;
@@ -157,7 +185,9 @@ for v = VARIANTS
         SNRrx_dB(di,:,:,:) = reshape(snr, [1 nR nM nN]);   %#ok<PFOUS>
     end
     variant = v;
-    save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'SE', 'SNRrx_dB', 'CFG', 'variant');
+    resultFingerprint = fp;
+    save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'SE', 'SNRrx_dB', 'CFG', 'variant', 'resultFingerprint');
+    gearboxphy.data.publishToStore(fp, outFile);
     fprintf('%s fertig nach %.1f min -> %s\n', v, toc(t0)/60, outFile);
 end
 end

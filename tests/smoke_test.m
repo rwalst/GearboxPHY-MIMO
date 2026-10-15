@@ -41,6 +41,15 @@ assert(gearboxphy.data.hasPointCheckpoint(rd, key, 1), 'checkpoint 1 should exis
 assert(gearboxphy.data.hasPointCheckpoint(rd, key, 2), 'checkpoint 2 should exist');
 assert(~gearboxphy.data.hasPointCheckpoint(rd, key, 3), 'checkpoint 3 should NOT exist yet');
 
+% DEN ERGEBNISSPEICHER FUER DIESEN SCHRITT LEEREN. Der erste Lauf oben hat
+% seine Ergebnisse dort veroeffentlicht (+data/publishToStore.m), und ein
+% Treffer wuerde die Datei einfach zurueckkopieren -- schneller, aber dann
+% prueft dieser Abschnitt die WIEDERAUFNAHME AUS CHECKPOINTS nicht mehr,
+% sondern nur noch den Speicher. Der hat seine eigenen Tests
+% (tests/+unit/ResultStoreTest.m).
+storeDir = gearboxphy.data.storeDir();
+if isfolder(storeDir), rmdir(storeDir, 's'); end
+
 gearboxphy.sweep.runSweep(scenario, 'resultsDir', rd, 'useParallel', false);
 assert(isfile(resultFile), 'result should be rebuilt after resuming from checkpoints');
 S_after = gearboxphy.data.loadAllResults(rd, key);

@@ -6,11 +6,15 @@ function run_analog_bf_mixed_distance()
 %       setupGearboxPath; run_analog_bf_mixed_distance
 %   Vorher: validate_analog_bf.
 %
-%   RESSOURCEN: nodes=1  ntasks=1  cpus-per-task=32  mem=64G  time=12:00:00
+%   RESSOURCEN: 25 Worker, 64 GB, 12 h. Ein Knoten.
 %   (parfor ueber die 25 Distanzen. NICHT GEMESSEN: zehn Varianten im
 %   LOS-Fall, also etwa 0.7-mal der Aufwand von run_analog_bf_distance mit
 %   seinen 14; mit den Rayleigh-Kurven kommen bis zu zehn dazu. Fertige
 %   Dateien werden uebersprungen.)
+%
+%   ZIH-Cluster statt Windows: sbatch hpc/zih/submit_study.sbatch run_analog_bf_mixed_distance
+%   mit --cpus-per-task=26 (einer fuer den Client). Anleitung und
+%   Schritt 0: docs/HPC_RUNBOOK_ZIH.md.
 %
 %   Gegenstueck zu run_analog_bf_distance, das nur "beide Seiten analog"
 %   und "beide Seiten digital" kennt. Raster (Raten, Distanzen, M, N,
@@ -98,13 +102,20 @@ for k = 1:numel(V)
 end
 
 if USE_PARALLEL
-    fprintf('Parallel Computing Toolbox vorhanden -- Pool mit %d Workern.\n', numel(CFG.distances));
+    % Profil und Workerzahl kommen aus +sweep, nicht als Literal: dasselbe
+    % Skript laeuft auf dem Windows-Cluster und in einem SLURM-Job auf dem
+    % ZIH-Cluster, wo es kein Profil "HPCServer" gibt (+sweep/poolProfile.m).
+    nWorkers = gearboxphy.sweep.workerBudget(numel(CFG.distances));
     if isempty(gcp('nocreate'))
-        parpool("HPCServer", numel(CFG.distances));
+        [cl, profilQuelle] = gearboxphy.sweep.clusterFor();
+        fprintf('Pool: Profil "%s" (%s), %d Worker.\n', cl.Profile, profilQuelle, nWorkers);
+        parpool(cl, nWorkers);
+    else
+        nWorkers = min(nWorkers, gcp('nocreate').NumWorkers);
+        fprintf('Vorhandener Pool -- genutzt werden %d Worker.\n', nWorkers);
     end
     wait(parfevalOnAll(@addpath, 0, gearboxphy.paths.root()));
     wait(parfevalOnAll(@setupGearboxPath, 0));    % Studienordner, u.a. studies/common
-    nWorkers = numel(CFG.distances);
 else
     fprintf('Keine Parallel Computing Toolbox -- parfor laeuft seriell.\n');
     nWorkers = 0;
@@ -119,6 +130,19 @@ for lc = LO_CASES
         outFile = gearboxphy.paths.resultsDir(sprintf('abfmix_distance_%s_%s.mat', v.name, lc.tag));
         if SKIP_EXISTING && isfile(outFile) && localCfgMatches(outFile, CFG) && localUpToDate(outFile, dataDir)
             fprintf('\n======== %s / %s: liegt vor, uebersprungen ========\n', v.name, lc.tag);
+            continue
+        end
+        % WIEDERVERWENDEN STATT NEU RECHNEN -- siehe +data/gridFingerprint.m.
+        % Derselbe Variablensatz wie abf_distance, aber eine eigene Form:
+        % diese Studie mischt die Architekturen, und v traegt dafuer
+        % archTx/archRx. Dass die Form im Schluessel steht, haelt die zwei
+        % Dateifamilien auseinander.
+        fp = gearboxphy.data.gridFingerprint("abfmix_distance/v1", ...
+            @(d) bf_arch_scenario(d, CFG, v, dataDir, ADC_MODEL, ...
+                arrayfun(@(n) struct('N_t', n, 'N_r', n), CFG.Ns, 'UniformOutput', false)), CFG);
+        if gearboxphy.data.fetchFromStore(fp, outFile)
+            fprintf('\n======== %s / %s: schon gerechnet (%s), uebernommen ========\n', ...
+                v.name, lc.tag, fp);
             continue
         end
         fprintf('\n======== %s / %s ========\n', v.name, lc.tag);
@@ -140,7 +164,9 @@ for lc = LO_CASES
             SNRrx_dB(di,:,:,:) = reshape(snr, [1 nR nM nN]);   %#ok<PFOUS>
         end
         variant = v.name; loTag = lc.tag; adcModel = ADC_MODEL;
-        save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'Eps', 'SE', 'SNRrx_dB', 'CFG', 'variant', 'loTag', 'adcModel', 'v');
+        resultFingerprint = fp;
+        save(outFile, 'E', 'Etx', 'Erx', 'Epa', 'Eadc', 'Eps', 'SE', 'SNRrx_dB', 'CFG', 'variant', 'loTag', 'adcModel', 'v', 'resultFingerprint');
+        gearboxphy.data.publishToStore(fp, outFile);
         fprintf('%s / %s fertig nach %.1f min -> %s\n', v.name, lc.tag, toc(t0)/60, outFile);
     end
 end

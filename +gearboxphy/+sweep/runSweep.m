@@ -2,8 +2,9 @@ function runSweep(scenario, opts)
 %RUNSWEEP Replaces Wrapper.m's parfor orchestration only - no plotting
 %   code in this file (see +report/*.m for that). Same parallelization
 %   granularity as the original (parfor over rate points, one gear/order/
-%   carrier combo at a time), same 'HPCServer' cluster profile kept per
-%   this project's toolbox decision.
+%   carrier combo at a time). The cluster profile is resolved by
+%   +sweep/poolProfile.m, so the same sweep runs on the Windows cluster
+%   ('HPCServer') and inside a SLURM job on the ZIH cluster.
 %
 %   Per combo: if a complete consolidated result table already exists for
 %   the exact (RVec, distance) being swept, skip it entirely. Otherwise,
@@ -26,7 +27,10 @@ arguments
     scenario (1,1) struct
     opts.resultsDir (1,1) string = "main"
     opts.useParallel (1,1) logical = true
-    opts.poolProfile (1,1) string = "HPCServer"
+    % "" = aufloesen, wenn der Pool entsteht (gearboxphy.sweep.poolProfile).
+    % Ein Funktionsaufruf als Vorgabewert wuerde das Profil AUCH dann
+    % bestimmen, wenn gar kein Pool gebaut wird.
+    opts.poolProfile (1,1) string = ""
 end
 
 % Blosser Name -> results/<name>; absolute Pfade gehen durch. Muss VOR
@@ -53,8 +57,20 @@ if opts.useParallel
         % NOTE the pool is capped by the number of RATE POINTS, because
         % that is the only axis the parfor below runs over: a 100-point
         % RVec can never use more than 100 workers, however many cores
-        % are requested.
-        parpool(opts.poolProfile, min(numel(scenario.RVec), scenario.maxCores));
+        % are requested. workerBudget caps it a second time, at what this
+        % machine actually grants - scenario.maxCores is 200, which is the
+        % Windows cluster's size and twice a Barnard node's.
+        if strlength(opts.poolProfile) == 0
+            [c, profileSource] = gearboxphy.sweep.clusterFor();
+        else
+            c = parcluster(opts.poolProfile);
+            profileSource = "caller";
+        end
+        nWanted = gearboxphy.sweep.workerBudget( ...
+            min(numel(scenario.RVec), scenario.maxCores));
+        fprintf('Pool: profile "%s" (%s), %d workers.\n', ...
+            c.Profile, profileSource, nWanted);
+        parpool(c, nWanted);
     end
     % Put the framework root on every WORKER's path explicitly.
     % parfor workers do NOT inherit the client's current directory, so
@@ -101,6 +117,31 @@ for fi = 1:numel(scenario.fcVec)
             end
             x0 = gear.initialGuess(order, carrierScenario);
             bounds = gear.optimizerBounds(order, carrierScenario);
+
+            % REUSE INSTEAD OF RECOMPUTE. ctx is the complete input of this
+            % combo's optimisation (see +data/comboFingerprint.m), so two
+            % runs whose ctx agrees would produce the same numbers. The
+            % clearest case in this repo: the SISO gears read the 24 curves
+            % that are byte-identical in every SE_data* folder, so all six
+            % 3a variants compute them over again - measured agreement 2e-9
+            % in E_bit. The store turns that into one computation.
+            %
+            % This is deliberately NOT the checkpoint layer: checkpoints
+            % stay local to the run that wrote them (index-keyed, for
+            % resume only). Sharing happens one level up, between finished
+            % result FILES.
+            comboFp = gearboxphy.data.comboFingerprint(gear.name, order, f_c, ...
+                scenario.RVec, optParams, x0, bounds, ctxList);
+            if gearboxphy.data.fetchFromStore(comboFp, fullfile(opts.resultsDir, key + ".mat"))
+                fprintf('    schon gerechnet (%s) -- aus dem Ergebnisspeicher uebernommen\n', comboFp);
+                % Diese Kombination ist damit fertig, also duerfen ihre
+                % Checkpoints nicht liegenbleiben -- genau wie nach einem
+                % eigenen vollstaendigen Lauf. Ohne das bleibt der
+                % Checkpoint-Ordner eines abgebrochenen Laufs stehen, und
+                % clearCheckpoints kommt nie mehr daran vorbei.
+                gearboxphy.data.clearCheckpoints(opts.resultsDir, key);
+                continue
+            end
 
             n = numel(scenario.RVec);
             nCfg = numel(antennaConfigs);
@@ -197,6 +238,16 @@ for fi = 1:numel(scenario.fcVec)
                 E_per_bit_all, Optimal_B_all, Optimal_gamma_all, PowerBudget_all, ...
                 OperatingPoint, OperatingPoint_all);
             gearboxphy.data.clearCheckpoints(opts.resultsDir, key);
+            % DEN SCHLUESSEL IN DIE DATEI SCHREIBEN. Ohne ihn ist der
+            % Ergebnisspeicher nach einem frischen Clone nicht wieder
+            % aufbaubar: aus der Datei allein laesst sich nicht ableiten,
+            % unter welchem Schluessel sie entstand. Mit ihm genuegt
+            % gearboxphy.data.rebuildStore().
+            resultFile = fullfile(opts.resultsDir, key + ".mat");
+            resultFingerprint = comboFp;
+            save(resultFile, 'resultFingerprint', '-append');
+            % Dem naechsten Lauf anbieten, der dasselbe rechnen wuerde.
+            gearboxphy.data.publishToStore(comboFp, resultFile);
         end
     end
 end
