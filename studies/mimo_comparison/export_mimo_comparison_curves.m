@@ -223,9 +223,22 @@ end
 % nMC, SNR-Raster). AWGN (ideales BF): fixedB und scaledB haben fuer N = 1 dieselbe
 % Bitzahl und muessen deshalb identisch sein. Zwischen den Kanaelen sind
 % die 1x1-Kurven dagegen ABSICHTLICH verschieden.
+% JE (KANAL, K) GRUPPIEREN, nicht nur je Kanal. Die Rice-Varianten tragen
+% channel = "rayleigh", und bei N = 1 ist ein Rice-Kanal eben KEIN
+% Rayleigh-Kanal -- die Amplitudenverteilung ist eine andere. Eine
+% Gruppierung nur nach Kanal verglich deshalb die K=3- und K=30-SISO-Kurven
+% gegen die K=0-Referenz und meldete 20 Abweichungen, die Physik waren und
+% keine. Das verdeckte genau, was diese Pruefung finden soll.
+%
+% Nach der Gruppierung stimmen alle Gruppen bitgleich ueberein (gemessen
+% 2026-10-15, max rel. 0.00e+00): die fuenf K=0-Ordner untereinander, und
+% Rice-MUX gegen Rice-BF bei K = 3 und K = 30 -- bei N = 1 sind beide
+% Modi dasselbe System, und sie greifen nachweislich auf dieselbe Kurve zu.
 for ch = ["rayleigh" "awgn"]
-    sel = find([V.channel] == ch);
-    fprintf('\n=== Querpruefung 1x1, Kanal %s ===\n', ch);
+  for Kv = unique([V.K])
+    sel = find([V.channel] == ch & [V.K] == Kv);
+    if numel(sel) < 2, continue; end     % allein nichts zu vergleichen
+    fprintf('\n=== Querpruefung 1x1, Kanal %s, K = %g ===\n', ch, Kv);
     for M = Ms
         ref = []; row = sprintf('  M=%-3d', M);
         for k = sel
@@ -245,6 +258,7 @@ for ch = ["rayleigh" "awgn"]
         end
         fprintf('%s\n', row);
     end
+  end
 end
 
 if missingTotal > 0
