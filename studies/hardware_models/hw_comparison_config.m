@@ -6,7 +6,7 @@ function cfg = hw_comparison_config()
 %   name or a parameter.
 %
 %   A CASE is one runSweep call:  variant x distance
-%   and writes to  results/hardware_models/siso_<variant>_d<d>/.
+%   and writes to  results/hardware_models_newhw/siso_<variant>_d<d>/.
 %
 %   Variants (makeScenarioConfig arguments)
 %     "old"       hardwareModel = "old":  LNA fom_bandwidth, ADC envelope,
@@ -23,7 +23,10 @@ function cfg = hw_comparison_config()
 %   LO buffer per additional mixer, but SISO has one mixer per side, so
 %   that part is zero here.
 
-cfg.root      = gearboxphy.paths.resultsDir('hardware_models');
+% Own root since 2026-10-15: results/hardware_models/ holds a run with the
+% earlier "new" (LNA envelope, B_max 0.1*f_c); its stamps do not match the
+% decided set and are kept as reference, never mixed.
+cfg.root      = gearboxphy.paths.resultsDir('hardware_models_newhw');
 cfg.fcVec     = [2.4 8 28] * 1e9;
 cfg.RVec      = logspace(3, 11, 100);
 cfg.distances = 50;                      % [m], the dissertation setting

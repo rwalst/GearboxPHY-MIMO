@@ -24,7 +24,7 @@
 %   directory is pinned to its case by hw_stamp.mat; a mismatch is an
 %   error, never an overwrite (hw_comparison_prepare_dir.m).
 %
-%   OUTPUT: results/hardware_models/siso_<variant>_d<d>/  - then run
+%   OUTPUT: results/hardware_models_newhw/siso_<variant>_d<d>/  - then run
 %   analyze_hw_comparison.
 %
 %   Set VARIANTS / USE_PARALLEL / HW_CFG in the workspace before the call

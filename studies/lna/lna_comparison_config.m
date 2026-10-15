@@ -22,7 +22,11 @@ function cfg = lna_comparison_config()
 %     "fom_floor"      same, bandwidth floored at 0.05*f_c
 %     "envelope"       survey envelope, same floor
 
-cfg.root   = gearboxphy.paths.resultsDir('lna');
+% Since 2026-10-15 the non-LNA components are the new models. results/lna/
+% holds the cases computed with the old set; their stamps (without the
+% adc/dac/lo/bandwidth fields) would refuse a new run, by design, so the
+% new cases get their own root and the old ones stay as reference.
+cfg.root   = gearboxphy.paths.resultsDir('lna_newhw');
 cfg.fcVec  = [2.4 8 28] * 1e9;
 cfg.RVec   = logspace(3, 11, 100);
 cfg.models = ["fom_bandwidth" "fom_floor" "envelope"];
