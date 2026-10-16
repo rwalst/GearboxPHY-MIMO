@@ -1,0 +1,202 @@
+4 cases, results under \\ifn\mns\mamf\robert.walstab\My Documents\MATLAB\GearboxPHY-MIMO\results\hardware_models_newhw
+
+======== [1/4] siso_old_d50 ========
+Pool: profile "HPCServer" (clusterProfiles), 100 workers.
+Starting parallel pool (parpool) using the 'HPCServer' profile ...
+16-Oct-2026 13:21:15: Job Running. Waiting for parallel pool workers to connect ...
+Connected to parallel pool with 100 workers.
+Checkpoint directory reachable and writable by all 100 workers.
+Running optimization f_c=2.4 GHz
+  QAM order=4
+  QAM order=16
+  QAM order=64
+  QAM order=256
+  QAM order=1024
+  NA-QAM order=1024
+  ZXM order=1
+  ZXM order=2
+  ZXM order=3
+  Pulse-Energy order=1
+  Pulse-Arbitrary order=1
+Running optimization f_c=8 GHz
+  QAM order=4
+  QAM order=16
+  QAM order=64
+  QAM order=256
+  QAM order=1024
+  NA-QAM order=1024
+  ZXM order=1
+  ZXM order=2
+  ZXM order=3
+  Pulse-Energy order=1
+  Pulse-Arbitrary order=1
+Running optimization f_c=28 GHz
+  QAM order=4
+  QAM order=16
+  QAM order=64
+  QAM order=256
+  QAM order=1024
+  NA-QAM order=1024
+  ZXM order=1
+  ZXM order=2
+  ZXM order=3
+  Pulse-Energy order=1
+  Pulse-Arbitrary order=1
+siso_old_d50 done after 1.6 min
+
+======== [2/4] siso_new_d50 ========
+Checkpoint directory reachable and writable by all 100 workers.
+Running optimization f_c=2.4 GHz
+  QAM order=4
+  QAM order=16
+  QAM order=64
+  QAM order=256
+  QAM order=1024
+  NA-QAM order=1024
+  ZXM order=1
+  ZXM order=2
+  ZXM order=3
+  Pulse-Energy order=1
+  Pulse-Arbitrary order=1
+Running optimization f_c=8 GHz
+  QAM order=4
+  QAM order=16
+  QAM order=64
+  QAM order=256
+  QAM order=1024
+  NA-QAM order=1024
+  ZXM order=1
+  ZXM order=2
+  ZXM order=3
+  Pulse-Energy order=1
+  Pulse-Arbitrary order=1
+Running optimization f_c=28 GHz
+  QAM order=4
+  QAM order=16
+  QAM order=64
+  QAM order=256
+  QAM order=1024
+  NA-QAM order=1024
+  ZXM order=1
+  ZXM order=2
+  ZXM order=3
+  Pulse-Energy order=1
+  Pulse-Arbitrary order=1
+siso_new_d50 done after 0.0 min
+
+======== [3/4] siso_bw_only_d50 ========
+Checkpoint directory reachable and writable by all 100 workers.
+Running optimization f_c=2.4 GHz
+  QAM order=4
+  QAM order=16
+  QAM order=64
+  QAM order=256
+  QAM order=1024
+  NA-QAM order=1024
+  ZXM order=1
+  ZXM order=2
+  ZXM order=3
+  Pulse-Energy order=1
+  Pulse-Arbitrary order=1
+Running optimization f_c=8 GHz
+  QAM order=4
+  QAM order=16
+  QAM order=64
+  QAM order=256
+  QAM order=1024
+  NA-QAM order=1024
+  ZXM order=1
+  ZXM order=2
+  ZXM order=3
+  Pulse-Energy order=1
+  Pulse-Arbitrary order=1
+Running optimization f_c=28 GHz
+  QAM order=4
+  QAM order=16
+  QAM order=64
+  QAM order=256
+  QAM order=1024
+  NA-QAM order=1024
+  ZXM order=1
+  ZXM order=2
+  ZXM order=3
+  Pulse-Energy order=1
+  Pulse-Arbitrary order=1
+siso_bw_only_d50 done after 2.5 min
+
+======== [4/4] siso_bw_old_d50 ========
+Checkpoint directory reachable and writable by all 100 workers.
+Running optimization f_c=2.4 GHz
+  QAM order=4
+    schon gerechnet (413180f28d1515a8) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=16
+    schon gerechnet (a7e7b86451d889a4) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=64
+    schon gerechnet (c77868ef97df4656) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=256
+    schon gerechnet (e0e7b5b58a700e7f) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=1024
+    schon gerechnet (4196dc0662bdc78b) -- aus dem Ergebnisspeicher uebernommen
+  NA-QAM order=1024
+    schon gerechnet (6607fdea2be16922) -- aus dem Ergebnisspeicher uebernommen
+  ZXM order=1
+    schon gerechnet (edc4630146918993) -- aus dem Ergebnisspeicher uebernommen
+  ZXM order=2
+    schon gerechnet (bce5e888ea0a0408) -- aus dem Ergebnisspeicher uebernommen
+  ZXM order=3
+    schon gerechnet (7f58f8c585e841f7) -- aus dem Ergebnisspeicher uebernommen
+  Pulse-Energy order=1
+    schon gerechnet (f78e356327094440) -- aus dem Ergebnisspeicher uebernommen
+  Pulse-Arbitrary order=1
+    schon gerechnet (db16e72f8ab1248d) -- aus dem Ergebnisspeicher uebernommen
+Running optimization f_c=8 GHz
+  QAM order=4
+    schon gerechnet (44a893436e4df660) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=16
+    schon gerechnet (a9c6b860d6061e30) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=64
+    schon gerechnet (07136a8bfc1ae932) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=256
+    schon gerechnet (f832e3ecceb2a44a) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=1024
+    schon gerechnet (94cc310c6d4eb9e9) -- aus dem Ergebnisspeicher uebernommen
+  NA-QAM order=1024
+    schon gerechnet (6a44a1903cb32e02) -- aus dem Ergebnisspeicher uebernommen
+  ZXM order=1
+    schon gerechnet (8d117a99e1f2efd2) -- aus dem Ergebnisspeicher uebernommen
+  ZXM order=2
+    schon gerechnet (ae0efcbfeac9606e) -- aus dem Ergebnisspeicher uebernommen
+  ZXM order=3
+    schon gerechnet (02baeacc8c6f888f) -- aus dem Ergebnisspeicher uebernommen
+  Pulse-Energy order=1
+    schon gerechnet (7014e3e6fcf96e8b) -- aus dem Ergebnisspeicher uebernommen
+  Pulse-Arbitrary order=1
+    schon gerechnet (76a5315828260a62) -- aus dem Ergebnisspeicher uebernommen
+Running optimization f_c=28 GHz
+  QAM order=4
+    schon gerechnet (0730bb70e2290995) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=16
+    schon gerechnet (053bacc5b576c97a) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=64
+    schon gerechnet (b218af1384bd1504) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=256
+    schon gerechnet (3ecae938f0e27275) -- aus dem Ergebnisspeicher uebernommen
+  QAM order=1024
+    schon gerechnet (8ff068cf82e5100b) -- aus dem Ergebnisspeicher uebernommen
+  NA-QAM order=1024
+    schon gerechnet (fce4266b3c53a582) -- aus dem Ergebnisspeicher uebernommen
+  ZXM order=1
+    schon gerechnet (a06665c4dc13ec82) -- aus dem Ergebnisspeicher uebernommen
+  ZXM order=2
+    schon gerechnet (2774bc3dd248e9a0) -- aus dem Ergebnisspeicher uebernommen
+  ZXM order=3
+    schon gerechnet (5b911fe16d95b00a) -- aus dem Ergebnisspeicher uebernommen
+  Pulse-Energy order=1
+    schon gerechnet (abf22ba6030affaf) -- aus dem Ergebnisspeicher uebernommen
+  Pulse-Arbitrary order=1
+    schon gerechnet (d7549e2d67bdf547) -- aus dem Ergebnisspeicher uebernommen
+siso_bw_old_d50 done after 0.0 min
+
+All 4 cases done after 0.1 h. Next: analyze_hw_comparison
+
+Fertig. Jetzt auswerten:  analyze_hw_comparison
