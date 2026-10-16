@@ -7,6 +7,33 @@ function run_analog_bf_distance()
 %       setupGearboxPath; run_analog_bf_distance
 %   Vorher: validate_analog_bf.
 %
+%
+%   NICHT WEITERVERFOLGT, Stand 2026-10-16. Der Vergleich laeuft jetzt ueber
+%   DIGITAL MIT DAC-AUFLOESUNG gegen ANALOG, und das ist
+%   studies/digital_bf_dac/run_dbf_dac_distance.m. Dieser Lauf hier steht
+%   still, weil Fall 1 -- alle sieben Varianten, auch die vier digitalen --
+%   SE_data_bfideal_fixedB liest: eine Kurve, die "Sender digital,
+%   Empfaenger analog" beschreibt (kombiniert wird vor EINEM ADC) und den
+%   Arraygewinn analytisch als N_t*N_r ins Linkbudget legt. Als digitale
+%   Referenz ist das eine Vereinfachung, und sie beguenstigt digital
+%   zweifach: kein DAC-Drehungsverlust und ein Wandler statt N_r.
+%
+%   Fall 2 und AP3 (die zwoelf analogen Varianten auf SE_data_abf_fixedB*)
+%   sind davon NICHT betroffen -- sie rechnen auf gerechneten Kurven. Ohne
+%   Fall 1 fehlt ihnen aber der digitale Gegenarm, und den liefert jetzt die
+%   DAC-Studie.
+%
+%   WAS ZUM WIEDERBELEBEN NOETIG WAERE: die vier digitalen Varianten auf
+%   SE_data_bflosd_fixedB umstellen (ein ADC je Antenne, derselbe Empfaenger
+%   wie die Rayleigh-Kurven) und die analoge Seite von Fall 1 auf
+%   SE_data_abf_fixedB_KInf. Dann waere es dieselbe Paarung wie der
+%   losd-Kanal der DAC-Studie, nur ohne DAC-Stufen.
+%
+%   OFFEN GEBLIEBEN und mit dem Parken erledigt: dbf_ideal und
+%   dbf_ideal_lo12p5mW sind seit der Migration dieselbe Konfiguration (lo =
+%   "" nimmt die Vorgabe, und die ist per_mixer mit 12,5 mW bei 28 GHz).
+%   analyze_analog_bf bricht daran mit ambiguousReference ab.
+%
 %   RESSOURCEN: 25 Worker, 64 GB, 12 h. Ein Knoten.
 %   (parfor ueber die 25 Distanzen; mehr als 25 Worker bringen nichts.
 %   Zeitbedarf NICHT GEMESSEN -- aus run_mimo_comparison_distance

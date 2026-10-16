@@ -40,9 +40,11 @@ function run_dbf_dac_distance(over)
 %
 %   WAS GERECHNET WIRD (alles QAM, 28 GHz, ADC-Modell "envelope", ADC-Regel
 %   fixedB; Raster wie run_analog_bf_distance):
-%     Kanal    "losd" (Rang 1, ein ADC je Empfangsantenne), "los" (Rang 1,
-%              Kombinieren vor EINEM ADC) und "ray" (Rayleigh) -- jeweils
-%              sobald die Kurvenordner existieren
+%     Kanal    "losd" (Rang 1, ein ADC je Empfangsantenne), "ray"
+%              (Rayleigh) sowie "ray3"/"ray30" (Rice) -- jeweils sobald die
+%              Kurvenordner existieren. Der frueher vorhandene Kanal "los"
+%              (Kombinieren vor EINEM ADC) ist seit dem 2026-10-16 heraus,
+%              s. CHANNELS-Tabelle unten
 %     LO       loShared und lo12p5mW (LO-Puffer je zusaetzlichem Mischer)
 %     DAC-Leistungsmodell (makeScenarioConfig 'dacPowerModel'):
 %              "analytic" (3 V, Stand des Codes), "analytic_1V"
@@ -52,8 +54,7 @@ function run_dbf_dac_distance(over)
 %              run_dbf_dac_los_newhw.m rechnet damit den LOS-Vergleich.
 %   Je (Kanal, LO, DAC-Modell) eine Datei mit der DIGITALEN Seite:
 %     Eideal   Kurve mit idealem DAC, bezahlt 1/2*log2(M)
-%              (SE_data_bflosd_fixedB, SE_data_bfideal_fixedB bzw.
-%              SE_data_bf_fixedB)
+%              (SE_data_bflosd_fixedB bzw. SE_data_bf_fixedB[_K3/_K30])
 %     E        Kurven mit DAC-Quantisierung, letzte Dimension = DAC-Stufe
 %              (SE_data_..._dac<k>), der DAC bezahlt sourceBdac. Diese
 %              Kurven sind beim Export an der Ideal-DAC-Kurve GEDECKELT
@@ -118,14 +119,34 @@ CFG = struct('rates', P.rates, 'distances', P.distances, 'fcGHz', P.fcGHz, 'Ms',
 % solange sie fehlen, findet die lev-Erkennung unten nichts und der Kanal
 % wird uebersprungen -- der Lauf bricht also nicht ab, wenn nur der
 % K=0-Teil vorliegt.
+% bfideal IST HIER HERAUS (Entscheidung 2026-10-16). Verglichen werden
+% DIGITAL MIT DAC-AUFLOESUNG gegen ANALOG, und bfideal passt in keine der
+% beiden Rollen:
+%   * als digitale Seite nicht, weil seine Kurven "Sender digital,
+%     Empfaenger analog" beschreiben -- kombiniert wird vor EINEM ADC. Der
+%     konsistent digitale Rang-1-Fall ist bflosd (ein ADC je Antenne).
+%   * als analoge Seite nicht, weil der Gewinn dort analytisch als N_t*N_r
+%     im Linkbudget steckt statt in der Kurve. Der gerechnete analoge
+%     Rang-1-Fall ist abf_fixedB_KInf.
+% Weggefallen ist damit der Kanal "los" (dessen digBase war bfideal), und
+% "losd" bekommt seine analoge Referenz aus abf_fixedB_KInf statt aus
+% bfideal -- mit anaMode "multiplexing", weil die abf-Kurven den
+% Arraygewinn selbst tragen (analogCurvesCarryArrayGain).
+%
+% FOLGE FUER DEN BESTAND: die 6 Dateien dbfdac_distance_los_* und die 9
+% Dateien abfdac_distance_abf_* sind damit Waisen -- der Kanal ist weg bzw.
+% die Kurve dahinter hat sich geaendert. analyze_dbf_dac findet seine
+% Dateien per Glob, nicht ueber diese Liste, es wuerde sie also weiter
+% einlesen. Sie gehoeren verschoben (archive_oldhw_results) oder geloescht,
+% bevor die Auswertung wieder laeuft.
 CH = struct( ...
-  'name',       {"losd", "los", "ray", "ray3", "ray30"}, ...
-  'digBase',    {"SE_data_bflosd_fixedB", "SE_data_bfideal_fixedB", "SE_data_bf_fixedB", ...
+  'name',       {"losd", "ray", "ray3", "ray30"}, ...
+  'digBase',    {"SE_data_bflosd_fixedB", "SE_data_bf_fixedB", ...
                  "SE_data_bf_fixedB_K3", "SE_data_bf_fixedB_K30"}, ...
-  'anaData',    {"SE_data_bfideal_fixedB", "SE_data_bfideal_fixedB", "SE_data_abf_fixedB", ...
+  'anaData',    {"SE_data_abf_fixedB_KInf", "SE_data_abf_fixedB", ...
                  "SE_data_abf_fixedB_K3", "SE_data_abf_fixedB_K30"}, ...
-  'anaMode',    {"beamforming", "beamforming", "multiplexing", "multiplexing", "multiplexing"}, ...
-  'anaPrefix',  {"abf", "abf", "abfray", "abfray3", "abfray30"});
+  'anaMode',    {"multiplexing", "multiplexing", "multiplexing", "multiplexing"}, ...
+  'anaPrefix',  {"abfKInf", "abfray", "abfray3", "abfray30"});
 PS_NAMES = ["active" "passive_comp" "passive_pen"];
 PS_TYPES = ["active" "passive_compensated" "passive_penalty"];
 

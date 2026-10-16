@@ -6,6 +6,15 @@ function run_analog_bf_mixed_distance(over)
 %       setupGearboxPath; run_analog_bf_mixed_distance
 %   Vorher: validate_analog_bf.
 %
+%
+%   NICHT WEITERVERFOLGT, Stand 2026-10-16, aus demselben Grund wie
+%   run_analog_bf_distance: alle LOS-Varianten lesen SE_data_bfideal_fixedB,
+%   und bfideal wird nicht weiterverfolgt. Die Rayleigh-Mischfaelle brauchen
+%   SE_data_abftx_fixedB und SE_data_abfrx_fixedB, die beide fehlen -- es
+%   gibt also derzeit keine Variante dieses Laufs, die ohne bfideal
+%   auskommt. Verglichen wird stattdessen digital mit DAC-Auflösung gegen
+%   analog, s. studies/digital_bf_dac/run_dbf_dac_distance.m.
+%
 %   RESSOURCEN: 25 Worker, 64 GB, 12 h. Ein Knoten.
 %   (parfor ueber die 25 Distanzen. NICHT GEMESSEN: zehn Varianten im
 %   LOS-Fall, also etwa 0.7-mal der Aufwand von run_analog_bf_distance mit
