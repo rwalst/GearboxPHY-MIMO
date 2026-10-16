@@ -10,12 +10,21 @@ function run_mimo_comparison_sweep(variants, distances)
 %
 %   WARUM EINE FUNKTION MIT TEILMENGE (seit 2026-10-15). Der Lauf besteht aus
 %   15 unabhaengigen Einheiten (5 Varianten x 3 Distanzen), jede mit 100
-%   Ratenpunkten und damit auf 100 Worker begrenzt. Hintereinander sind das
-%   rund 120 h; auf vier Sitzungen verteilt ein Viertel davon. Vorher war
-%   dies ein SKRIPT mit festem VARIANTS -- eine Teilmenge liess sich nicht
-%   uebergeben, und eine Variable gleichen Namens im Basis-Workspace wurde
-%   von Zeile 38 ohnehin ueberschrieben. Ohne Argumente ist das Verhalten
-%   unveraendert.
+%   Ratenpunkten und damit auf 100 Worker begrenzt. Eine Teilmenge laesst
+%   sich damit auf mehrere Sitzungen verteilen. Vorher war dies ein SKRIPT
+%   mit festem VARIANTS -- eine Teilmenge liess sich nicht uebergeben, und
+%   eine Variable gleichen Namens im Basis-Workspace wurde von Zeile 38
+%   ohnehin ueberschrieben. Ohne Argumente ist das Verhalten unveraendert.
+%
+%   HIER STAND "rund 120 h", UND DAS WAR FALSCH (korrigiert 2026-10-16). Die
+%   Zahl entstand aus "8 h je Lauf" mal 15 -- eine Angabe aus einer
+%   MIMO_TODO-Zelle ueber einen aelteren 3a-Stand, multipliziert, obwohl die
+%   RESSOURCEN-Zeile zwei Zeilen weiter oben 12 h fuer den GANZEN Treiber
+%   nennt. Die beiden widersprachen sich um den Faktor zehn, und der
+%   Widerspruch blieb unbemerkt. GEMESSEN am 2026-10-16: der komplette
+%   Neurechnungssatz ausser den SISO-Laeufen -- also 3a, 3b, Analog-BF,
+%   Mischformen und die DAC-Studie zusammen -- war in unter 5 h fertig.
+%   Die 12 h der RESSOURCEN-Zeile sind damit die brauchbare Obergrenze.
 %
 %   Die Einheiten schreiben in GETRENNTE Ergebnisordner (cmp_<variante>_d<d>),
 %   zwei Sitzungen kommen sich also nicht in die Quere -- solange sie

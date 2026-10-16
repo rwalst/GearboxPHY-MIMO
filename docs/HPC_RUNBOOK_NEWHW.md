@@ -167,17 +167,38 @@ fehlen — liegt bei der Hardware-Session.
 
 ---
 
-## Keine Laufzeitangaben, und warum
+## Laufzeit: gemessen, nicht geschätzt
 
-Unter dem **alten** Satz galt: 3a rund 8 h je Lauf, 3b 6 h, `run_dbf_dac_distance`
-3,1 min je Datei, `run_analog_bf_distance` etwa 20 min. **Diese Zahlen sind
-nicht übertragbar.** Der neue Satz deckelt die Bandbreite auf einen Kanal
-(20 / 100 / 400 MHz statt 0,1·f_c = 240 / 800 / 2800 MHz) und ändert damit die
-Zahl der zulässigen Arbeitspunkte je Ratenpunkt. In welche Richtung sich die
-Laufzeit verschiebt, ist nicht gemessen.
+**Am 2026-10-16 war der komplette Satz ausser den SISO-Laeufen in unter 5 h
+fertig** — 3a, 3b, Analog-BF, Mischformen und die DAC-Studie zusammen, auf
+vier Sitzungen. Offen sind nur noch die SISO-Läufe aus W4.
 
-Jeder Lauf druckt seine Dauer, und der Wrapper fasst sie am Ende zusammen —
-der erste Durchgang liefert die Zahlen für die Planung des zweiten.
+Damit ist die Aufteilung auf vier Wrapper nicht die Engstelle und eine
+Umverteilung der 3a-Varianten (6/6/3 gegen 5/5/5) erübrigt sich.
+
+**Eine Schätzung, die hier stand, war um den Faktor zehn zu hoch.** Sie
+entstand aus „8 h je Lauf" × 15 Läufen = 120 h für 3a — die erste Zahl kam
+aus einer `MIMO_TODO`-Zelle über einen älteren Stand, während die
+`RESSOURCEN`-Zeile des Treibers 12 h für den **ganzen** Treiber nennt. Die
+beiden widersprachen sich, und der Widerspruch blieb unbemerkt. Festgehalten,
+weil die Lehre allgemein ist: zwei Angaben zur selben Sache sind erst eine
+Schätzung, wenn sie zusammenpassen.
+
+Der **gemessene Faktor** des neuen Modellsatzes gegen den alten bleibt
+dagegen gültig, er war nicht das Problem:
+
+| Form | zulässige Punkte | Faktor neu/alt |
+|---|---|---|
+| Ratensweep (1e3…1e11) | 23 → 20 von 25 | **1,60×** langsamer |
+| Distanzstudie (2 feste Raten) | 10 → 10 von 10 | **0,57×** schneller |
+
+Der Mechanismus: ein **unzulässiger** Punkt kostet 1,344 s, ein zulässiger
+0,128 s — Faktor 10,5, weil der Optimierer sein ganzes Multistart-Budget
+verbraucht, um die Unzulässigkeit zu beweisen. Das kleinere `B_max` (ein
+Kanal statt 0,1·f_c) schiebt bei den Ratensweeps Punkte über die Kante; die
+Distanzstudien rechnen nur 1 Mbit/s und 1 Gbit/s, beide bleiben zulässig.
+
+Jeder Lauf druckt seine Dauer, und der Runner fasst sie am Ende zusammen.
 
 ---
 
