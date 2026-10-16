@@ -6,6 +6,32 @@ Multiplexing, digitales Beamforming oder analoges Beamforming — über drei
 Kanäle (LOS, Rice, Rayleigh) und die zugehörigen Wandler- und
 Phasenschiebermodelle.
 
+> # ⚠ Die wichtigste offene Frage: „LOS" heißt hier **Rang 1**, nicht Sichtverbindung
+>
+> **Jede Aussage dieser Studie über LOS und über den Rice-Faktor steht unter
+> einer Annahme, die noch niemand geprüft hat.** `riceChannel.m` baut den
+> LOS-Anteil als `H_LOS = a_r(θ_r) · a_t(θ_t)'` — ein äußeres Produkt zweier
+> Steuervektoren und damit **Rang 1 bei jedem Winkel**, nicht nur bei
+> Broadside. Der Rice-Faktor fährt den Kanal also nicht von „gestreut" nach
+> „Sichtverbindung", sondern von **vollrangig nach rangarm**.
+>
+> **Ein reiner Sichtverbindungskanal ist physikalisch nicht rangarm.** Bei
+> passendem Antennenabstand (LOS-MIMO, `d_t·d_r ≈ λ·R/N`) stehen die Spalten
+> von H_LOS orthogonal, und Multiplexing funktioniert **ungeschmälert**. Bei
+> 28 GHz und 10 m Abstand braucht N = 32 dafür 5,8 cm Elementabstand, also
+> 1,85 m Apertur — groß, aber für eine Basisstation nicht absurd. **Das
+> Modell kann diesen Fall gar nicht darstellen:** ein äußeres Produkt hat
+> Rang 1, unabhängig vom Elementabstand.
+>
+> **Was daran hängt:** F2 (der ganze K-Verlauf und K\*), die Rang-1-Spalten
+> von F1 und F3 — und damit die Hauptfrage selbst. „Beamforming gewinnt bei
+> hohem K" ist derzeit die Aussage **„Beamforming gewinnt, wenn der Kanal
+> rangarm ist"**. Die ist richtig und der Schwellwert K\* ist eine echte
+> Zahl, aber sie trägt **nicht** die Empfehlung „bei Sichtverbindung
+> Beamforming bauen" — und genau so würde sie gelesen.
+>
+> **Zu tun:** Abschnitt 3.5. **Zahlen und Herleitung:** Abschnitt 5.1.
+
 ## Die Forschungsfragen
 
 Damit beim Lesen der Zahlen klar bleibt, **was eigentlich gegen was** steht.
@@ -47,8 +73,10 @@ gegen analog läuft:
 Die gerechneten Ergebnisse beider Läufe bleiben liegen — sie sind aus dem
 aktiven Pfad, nicht gelöscht.
 
-**Und eine Frage steht unter allen anderen** (E13, Abschnitt 4) — ❌ **noch
-ohne Daten**: **wogegen wird „Ersparnis“ gemessen?** Gasts Diss vergleicht gegen ein fest
+**Und zwei Fragen stehen unter allen anderen.** Die erste ist die
+Rang-1-Annahme oben (Abschnitt 3.5, 5.1) — ❌ **noch ohne Daten**: *ist
+„LOS" in dieser Studie überhaupt Sichtverbindung, oder nur Rangarmut?*
+Die zweite (E13, Abschnitt 4) — ❌ **ebenfalls ohne Daten**: **wogegen wird „Ersparnis“ gemessen?** Gasts Diss vergleicht gegen ein fest
 verdrahtetes Front End auf die Spitzenrate. Unter MIMO muss dessen
 Antennenzahl mitwachsen, sonst steckt im Saving der Arraygewinn statt des
 Schaltgewinns. Die Festlegung: NA-QAM mit festem N_peak.
@@ -513,6 +541,48 @@ Mischformen (0 von 10 Dateien) und die drei Rice-Kanäle von Schritt 3
 
 ---
 
+### 3.5 Die Rang-1-Annahme prüfen — ⚠ offen, noch kein Lauf
+
+Der Banner oben nennt die Annahme, hier steht, was sie prüfen würde. Nichts
+davon ist gerechnet, nichts davon ist angefangen.
+
+1. **`riceChannel.m` um eine Geometrie erweitern.** Heute: `Hlos = aR * aT'`,
+   Fernfeld, zwei Steuervektoren, Rang 1 per Konstruktion. Nötig ist ein
+   zweiter Zweig mit **Kugelwelle** — `H_LOS(m,n) = exp(-j·2π·d_mn/λ)` aus
+   den tatsächlichen Elementpositionen und dem Abstand R. Nur so kann der
+   LOS-Kanal überhaupt vollrangig werden. Die Schnittstelle ist da (`los`
+   als struct), der Inhalt nicht.
+2. **Den Elementabstand als Entscheidung behandeln, nicht als Nebenbei.**
+   λ/2 steht derzeit fest verdrahtet im Steuervektor. Unter λ/2 ist der
+   LOS-Kanal ab wenigen Zentimetern rangarm, das heutige Modell ist dort
+   also **richtig**:
+
+   | | Vollrang-Abstand `√(λR/N)` | Apertur N·d | λ/2-Array: vollrangig nur bis |
+   |---|---|---|---|
+   | 28 GHz, R = 10 m, N = 32 | 5,8 cm | 1,85 m | R ≤ 8,6 cm |
+   | 28 GHz, R = 100 m, N = 32 | 18,3 cm | 5,86 m | R ≤ 8,6 cm |
+   | 28 GHz, R = 10 m, N = 4 | 16,4 cm | 0,65 m | R ≤ 1,1 cm |
+   | 2,4 GHz, R = 10 m, N = 32 | 19,8 cm | 6,33 m | R ≤ 1,00 m |
+
+   Die Frage ist deshalb nicht „ist das Modell falsch", sondern **„ist λ/2
+   die richtige Wahl für eine Verbindung, die auf Energie optimiert wird"**.
+3. **Die Hypothese, die das interessant macht:** eine größere Apertur kostet
+   im Energiemodell **nichts** — keine zusätzliche Kette, kein zusätzlicher
+   Wandler, nur Mechanik. Wenn LOS-MIMO bei kurzer Distanz praktisch gratis
+   vollen Rang liefert, kippt die Empfehlung aus F1/F2 genau dort, wo
+   Beamforming heute am deutlichsten gewinnt.
+4. **Billigster erster Test, bevor irgendetwas Großes läuft:** MI für
+   **einen** vollrangigen LOS-Kanal (28 GHz, 10 m, N = 8) gegen die
+   vorhandene Rang-1-Kurve derselben Größe. Ein Punkt, eine Stunde — und er
+   entscheidet, ob Punkt 1 bis 3 die Arbeit wert sind.
+
+**Zweiter, kleinerer Punkt in derselben Spalte:** die drei Systeme rechnen
+LOS derzeit **auf verschiedenen Geometrien**. Digitales BF mittelt über 32
+Richtungspaare (`runQamSweepBfLosDigitalDac`), MUX und analoges BF rechnen
+nur Broadside (`runQamSweep32Los`, `runQamSweepBfAnalog`). Das ist ein
+Modellunterschied **innerhalb** der LOS-Spalte, kein Messergebnis, und er
+gehört in jede Aussage, die die drei bei LOS nebeneinanderstellt.
+
 ## 4. Entscheidungen
 
 **Getroffen.**
@@ -675,6 +745,33 @@ suchen, bei dem es grün wird, wäre Rosinenpickerei.
 ---
 
 ## 5. Grenzen, die in jede Aussage gehören
+
+### 5.1 Die größte: „LOS" ist Rang 1, und Rang 1 ist eine Modellwahl
+
+`riceChannel.m` setzt `Hlos = aR * aT'` — ein äußeres Produkt, Rang 1 bei
+**jedem** Winkelpaar. Broadside ist dabei nur der Default (dort ist
+`λ_max(H_LOS H_LOS') = N_t·N_r` exakt, was den Grenzübergang an die
+Gewinnannahme des idealisierten Beamformings anschließt); andere Winkel
+ändern die Phasenlage gegenüber dem Quantisierungsraster, nicht den Rang.
+
+**Richtung, in die es das Ergebnis schiebt:** zugunsten von Beamforming,
+und zwar genau dort, wo die Studie Beamforming empfiehlt. Mit steigendem K
+verliert Multiplexing per Konstruktion seine Ströme; K\* misst deshalb, ab
+welcher Rangarmut ein Strom billiger ist als N Ströme — eine richtige Zahl
+zu einer anderen Frage als der, die der Name „Rice-Faktor" nahelegt.
+
+**Wie weit die Annahme trägt:** unter λ/2-Arrays weit. Vollrang verlangt
+`d_t·d_r ≈ λ·R/N`; mit `d = λ/2` heißt das `R ≤ N·λ/4`, bei 28 GHz und
+N = 32 also 8,6 cm. Für jede Distanz dieser Studie ist der broadside
+λ/2-LOS-Kanal damit tatsächlich Rang 1. Die Lücke ist nicht die Physik des
+Modells, sondern dass λ/2 nie als Entscheidung behandelt wurde — Tabelle
+und Vorgehen in Abschnitt 3.5.
+
+**Bis das geprüft ist, gilt:** überall „Rang 1" schreiben, wo „LOS" gemeint
+wäre, und keine Empfehlung der Form „bei Sichtverbindung Beamforming" aus
+F1/F2/F3 ableiten.
+
+### 5.2 Hardwaremodelle und Messannahmen
 
 Keine davon ist ein Fehler; jede schiebt das Ergebnis in eine bekannte
 Richtung. Für die ersten vier gibt es inzwischen Schalter, und
