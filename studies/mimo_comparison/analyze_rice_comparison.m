@@ -161,7 +161,14 @@ for c = 1:nC
         ylabel(ax2, 'E_{bit}(BF) / E_{bit}(MUX)', 'FontSize', 12, 'Color', INK2);
     end
 end
-title(tl, 'Energy per bit over the Ricean K factor (scaledB, best over M \leq 256 and N \leq 4)', ...
+% N-BEREICH AUS DEN DATEN, nicht als feste Zeichenkette. Hier stand
+% "N \leq 4" fest verdrahtet -- ein Rest aus der Zeit, als die Rice-Kurven
+% nur bis N = 4 reichten. Seit dem 2026-10-15 gehen sie bis N = 16, und die
+% Auswertung beschraenkt N an keiner Stelle: der Titel behauptete eine
+% Deckelung, die es nicht gibt. Gefunden am 2026-10-16 beim Foliensatz.
+nMax = max(ref.CFG.Ns);
+title(tl, sprintf(['Energy per bit over the Ricean K factor ' ...
+    '(scaledB, best over M \\leq %g and N \\leq %g)'], max(ref.CFG.Ms), nMax), ...
     'FontSize', 13, 'Color', INK, 'FontWeight', 'bold');
 exportgraphics(fig, fullfile(figDir, 'cmp_rice.png'), 'Resolution', 200);
 

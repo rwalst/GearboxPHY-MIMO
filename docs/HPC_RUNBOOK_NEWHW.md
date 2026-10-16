@@ -82,6 +82,18 @@ bleiben deshalb auf dem alten Satz gepinnt — sie müssen weiter grün sein.
 
 ## Schritt 1 — die vier Wrapper starten
 
+**Nach einem `git pull` zuerst `clear functions`.** MATLAB behält eine schon
+geladene `.m`-Datei im Cache, auch wenn der Pull sie geändert hat — die
+Sitzung rechnet dann mit dem alten Code weiter. Am 2026-10-16 hat das einen
+Lauf gekostet: `run_hw_bandwidth` führte **zwei** statt vier Varianten aus,
+weil die Variantenliste noch die alte war. Es gibt dabei keine Fehlermeldung,
+nur ein unvollständiges Ergebnis — und genau deshalb steht es hier.
+
+```matlab
+clear functions          % nach jedem Pull, VOR dem Lauf
+rehash                   % falls Dateien neu hinzugekommen sind
+```
+
 Vier MATLAB-Sitzungen, je eine Zeile:
 
 ```matlab
