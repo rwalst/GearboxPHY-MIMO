@@ -7,7 +7,7 @@ function run_newhw_w4()
 %   RESSOURCEN: 200 Kerne, 64 GB. Eine MATLAB-Sitzung.
 %
 %   INHALT, in dieser Reihenfolge:
-%     1. run_sweep                      SISO-Grundsweep (results/main)
+%     1. run_sweep                      SISO-Grundsweep (results/main), SISO
 %     2. run_beamforming_sweep          Beamforming-Vorlaeufer
 %     3. run_beamforming_allgears
 %     4. run_beamforming_distance_sweep
@@ -15,6 +15,15 @@ function run_newhw_w4()
 %     6. run_dac_model_siso             DAC-Leistungsmodelle, SISO
 %     7. run_lna_comparison             LNA-Modelle            (s. STEMPEL)
 %     8. run_hw_comparison              alter gegen neuer Satz (s. STEMPEL)
+%
+%   run_sweep RECHNET SEIT DEM 2026-10-16 NUR NOCH SISO. Er forderte vorher
+%   1x1 bis 8x8 gegen den Basisordner data/SE_data, und die neun MIMO-Kurven
+%   dort stammen aus einem Export vor der Einfuehrung von snrReference -- je
+%   STROM normiert, waehrend das Gearbox die GESAMTleistung budgetiert.
+%   loadSECurve weist sie ab (gearboxphy:snrReference), und genau daran brach
+%   dieser Lauf am 2026-10-16 ab. Der Abbruch war richtig: results/main trug
+%   diese Spalten fuer M = 4/16/64 und schenkte Multiplexing damit +3 bis
+%   +9 dB. Die MIMO-Achse liegt jetzt allein bei 3a/3b und der Analog-Studie.
 %
 %   WARUM DIESER WRAPPER 200 KERNE BEKOMMT UND DIE ANDEREN 100: run_sweep
 %   hat 400 Ratenpunkte (run_sweep.m:9), runSweep nimmt

@@ -46,6 +46,15 @@ function archive_oldhw_results(action)
 %   das Verschieben als Umbenennung von rund hundert Pfaden. Der alte Satz
 %   bleibt damit als Vergleichsarm in der Geschichte -- das ist der Zweck.
 %
+%   EINE AUSNAHME VON DIESEM ZWECK, und sie gehoert benannt: die MIMO-Spalten
+%   von main, main100 und main200 bei M = 4/16/64 sind nicht nur "alter
+%   Modellsatz", sie sind FALSCH. Sie entstanden mit den neun MIMO-Kurven aus
+%   data/SE_data, die je STROM normiert sind und kein snrReference tragen --
+%   ohne die 10*log10(N_t)-Verschiebung bekam Multiplexing +3,0 dB bei 2x2,
+%   +6,0 dB bei 4x4 und +9,0 dB bei 8x8 geschenkt. Als SISO-Spalte bleiben
+%   die Dateien brauchbar, als MIMO-Vergleich nicht. run_sweep rechnet
+%   deshalb seit dem 2026-10-16 nur noch SISO.
+%
 %   Siehe docs/HPC_RUNBOOK_NEWHW.md und den Kasten am Anfang von
 %   docs/MIMO_TODO.md.
 arguments

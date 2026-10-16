@@ -3,17 +3,41 @@
 %   gear/order/carrier - same granularity as the original Wrapper.m),
 %   then produces the same report figures. See ../ARCHITECTURE_PLAN.md
 %   for the design this implements.
-
+%
+%   SISO ONLY (decision 2026-10-16). This is the base sweep: four carriers,
+%   every gear, 400 rate points, one antenna. The MIMO axis belongs to the
+%   studies built for it - studies/mimo_comparison (3a over the rate axis,
+%   3b over distance) and studies/analog_bf - which read curve folders
+%   tagged with their ADC rule.
+%
+%   UNTIL TODAY THIS SCRIPT ASKED FOR 1x1, 2x2, 4x4 AND 8x8 against the base
+%   folder data/SE_data, and that was wrong in a way worth writing down.
+%   Nine MIMO curves live there (M = 4/16/64 x 2x2/4x4/8x8) from an early
+%   export, before exportToGearboxSEData wrote snrReference: they carry
+%   source, sourceB and sourceTier but not that field. Curves from
+%   QuantizedMimoMI are normalised PER STREAM (Es = 1 per stream) while the
+%   gearbox budgets TOTAL transmit power, so without the 10*log10(N_t) shift
+%   multiplexing is handed +3.0 dB at 2x2, +6.0 dB at 4x4 and +9.0 dB at 8x8.
+%
+%   results/main WAS COMPUTED THAT WAY. qam_M4, qam_M16 and qam_M64 carry
+%   all four configurations in antennaConfigsUsed, so their MIMO columns are
+%   wrong - independently of the hardware model set. Only qam_M256 is clean,
+%   and only because those curves are missing from the base folder entirely
+%   and filterAvailableAntennaConfigs dropped them.
+%
+%   loadSECurve has rejected such curves since f3406b7, which is AFTER those
+%   results were stored - so this script has been aborting with
+%   gearboxphy:snrReference ever since, and the abort is the check doing its
+%   job: it refuses to reproduce a known-wrong result. Observed 2026-10-16 in
+%   run_newhw_w4.
+%
+%   Nothing but this script reads results/main (grep: only line 18 and the
+%   figure directory below), so dropping the MIMO columns costs no analysis.
 scenario = gearboxphy.sweep.makeScenarioConfig( ...
     'distance', 50, ...
     'RVec', logspace(3,11,400), ...
     'fcVec', [2.4 8 28 60]*1e9, ...
-    'qamMimoConfigs', { ...
-        struct('N_t',1,'N_r',1), ...   % SISO-Baseline, damit MIMO nur gewinnt, wenn es sich energetisch lohnt
-        struct('N_t',2,'N_r',2), ...
-        struct('N_t',4,'N_r',4), ...
-        struct('N_t',8,'N_r',8) ...
-    });
+    'qamMimoConfigs', {struct('N_t',1,'N_r',1)});
 
 gearboxphy.sweep.runSweep(scenario, 'resultsDir', 'main');
 

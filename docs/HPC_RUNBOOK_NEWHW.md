@@ -31,7 +31,16 @@ Quelle.
 | `run_newhw_w1` | **100** | 3a `mux_fixedB` + `mux_scaledB` (6 Läufe) → `run_analog_bf_distance` |
 | `run_newhw_w2` | **100** | 3a `bf_fixedB` + `bfideal_fixedB` (6 Läufe) → `run_dbf_dac_distance` |
 | `run_newhw_w3` | **100** | 3b → `run_analog_bf_mixed_distance` → 3a `mux_alphabetB` (3 Läufe) |
-| `run_newhw_w4` | **200** | `run_sweep` → 3× `run_beamforming_*` → `run_siso_vs_mimo_scaledB` → `run_dac_model_siso` → `run_lna_comparison` → `run_hw_comparison` |
+| `run_newhw_w4` | **200** | `run_sweep` (SISO) → 3× `run_beamforming_*` → `run_siso_vs_mimo_scaledB` → `run_dac_model_siso` → `run_lna_comparison` → `run_hw_comparison` |
+
+`run_sweep` rechnet seit dem 2026-10-16 **nur noch SISO**. Er forderte vorher
+1×1 bis 8×8 gegen den Basisordner `data/SE_data`, dessen neun MIMO-Kurven aus
+einem Export **vor** der Einführung von `snrReference` stammen — je Strom
+normiert, während das Gearbox die Gesamtleistung budgetiert. `loadSECurve`
+weist sie ab, und genau daran brach W4 am 2026-10-16 ab. Der Abbruch war
+richtig: `results/main` trug diese Spalten für M = 4/16/64 und schenkte
+Multiplexing dadurch +3,0 / +6,0 / +9,0 dB. Die MIMO-Achse liegt jetzt allein
+bei 3a, 3b und der Analog-Studie, die regelgetaggte Kurvenordner lesen.
 
 **Warum diese Zahlen und nicht 125 × 4.** Die Kernzahl, die ein Lauf nutzen
 kann, ist nicht wählbar — sie steckt in seiner parallelen Achse:
@@ -112,6 +121,12 @@ die zwei Abbildungsordner.
 
 **Danach committen** — die Ergebnisse sind versioniert, git sieht
 Umbenennungen, und der alte Satz bleibt als Vergleichsarm in der Geschichte.
+
+**Eine Ausnahme vom „gültigen Vergleichsarm":** die MIMO-Spalten von
+`main`, `main100` und `main200` bei M = 4/16/64 sind **nicht** nur
+alter Modellsatz, sie sind falsch — sie entstanden mit den je Strom
+normierten Kurven (s. o.). Als SISO-Spalte bleiben die Dateien brauchbar,
+als MIMO-Vergleich nicht.
 Das ist, was der Kasten am Anfang von `MIMO_TODO.md` mit „zwei vollständige
 Sätze auf demselben Raster" verspricht.
 

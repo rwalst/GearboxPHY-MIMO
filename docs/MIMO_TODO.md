@@ -41,6 +41,15 @@ stehen in den Commits und den Dokumenten aus Abschnitt 6.
 >
 > Die MI-Kurven in `data/SE_data*` sind **nicht** betroffen — sie sind
 > informationstheoretisch und kennen keine Hardware.
+>
+> **Eine Ausnahme von „gültig als Vergleichsarm":** die MIMO-Spalten von
+> `results/main{,100,200}` bei M = 4/16/64 sind nicht nur alter Modellsatz,
+> sie sind **falsch**. Sie entstanden mit den neun MIMO-Kurven aus
+> `data/SE_data`, die je Strom normiert sind und kein `snrReference` tragen —
+> ohne die 10·log₁₀(N_t)-Verschiebung bekam Multiplexing +3,0 / +6,0 / +9,0 dB
+> geschenkt. Als SISO-Spalte bleiben die Dateien brauchbar. `run_sweep`
+> rechnet seit dem 2026-10-16 nur noch SISO; die MIMO-Achse liegt allein bei
+> 3a, 3b und der Analog-Studie.
 
 ---
 
