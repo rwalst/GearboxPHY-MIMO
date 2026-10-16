@@ -67,11 +67,25 @@ for i = 1:numel(fm)
 end
 
 % ---------- reine Architekturen als Referenz ----------
-% Der LO-Fall gehoert zur DIGITALEN Referenz: dbf_ideal ist geteilter LO,
-% dbf_ideal_lo12p5mW der Aufschlag. Die analoge Referenz ist beiden gemein.
+% Der LO-Fall gehoert zur DIGITALEN Referenz: dbf_ideal und
+% dbf_ideal_lo12p5mW. ACHTUNG, seit der Migration auf die neuen
+% Hardwaremodelle sind die beiden dieselbe Konfiguration -- die Vorgabe ist
+% loDistributionModel "per_mixer" mit 12,5 mW bei 28 GHz, und dbf_ideal
+% uebergibt nichts, bekommt also genau das. Die analoge Referenz ist beiden
+% gemein.
+%
+% DAS ADC-MODELL IM DATEINAMEN KOMMT AUS DEN DATEN, nicht aus einer
+% Konstante. Hier stand '_envelope.mat' fest verdrahtet; seit
+% run_analog_bf_distance nur noch "quantile5" rechnet (Nutzerentscheidung
+% 2026-10-15), fand das keine einzige Referenz mehr und die Auswertung brach
+% mit noReferences ab -- ein umgestellter Erzeuger und ein nicht
+% mitgezogener Verbraucher. Der eigene Lauf schreibt sein adcModel mit, und
+% genau das muss die Referenz tragen: verglichen werden darf nur innerhalb
+% EINES ADC-Modells.
+adcTag = string(load(fullfile(fm(1).folder, fm(1).name), 'adcModel').adcModel);
 P = struct('name', {}, 'kind', {}, 'E', {}, 'CFG', {});
 for nm = ["dbf_ideal" "dbf_ideal_lo12p5mW" "abf_active" "abf_passive_comp" "abf_passive_pen"]
-    p = fullfile(resDir, sprintf('abf_distance_%s_envelope.mat', nm));
+    p = fullfile(resDir, sprintf('abf_distance_%s_%s.mat', nm, adcTag));
     if ~isfile(p)
         warning('analyze_analog_bf_mixed:noReference', ...
             ['%s fehlt -- die reine %s-Referenz fehlt damit im Vergleich. ' ...

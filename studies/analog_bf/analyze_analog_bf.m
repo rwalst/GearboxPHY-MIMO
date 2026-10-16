@@ -91,6 +91,26 @@ for adc = unique([S.adc])
     sel = S([S.adc] == adc);
     CFG = sel(1).CFG; nR = numel(CFG.rates);
     ref = sel([sel.variant] == "dbf_ideal");
+    % EINDEUTIGKEIT PRUEFEN, statt an der Indizierung zu scheitern. Am
+    % 2026-10-16 lagen zwei Dateien mit variant = "dbf_ideal" vor, und die
+    % Fehlermeldung war MATLAB:index:expected_one_output_from_intermediate_indexing
+    % -- richtig abgebrochen, aber ohne jeden Hinweis auf die Ursache.
+    %
+    % Die Ursache ist kein Schreibfehler: dbf_ideal uebergibt kein
+    % loDistributionModel, bekommt also die Vorgabe, und die ist seit der
+    % Migration "per_mixer" mit 12,5 mW bei 28 GHz (loDistributionPower.m).
+    % Damit ist dbf_ideal dieselbe Rechnung wie dbf_ideal_lo12p5mW, der
+    % Ergebnisspeicher erkennt das am Fingerabdruck und liefert EINE Datei
+    % fuer beide Namen -- mitsamt ihrem variant-Feld. Der Studie fehlt damit
+    % ihr LO-Grundfall; das ist eine Modellfrage, kein Auswertungsfehler.
+    assert(isscalar(ref), 'analyze_analog_bf:ambiguousReference', ...
+        ['%d Dateien tragen variant = "dbf_ideal" (ADC-Modell %s), erwartet ' ...
+         'ist genau eine.\nWahrscheinlich sind dbf_ideal und ' ...
+         'dbf_ideal_lo12p5mW dieselbe Konfiguration geworden: dbf_ideal ' ...
+         'uebergibt kein loDistributionModel und bekommt die Vorgabe, die ' ...
+         'seit der Migration per_mixer mit 12,5 mW bei 28 GHz ist. Dann ' ...
+         'braucht run_analog_bf_distance fuer dbf_ideal ein ausdrueckliches ' ...
+         'lo = "shared" -- oder die Zeile entfaellt.'], numel(ref), adc);
 
     % ---- Energie je Bit ueber die Distanz
     fig = figure('Visible', 'off', 'Position', [100 100 1100 420], 'Color', 'w');
