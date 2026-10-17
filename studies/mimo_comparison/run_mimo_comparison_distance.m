@@ -1,6 +1,12 @@
-function run_mimo_comparison_distance()
+function run_mimo_comparison_distance(onlyVariants)
 %RUN_MIMO_COMPARISON_DISTANCE  Schritt 3b des BF/MUX-Vergleichs: zwei feste
 %   Raten, Sweep ueber die Distanz, alle sechs Varianten.
+%
+%   run_mimo_comparison_distance(onlyVariants)   (seit 2026-10-17, optional)
+%     rechnet NUR die genannten Varianten, z.B. "mux_scaledB_r1ang" aus
+%     studies/rank1_geometry. Ohne Argument: die Liste im CONFIG-Block,
+%     unveraendert. Raster, Hardware und Dateinamen sind in beiden Faellen
+%     dieselben -- die Ergebnisse liegen also direkt neben den uebrigen.
 %
 %   Bewusst eine FUNKTION ohne Argumente statt eines Skripts: parfor ruft
 %   hier eine lokale Funktion auf, und das ist nur in Funktionsdateien
@@ -60,6 +66,9 @@ VARIANTS(end+1) = "mux_scaledB_KInf";
 % ist dort identisch zu fixedB).
 if isfolder(gearboxphy.paths.dataDir("SE_data_mux_alphabetB"))
     VARIANTS(end+1) = "mux_alphabetB";
+end
+if nargin >= 1 && ~isempty(onlyVariants)
+    VARIANTS = string(onlyVariants);
 end
 CFG.rates     = [1e6 1e9];              % niedrig / hoch [bit/s]
 CFG.distances = logspace(1, 4, 25);     % 10 m .. 10 km

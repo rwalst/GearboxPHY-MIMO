@@ -3,8 +3,9 @@
 **Ziel.** Das Gearbox soll nicht nur Gang, Bandbreite, Tastverhältnis und
 Modulationsordnung wählen, sondern auch die **Antennenarchitektur**:
 Multiplexing, digitales Beamforming oder analoges Beamforming — über drei
-Kanäle (LOS, Rice, Rayleigh) und die zugehörigen Wandler- und
-Phasenschiebermodelle.
+Kanäle (Rang 1, Rice, Rayleigh) und die zugehörigen Wandler- und
+Phasenschiebermodelle. „Rang 1“ ist der Kanal, der bis 2026-10-16 „LOS“
+hieß; Bezeichnung und Kennungen in `studies/rank1_geometry/README.md`.
 
 > # ⚠ Die wichtigste offene Frage: „LOS" heißt hier **Rang 1**, nicht Sichtverbindung
 >
@@ -31,6 +32,24 @@ Phasenschiebermodelle.
 > Beamforming bauen" — und genau so würde sie gelesen.
 >
 > **Zu tun:** Abschnitt 3.5. **Zahlen und Herleitung:** Abschnitt 5.1.
+>
+> **Stand 2026-10-17, zwei Untersuchungen, keine Entscheidung:**
+>
+> 1. **LOS-MIMO, Implikationsstudie** (ohne Repo-Änderung, ohne Gearbox-Lauf,
+>    `Groupmeetings/rank1_los_study/README.md`).
+>    - Mit frei wählbarem Elementabstand gewinnt MUX bei 1 Gbit/s bis etwa
+>      **630 m**, q bis 1,27 (Abschätzung). Mit 0,5 m Apertur je Seite nur
+>      bis 51 m, mit 2 m bis 155 m.
+>    - Bei 1 Mbit/s und im Fernbereich bleibt es bei BF.
+> 2. **Rang 1 auf gleicher Geometrie für alle drei Architekturen**
+>    (Abschnitt 3.6, vorbereitet auf Branch `rank1-geometry`).
+>    - Heute rechnet MUX broadside, das digitale BF über 32 Richtungen.
+>    - Broadside ist für MUX (fast) der schlechteste Winkel und erlässt dem
+>      digitalen BF die DAC-Kosten.
+>
+> **Bezeichnung:** überall „Rang 1“ mit Geometrie („broadside“ /
+> „32 Richtungen“) statt „LOS“. Das gilt nur für den Endpunkt K = ∞; K = 3
+> und 30 sind vollrangig.
 
 ## Die Forschungsfragen
 
@@ -583,6 +602,53 @@ nur Broadside (`runQamSweep32Los`, `runQamSweepBfAnalog`). Das ist ein
 Modellunterschied **innerhalb** der LOS-Spalte, kein Messergebnis, und er
 gehört in jede Aussage, die die drei bei LOS nebeneinanderstellt.
 
+### 3.6 Rang-1-Spalte auf gleicher Geometrie — vorbereitet, nicht gerechnet
+
+Branches `GearboxPHY-MIMO rank1-geometry` und `QuantizedMimoMI
+rang1-geometrie`. Ablauf, Kennungen und Grenzen stehen in
+`studies/rank1_geometry/README.md`.
+
+**Das Problem.** In der Rang-1-Spalte rechnen die drei Architekturen auf
+verschiedenen Geometrien:
+
+- MUX broadside.
+- Das digitale BF gemittelt über 32 Richtungspaare (DAC-Studie, `bflosd`).
+  Im MUX/BF-Vergleich 3b dagegen als `bfideal`: analytisch, vor einem ADC.
+- Das analoge BF broadside. Für das analoge
+BF ist das gleichgültig, sein Gewinn ist N² bei jedem Winkel. Für die anderen
+beiden nicht:
+
+- **MUX broadside** (4×4, 4-QAM, unquantisiert) hat bei 10 dB 4,05 bit,
+  gegen 6,41 bit im Median über 32 Winkel. Unter 0 dB ist der Winkel
+  gleichgültig.
+- **Digitales BF broadside** hat keine DAC-Kosten: Die Gewichte sind reell
+  und gleich, die Stufe +0 ist exakt (G2).
+
+| | MUX | digitales BF | analoges BF |
+|---|---|---|---|
+| **A: alle broadside** | `mux_scaledB_KInf` (vorhanden) | `bfr1b` (neu) | `abf_fixedB_KInf` |
+| **B: alle 32 Richtungen** | `mux_scaledB_r1ang` (neu, N ≤ 4) | `bflosd` (vorhanden) | `abf_fixedB_KInf` |
+
+**Neu zu rechnen** (HPC):
+
+- QuantizedMimoMI `runQamSweepBfRank1Broadside` (2 h).
+- QuantizedMimoMI `runQamSweepMuxRank1Angles` (24 h). Beide Zeitangaben sind
+  nicht gemessen.
+- Gearbox `export_rank1_geometry_curves`, danach
+  `run_rank1_geometry_distance`. Dieser Lauf erzeugt auch die analogen
+  Rang-1-Läufe `abfdac_distance_abfKInf_*`, die es bisher **nicht** gibt.
+- Auswertung `analyze_rank1_geometry` mit gemeinsamer Maske über alle drei
+  Architekturen und den Schnitten A, A4 (A mit N ≤ 4) und B.
+
+**Lokal geprüft:**
+
+- `validateRank1Geometry` G1–G7 bestanden.
+- Die Auswertung lief als Rauchtest auf Ersatzdateien. Das prüft den Code,
+  nicht die Zahlen.
+
+**Offen:** welche Option die Hauptspalte wird. Empfehlung: A, ehrlich
+benannt, plus B als Sensitivität.
+
 ## 4. Entscheidungen
 
 **Getroffen.**
@@ -770,6 +836,23 @@ und Vorgehen in Abschnitt 3.5.
 **Bis das geprüft ist, gilt:** überall „Rang 1" schreiben, wo „LOS" gemeint
 wäre, und keine Empfehlung der Form „bei Sichtverbindung Beamforming" aus
 F1/F2/F3 ableiten.
+
+**Zweite Modellwahl in derselben Spalte: der Winkel** (2026-10-17). Auch
+innerhalb von Rang 1 ist das Ergebnis nicht geometriefrei.
+
+- Broadside fallen für MUX die meisten Summen zusammen. Bei anderen Winkeln
+  drehen die Steuerphasen die Summanden gegeneinander, und MUX kommt bei
+  hohem SNR nahe an die volle Rate: 4×4, 4-QAM, 20 dB, 4,05 gegen 7,85 bit.
+- Das digitale BF verliert broadside seine DAC-Kosten.
+
+Die heutige Rang-1-Spalte steht nicht auf einer Geometrie:
+
+- MUX rechnet broadside.
+- Das digitale BF rechnet in der DAC-Studie über 32 Richtungen (`bflosd`).
+- Im MUX/BF-Vergleich 3b steht es analytisch als `bfideal` da, kombiniert
+  vor einem ADC.
+
+Abschnitt 3.6 bereitet beide Angleichungen vor.
 
 ### 5.2 Hardwaremodelle und Messannahmen
 

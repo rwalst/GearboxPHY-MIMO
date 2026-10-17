@@ -153,7 +153,7 @@ for adc = unique([S.adc])
     close(fig);
 
     % ---- Tabelle: Verhaeltnis zur digitalen Referenz
-    fprintf('\n=== ADC-Modell %s: E_analog / E_digital (LOS-Referenz), gewaehltes N ===\n', adc);
+    fprintf('\n=== ADC-Modell %s: E_analog / E_digital (Rang-1-Referenz), gewaehltes N ===\n', adc);
     dIdx = unique(round(linspace(1, numel(CFG.distances), 5)));
     for ri = 1:nR
         fprintf('  R = %s bit/s\n', localEng(CFG.rates(ri)));

@@ -4,6 +4,18 @@
 Vorgeschichte reicht. Stand: 2026-10-16, `GearboxPHY-MIMO 6ac9882`,
 `QuantizedMimoMI ac29828`.
 
+> **Stand 2026-10-17.**
+>
+> - **Schritt 1 und die Implikationen sind untersucht**, ohne Repo-Änderung
+>   und ohne Gearbox-Lauf: `Groupmeetings/rank1_los_study/README.md`.
+>   - Mit frei wählbarem Abstand gewinnt MUX bei 1 Gbit/s bis ≈ 630 m.
+>   - d\* hängt fast nur an der zulässigen Apertur.
+> - **Schritte 2–4 (Kugelwellen-Zweig, `losmimo`-Kurven) sind NICHT
+>   begonnen.** Ob sie kommen, ist nicht entschieden.
+> - **Daneben vorbereitet:** dieselbe Geometrie für alle drei Architekturen
+>   *innerhalb* von Rang 1 (`MIMO_TODO.md` Abschnitt 3.6,
+>   `studies/rank1_geometry/`).
+
 ---
 
 ## 1. Die Frage

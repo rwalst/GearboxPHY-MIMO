@@ -40,7 +40,8 @@ function run_dbf_dac_distance(over)
 %
 %   WAS GERECHNET WIRD (alles QAM, 28 GHz, ADC-Modell "envelope", ADC-Regel
 %   fixedB; Raster wie run_analog_bf_distance):
-%     Kanal    "losd" (Rang 1, ein ADC je Empfangsantenne), "ray"
+%     Kanal    "losd" (Rang 1 ueber 32 Richtungen, ein ADC je Empfangsantenne),
+%              "r1b" (Rang 1 broadside, studies/rank1_geometry), "ray"
 %              (Rayleigh) sowie "ray3"/"ray30" (Rice) -- jeweils sobald die
 %              Kurvenordner existieren. Der frueher vorhandene Kanal "los"
 %              (Kombinieren vor EINEM ADC) ist seit dem 2026-10-16 heraus,
@@ -139,14 +140,23 @@ CFG = struct('rates', P.rates, 'distances', P.distances, 'fcGHz', P.fcGHz, 'Ms',
 % Dateien per Glob, nicht ueber diese Liste, es wuerde sie also weiter
 % einlesen. Sie gehoeren verschoben (archive_oldhw_results) oder geloescht,
 % bevor die Auswertung wieder laeuft.
+% "r1b" (seit 2026-10-17, studies/rank1_geometry, Option A): Rang 1
+% BROADSIDE, ein ADC je Antenne (QuantizedMimoMI runQamSweepBfRank1Broadside).
+% "losd" ist derselbe Rang-1-Kanal, gemittelt ueber 32 Richtungen.
+% Broadside gibt es nur die DAC-Stufe +0 -- sie ist dort exakt (Gewichte
+% reell und gleich, ungedrehtes Symbol; validateRank1Geometry G2), hoehere
+% Stufen kosten nur mehr. Die analoge Seite ist fuer beide Kanaele dieselbe
+% Kurve (Gewinn N^2 bei jedem Winkel, G6), also dieselben Dateien
+% abfdac_distance_abfKInf_* -- der zweite Kanal uebernimmt sie per
+% Fingerabdruck. Fehlen die r1b-Ordner, wird der Kanal uebersprungen.
 CH = struct( ...
-  'name',       {"losd", "ray", "ray3", "ray30"}, ...
+  'name',       {"losd", "ray", "ray3", "ray30", "r1b"}, ...
   'digBase',    {"SE_data_bflosd_fixedB", "SE_data_bf_fixedB", ...
-                 "SE_data_bf_fixedB_K3", "SE_data_bf_fixedB_K30"}, ...
+                 "SE_data_bf_fixedB_K3", "SE_data_bf_fixedB_K30", "SE_data_bfr1b_fixedB"}, ...
   'anaData',    {"SE_data_abf_fixedB_KInf", "SE_data_abf_fixedB", ...
-                 "SE_data_abf_fixedB_K3", "SE_data_abf_fixedB_K30"}, ...
-  'anaMode',    {"multiplexing", "multiplexing", "multiplexing", "multiplexing"}, ...
-  'anaPrefix',  {"abfKInf", "abfray", "abfray3", "abfray30"});
+                 "SE_data_abf_fixedB_K3", "SE_data_abf_fixedB_K30", "SE_data_abf_fixedB_KInf"}, ...
+  'anaMode',    {"multiplexing", "multiplexing", "multiplexing", "multiplexing", "multiplexing"}, ...
+  'anaPrefix',  {"abfKInf", "abfray", "abfray3", "abfray30", "abfKInf"});
 PS_NAMES = ["active" "passive_comp" "passive_pen"];
 PS_TYPES = ["active" "passive_compensated" "passive_penalty"];
 
